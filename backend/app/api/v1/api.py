@@ -690,3 +690,217 @@ def get_investigation_process_tree(
 ):
     return get_process_lineage(alert_id)
 
+
+# ===================== BREACH & ATTACK SIMULATION (BAS) =====================
+from backend.app.services.bas_engine import bas_engine
+from backend.app.services.purple_team import purple_team_service
+from backend.app.services.threat_hunting import threat_hunting_service
+from backend.app.services.war_room import war_room_service
+from rules.sigma.compiler import sigma_compiler, SigmaCompilationError
+
+
+@api_router.get("/simulation/bas/tests")
+def list_bas_atomic_tests(current_user: Dict[str, Any] = Depends(require_permission("rules:read"))):
+    """Returns catalog of MITRE ATT&CK atomic tests for automated validation."""
+    return bas_engine.list_tests()
+
+
+@api_router.post("/simulation/bas/run")
+def run_bas_atomic_test(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("rules:write")),
+):
+    """Executes atomic technique and assesses SIEM detection pipeline health."""
+    test_id = payload.get("test_id")
+    if not test_id:
+        raise HTTPException(status_code=400, detail="Missing required 'test_id'")
+    try:
+        res = bas_engine.execute_test(test_id)
+        audit_service.log(
+            actor=current_user["sub"],
+            role=current_user["role"],
+            client_ip="127.0.0.1",
+            action="BAS_ATOMIC_TEST_RUN",
+            resource_type="atomic_test",
+            resource_id=test_id,
+            status=res["status"],
+            details=res,
+        )
+        return res
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@api_router.get("/simulation/bas/scorecard")
+def get_bas_scorecard(current_user: Dict[str, Any] = Depends(require_permission("rules:read"))):
+    """Returns overall SOC Detection Efficacy Score, MTTD, and coverage metrics."""
+    return bas_engine.get_scorecard()
+
+
+# ===================== PURPLE TEAM CYBER RANGE =====================
+@api_router.get("/simulation/purple-team/campaigns")
+def list_purple_team_campaigns(current_user: Dict[str, Any] = Depends(require_permission("rules:read"))):
+    """Returns list of active and ready purple team cyber range campaigns."""
+    return purple_team_service.list_campaigns()
+
+
+@api_router.get("/simulation/purple-team/campaigns/{campaign_id}")
+def get_purple_team_campaign(
+    campaign_id: str,
+    current_user: Dict[str, Any] = Depends(require_permission("rules:read")),
+):
+    try:
+        return purple_team_service.get_campaign(campaign_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Campaign {campaign_id} not found")
+
+
+@api_router.post("/simulation/purple-team/campaigns/{campaign_id}/execute-step")
+def execute_purple_team_step(
+    campaign_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("rules:write")),
+):
+    step_num = payload.get("step_num")
+    trigger_soar = payload.get("trigger_soar", True)
+    if step_num is None:
+        raise HTTPException(status_code=400, detail="Missing 'step_num'")
+    try:
+        res = purple_team_service.execute_step(campaign_id, int(step_num), trigger_soar=trigger_soar)
+        audit_service.log(
+            actor=current_user["sub"],
+            role=current_user["role"],
+            client_ip="127.0.0.1",
+            action="PURPLE_TEAM_STEP_EXECUTE",
+            resource_type="campaign_step",
+            resource_id=f"{campaign_id}-step-{step_num}",
+            status="SUCCESS",
+            details=res,
+        )
+        return res
+    except (KeyError, ValueError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# ===================== THREAT HUNTING CAMPAIGNS =====================
+@api_router.get("/hunting/campaigns")
+def list_threat_hunts(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    """Returns catalog of hypothesis-driven threat hunting campaigns."""
+    return threat_hunting_service.list_campaigns()
+
+
+@api_router.get("/hunting/campaigns/{campaign_id}")
+def get_threat_hunt_campaign(
+    campaign_id: str,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    try:
+        return threat_hunting_service.get_campaign(campaign_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Hunt {campaign_id} not found")
+
+
+@api_router.post("/hunting/campaigns/{campaign_id}/launch")
+def launch_threat_hunt(
+    campaign_id: str,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    try:
+        res = threat_hunting_service.launch_hunt(campaign_id)
+        audit_service.log(
+            actor=current_user["sub"],
+            role=current_user["role"],
+            client_ip="127.0.0.1",
+            action="THREAT_HUNT_LAUNCH",
+            resource_type="threat_hunt",
+            resource_id=campaign_id,
+            status="SUCCESS",
+            details=res,
+        )
+        return res
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Hunt {campaign_id} not found")
+
+
+# ===================== SIGMA RULE COMPILER =====================
+@api_router.post("/rules/sigma/compile")
+def compile_sigma_rule(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("rules:write")),
+):
+    """Compiles generic Sigma YAML into Elasticsearch DSL, Wazuh XML, and Suricata rules."""
+    yaml_content = payload.get("rule_yaml", "")
+    if not yaml_content.strip():
+        raise HTTPException(status_code=400, detail="rule_yaml is empty")
+    try:
+        res = sigma_compiler.compile(yaml_content)
+        audit_service.log(
+            actor=current_user["sub"],
+            role=current_user["role"],
+            client_ip="127.0.0.1",
+            action="SIGMA_RULE_COMPILE",
+            resource_type="sigma_rule",
+            resource_id=res.get("rule_id", "SIGMA"),
+            status="SUCCESS",
+            details={"title": res.get("title")},
+        )
+        return res
+    except SigmaCompilationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+# ===================== INCIDENT WAR ROOM =====================
+@api_router.get("/cases/{case_id}/war-room")
+def get_case_war_room(
+    case_id: str,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    return war_room_service.get_room_data(case_id)
+
+
+@api_router.post("/cases/{case_id}/war-room/tasks/{task_id}/toggle")
+def toggle_war_room_task(
+    case_id: str,
+    task_id: str,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
+):
+    try:
+        return war_room_service.toggle_task(case_id, task_id, username=current_user["sub"])
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@api_router.post("/cases/{case_id}/war-room/evidence")
+def add_war_room_evidence(
+    case_id: str,
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
+):
+    ev_type = payload.get("evidence_type", "FILE_HASH")
+    val = payload.get("value", "")
+    desc = payload.get("description", "")
+    host = payload.get("source_host", "unknown")
+    if not val:
+        raise HTTPException(status_code=400, detail="Evidence value cannot be empty")
+    return war_room_service.add_evidence(case_id, ev_type, val, desc, host, officer=current_user["sub"])
+
+
+@api_router.post("/cases/{case_id}/war-room/timeline")
+def add_war_room_timeline_entry(
+    case_id: str,
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
+):
+    msg = payload.get("message", "")
+    action_type = payload.get("action_type", "NOTE")
+    if not msg:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    return war_room_service.add_timeline_entry(
+        case_id,
+        author=current_user["sub"],
+        role=current_user["role"],
+        message=msg,
+        action_type=action_type,
+    )
+
+

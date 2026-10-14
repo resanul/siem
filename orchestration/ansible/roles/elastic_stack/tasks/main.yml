@@ -1,0 +1,58 @@
+---
+# Elasticsearch and Kibana deployment tasks with strict TLS enforcement
+- name: Add Elastic GPG key and repo
+  ansible.builtin.apt_key:
+    url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Add Elastic 8.x repository
+  ansible.builtin.apt_repository:
+    repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+    filename: elastic-8.x
+  when: ansible_os_family == 'Debian'
+
+- name: Install Elasticsearch and Kibana packages
+  ansible.builtin.package:
+    name:
+      - "elasticsearch={{ elastic_version | default('8.13.4') }}"
+      - "kibana={{ elastic_version | default('8.13.4') }}"
+    state: present
+
+- name: Configure Elasticsearch JVM heap
+  ansible.builtin.template:
+    src: jvm.options.j2
+    dest: /etc/elasticsearch/jvm.options.d/heap.options
+    owner: root
+    group: elasticsearch
+    mode: '0640'
+
+- name: Ensure TLS certificates exist for Elasticsearch transport and HTTP
+  ansible.builtin.stat:
+    path: /etc/elasticsearch/certs/http.p12
+  register: es_certs
+
+- name: Assert TLS certificates exist
+  ansible.builtin.assert:
+    that:
+      - es_certs.stat.exists
+    fail_msg: "Elasticsearch TLS certificate missing. Self-signed or CA-signed certificates must be provisioned before startup."
+
+- name: Template elasticsearch.yml with TLS enabled
+  ansible.builtin.template:
+    src: elasticsearch.yml.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: root
+    group: elasticsearch
+    mode: '0660'
+  notify: Restart Elasticsearch
+
+- name: Ensure Elasticsearch and Kibana services are enabled and running
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - elasticsearch
+    - kibana

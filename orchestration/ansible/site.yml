@@ -1,0 +1,50 @@
+---
+# OpenSOC Forge - Master Idempotent Deployment Playbook
+# Supports Ubuntu 22.04 LTS / Debian 12 / RHEL 9
+- name: Deploy OpenSOC Forge Security Data Plane
+  hosts: soc_nodes
+  become: true
+  vars_files:
+    - vars/main.yml
+
+  pre_tasks:
+    - name: Assert supported Linux distribution
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution in ['Ubuntu', 'Debian', 'RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+        fail_msg: "Unsupported OS. OpenSOC Forge requires Ubuntu 22.04 LTS or Enterprise Linux 9."
+
+    - name: Preflight check system memory
+      ansible.builtin.assert:
+        that:
+          - ansible_memtotal_mb >= 7800
+        fail_msg: "Insufficient RAM! OpenSOC Forge baseline requires at least 8 GB of RAM."
+
+  roles:
+    - role: elastic_stack
+      tags: [elastic, datastore]
+
+    - role: wazuh_manager
+      tags: [wazuh, endpoint]
+
+    - role: suricata
+      tags: [suricata, nids]
+
+  post_tasks:
+    - name: Verify telemetry collection pipelines
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:9200/_cluster/health"
+        method: GET
+        user: "{{ elastic_admin_user }}"
+        password: "{{ elastic_admin_password }}"
+        validate_certs: true
+        ca_path: "/etc/opensoc/certs/ca.crt"
+        status_code: 200
+      register: es_health
+      retries: 10
+      delay: 5
+      until: es_health.status == 200
+
+    - name: Print deployment success summary
+      ansible.builtin.debug:
+        msg: "OpenSOC Forge Data Plane successfully provisioned and verified with active TLS encryption."

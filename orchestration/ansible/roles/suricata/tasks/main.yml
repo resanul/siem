@@ -1,0 +1,41 @@
+---
+# Suricata NIDS deployment tasks
+- name: Add Suricata PPA on Ubuntu
+  ansible.builtin.apt_repository:
+    repo: "ppa:oisf/suricata-stable"
+    state: present
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Install Suricata and suricata-update
+  ansible.builtin.package:
+    name:
+      - suricata
+      - jq
+    state: present
+
+- name: Configure Suricata yaml
+  ansible.builtin.template:
+    src: suricata.yaml.j2
+    dest: /etc/suricata/suricata.yaml
+    owner: root
+    group: root
+    mode: '0640'
+    validate: 'suricata -c %s -T'
+  notify: Restart Suricata
+
+- name: Enable AF_PACKET multi-queue on sniffing interface
+  ansible.builtin.command:
+    cmd: "ethtool -K {{ sniffing_interface | default('eth0') }} rx off tx off gso off gro off"
+  changed_when: false
+  failed_when: false
+
+- name: Update Suricata emerging threats rules
+  ansible.builtin.command:
+    cmd: suricata-update
+  changed_when: false
+
+- name: Ensure Suricata service is enabled and started
+  ansible.builtin.systemd:
+    name: suricata
+    state: started
+    enabled: true

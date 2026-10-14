@@ -1,0 +1,46 @@
+---
+# Wazuh Manager deployment tasks
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - apt-transport-https
+      - lsb-release
+      - gnupg2
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Add Wazuh GPG key
+  ansible.builtin.apt_key:
+    url: "https://packages.wazuh.com/key/GPG-KEY-WAZUH"
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Add Wazuh APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+    filename: wazuh
+  when: ansible_os_family == 'Debian'
+
+- name: Install Wazuh Manager package
+  ansible.builtin.package:
+    name: "wazuh-manager={{ wazuh_version | default('4.8.2-1') }}"
+    state: present
+
+- name: Template Wazuh Manager configuration (ossec.conf)
+  ansible.builtin.template:
+    src: ossec.conf.j2
+    dest: /var/ossec/etc/ossec.conf
+    owner: root
+    group: ossec
+    mode: '0640'
+    validate: '/var/ossec/bin/wazuh-analysisd -t'
+  notify: Restart Wazuh Manager
+
+- name: Ensure Wazuh Manager service is enabled and running
+  ansible.builtin.systemd:
+    name: wazuh-manager
+    state: started
+    enabled: true
