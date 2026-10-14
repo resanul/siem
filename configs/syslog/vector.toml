@@ -1,0 +1,70 @@
+# ======================== OpenSOC Forge Syslog Receiver (Vector) ========================
+# RFC 3164 (BSD), RFC 5424 (IETF), and RFC 5425 (TLS) Collector
+
+data_dir = "/var/lib/vector"
+
+# ----------------- Sources -----------------
+[sources.syslog_udp]
+type = "syslog"
+address = "0.0.0.0:514"
+mode = "udp"
+max_length = 102400
+
+[sources.syslog_tcp]
+type = "syslog"
+address = "0.0.0.0:514"
+mode = "tcp"
+max_length = 102400
+
+[sources.syslog_tls]
+type = "syslog"
+address = "0.0.0.0:6514"
+mode = "tcp"
+max_length = 102400
+[sources.syslog_tls.tls]
+enabled = true
+crt_file = "/etc/opensoc/certs/syslog.crt"
+key_file = "/etc/opensoc/certs/syslog.key"
+
+# ----------------- Transforms (Normalization) -----------------
+[transforms.ecs_normalization]
+type = "remap"
+inputs = ["syslog_udp", "syslog_tcp", "syslog_tls"]
+source = '''
+.ecs = {}
+.ecs.version = "8.11.0"
+.event = {}
+.event.kind = "event"
+.event.category = ["network", "host"]
+.event.type = ["info"]
+.event.dataset = "syslog"
+.log = {}
+.log.syslog = {}
+.log.syslog.severity = .severity || "info"
+.log.syslog.facility = .facility || "user"
+.observer = {}
+.observer.type = "siem"
+.observer.vendor = "OpenSOC Forge"
+if !exists(.message) {
+  .message = to_string!(.raw)
+}
+'''
+
+# ----------------- Sinks -----------------
+[sinks.local_file]
+type = "file"
+inputs = ["ecs_normalization"]
+path = "/var/log/opensoc/syslog/syslog.log"
+encoding.codec = "json"
+
+[sinks.elasticsearch]
+type = "elasticsearch"
+inputs = ["ecs_normalization"]
+endpoints = ["https://elasticsearch:9200"]
+mode = "bulk"
+bulk.index = "opensoc-syslog-%Y.%m.%d"
+auth.strategy = "basic"
+auth.user = "elastic"
+auth.password = "${ELASTIC_PASSWORD:-OpenSocForge2026!}"
+tls.verify_certificate = false
+tls.ca_file = "/etc/opensoc/certs/ca.crt"

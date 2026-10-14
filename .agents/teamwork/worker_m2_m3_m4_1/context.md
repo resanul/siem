@@ -1,0 +1,20 @@
+# Context for Worker Milestones 2, 3, 4
+- Project Root: c:\Users\USER\Documents\SIEM
+- Working Directory: c:\Users\USER\Documents\SIEM\.agents\teamwork\worker_m2_m3_m4_1
+- Original Request: c:\Users\USER\Documents\SIEM\.agents\teamwork\ORIGINAL_REQUEST.md
+- Scope Document: c:\Users\USER\Documents\SIEM\PROJECT.md
+- Test Ready: c:\Users\USER\Documents\SIEM\TEST_READY.md
+- Survey Reports:
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\explorer_survey_2\handoff.md
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\explorer_survey_3\handoff.md
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\worker_m1_1\handoff.md
+- Exclusive Write Ownership:
+  - `install.sh`
+  - `systemd/opensoc-forge.service`
+  - `bin/opensoc-ctl`
+  - `scripts/configure_security_policies.sh`
+  - `configs/firewalld/opensoc-forge.xml`
+  - `configs/sysctl/99-opensoc-forge.conf`
+  - `backend/app/api/v1/api.py`
+  - `frontend/index.html`
+  - `tests/unit/test_milestones_2_3_4.py`

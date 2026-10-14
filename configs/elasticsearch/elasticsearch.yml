@@ -1,0 +1,36 @@
+# ======================== OpenSOC Forge Elasticsearch Configuration ========================
+cluster.name: opensoc-cluster
+node.name: opensoc-node-01
+
+# Data and log paths
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# Network binding
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# Single-node cluster configuration
+discovery.type: single-node
+
+# Memory and system limits
+bootstrap.memory_lock: true
+
+# X-Pack Security (TLS and RBAC)
+xpack.security.enabled: true
+xpack.security.enrollment.enabled: false
+
+# HTTP TLS configuration (REST API)
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.verification_mode: certificate
+xpack.security.http.ssl.key: certs/elasticsearch.key
+xpack.security.http.ssl.certificate: certs/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: certs/ca.crt
+
+# Transport TLS configuration (inter-node)
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: certs/elasticsearch.key
+xpack.security.transport.ssl.certificate: certs/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: certs/ca.crt

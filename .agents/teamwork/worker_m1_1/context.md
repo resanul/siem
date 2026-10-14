@@ -1,0 +1,17 @@
+# Context for Worker Milestone 1
+- Project Root: c:\Users\USER\Documents\SIEM
+- Working Directory: c:\Users\USER\Documents\SIEM\.agents\teamwork\worker_m1_1
+- Original Request: c:\Users\USER\Documents\SIEM\.agents\teamwork\ORIGINAL_REQUEST.md
+- Scope Document: c:\Users\USER\Documents\SIEM\PROJECT.md
+- Milestone 1 Scope: Multi-Service Container Data Plane (R2)
+- Survey Reports:
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\explorer_survey_2\handoff.md (Detailed container architecture, ports, volumes, health checks)
+- Exclusive Write Ownership:
+  - `Dockerfile`
+  - `docker-compose.yml`
+  - `podman-compose.yml`
+  - `.env.example`
+  - `scripts/generate_certs.sh`
+  - `configs/elasticsearch/*`
+  - `configs/suricata/*`
+  - `configs/syslog/*`

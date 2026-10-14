@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import yaml
@@ -361,7 +362,7 @@ outputs:
         verifying that EVE JSON records are written and parsed.
         """
         start_t = time.time()
-        synthetic_id = f"synth-suri-{int(time.time())}"
+        synthetic_id = f"synth-suri-{int(time.time()*1000)}-{uuid.uuid4().hex[:6]}"
         stages = {
             "synthetic_packet_generation": True,
             "signature_matching": True,

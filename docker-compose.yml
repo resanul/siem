@@ -1,0 +1,251 @@
+version: '3.8'
+
+# ==============================================================================
+# OpenSOC Forge - All-in-One Multi-Service SOC/SIEM Data Plane
+# Architecture:
+#   - opensoc-forge-mgmt: FastAPI Management API & React 18 Web Console (Port 8000)
+#   - elasticsearch: Single-Node Search Datastore with TLS (Ports 9200, 9300)
+#   - kibana: Visual Analytics Frontend (Port 5601)
+#   - wazuh-manager: Endpoint Detection, FIM, and SCA Engine (Ports 1514, 1515, 55000)
+#   - suricata: Network Intrusion Detection with AF_PACKET (Host Network)
+#   - syslog-collector: RFC 5424/3164/5425 Log Ingestion (Ports 514, 6514)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Service 1: OpenSOC Forge Central Management Plane & UI
+  # ----------------------------------------------------------------------------
+  opensoc-forge-mgmt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opensoc-forge-mgmt:latest
+    container_name: opensoc-forge-mgmt
+    restart: unless-stopped
+    ports:
+      - "${MGMT_PORT:-8000}:8000"
+    environment:
+      - PORT=8000
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-https://elasticsearch:9200}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
+      - ELASTICSEARCH_SSL_VERIFY=${ELASTICSEARCH_SSL_VERIFY:-false}
+      - WAZUH_API_URL=${WAZUH_API_URL:-https://wazuh-manager:55000}
+      - WAZUH_API_USER=${WAZUH_API_USER:-wazuh}
+      - WAZUH_API_PASSWORD=${WAZUH_API_PASSWORD:-OpenSocForge2026!}
+      - SURICATA_EVE_PATH=${SURICATA_EVE_PATH:-/var/log/suricata/eve.json}
+    volumes:
+      - ${SURICATA_LOG_DIR:-/var/log/suricata}:/var/log/suricata:ro,z
+      - ${OPENSOC_DATA_DIR:-/var/lib/opensoc}:/var/lib/opensoc:rw,z
+      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/etc/opensoc/certs:ro,z
+      - /etc/opensoc:/etc/opensoc:ro,z
+    networks:
+      - opensoc-net
+    depends_on:
+      - elasticsearch
+      - wazuh-manager
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # Service 2: Elasticsearch Datastore (Single-Node, TLS Enabled)
+  # ----------------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.24
+    container_name: opensoc-elasticsearch
+    restart: unless-stopped
+    ports:
+      - "${ES_PORT:-9200}:9200"
+      - "${ES_TRANSPORT_PORT:-9300}:9300"
+    environment:
+      - discovery.type=single-node
+      - cluster.name=opensoc-cluster
+      - node.name=opensoc-node-01
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=certificate
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
+    volumes:
+      - es_data:/usr/share/elasticsearch/data:rw,z
+      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/usr/share/elasticsearch/config/certs:ro,z
+      - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,z
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - opensoc-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -u elastic:$${ELASTIC_PASSWORD:-OpenSocForge2026!} https://localhost:9200/_cluster/health | grep -q '\"status\":\"\\(green\\|yellow\\)\"' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ----------------------------------------------------------------------------
+  # Service 3: Kibana Analytics Frontend
+  # ----------------------------------------------------------------------------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.24
+    container_name: opensoc-kibana
+    restart: unless-stopped
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - SERVER_NAME=opensoc-kibana
+      - SERVER_HOST=0.0.0.0
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=none
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca.crt
+    volumes:
+      - kibana_data:/usr/share/kibana/data:rw,z
+      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/usr/share/kibana/config/certs:ro,z
+    networks:
+      - opensoc-net
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status | grep -q '\"level\":\"available\"' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ----------------------------------------------------------------------------
+  # Service 4: Wazuh Manager
+  # ----------------------------------------------------------------------------
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.8.2
+    container_name: opensoc-wazuh-manager
+    restart: unless-stopped
+    ports:
+      - "${WAZUH_AGENT_TCP_PORT:-1514}:1514/tcp"
+      - "${WAZUH_AGENT_UDP_PORT:-1514}:1514/udp"
+      - "${WAZUH_ENROLL_PORT:-1515}:1515/tcp"
+      - "${WAZUH_API_PORT:-55000}:55000/tcp"
+    environment:
+      - INDEXER_URL=https://elasticsearch:9200
+      - INDEXER_USER=elastic
+      - INDEXER_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
+      - WAZUH_API_USER=${WAZUH_API_USER:-wazuh}
+      - WAZUH_API_PASSWORD=${WAZUH_API_PASSWORD:-OpenSocForge2026!}
+    volumes:
+      - wazuh_etc:/var/ossec/etc:rw,z
+      - wazuh_logs:/var/ossec/logs:rw,z
+      - wazuh_queue:/var/ossec/queue:rw,z
+    networks:
+      - opensoc-net
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -u $${WAZUH_API_USER:-wazuh}:$${WAZUH_API_PASSWORD:-OpenSocForge2026!} https://localhost:55000/manager/status | grep -q '\"error\":0' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ----------------------------------------------------------------------------
+  # Service 5: Suricata NIDS Engine (Host Networking & AF_PACKET)
+  # ----------------------------------------------------------------------------
+  suricata:
+    image: jasonish/suricata:7.0.5
+    container_name: opensoc-suricata
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    security_opt:
+      - label=disable
+    environment:
+      - SURICATA_OPTIONS=-i ${MONITORED_INTERFACE:-eth0} --af-packet
+    volumes:
+      - ${SURICATA_LOG_DIR:-/var/log/suricata}:/var/log/suricata:rw,z
+      - ./configs/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro,z
+      - ./configs/suricata/suricata.rules:/var/lib/suricata/rules/suricata.rules:ro,z
+      - suricata_rules:/var/lib/suricata/rules:rw,z
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/log/suricata/eve.json || test -d /var/log/suricata || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # Service 6: Syslog Collector (RFC 5424/3164/5425 Ingestion)
+  # ----------------------------------------------------------------------------
+  syslog-collector:
+    image: timberio/vector:0.38.0-alpine
+    container_name: opensoc-syslog-collector
+    restart: unless-stopped
+    ports:
+      - "${SYSLOG_UDP_PORT:-514}:514/udp"
+      - "${SYSLOG_TCP_PORT:-514}:514/tcp"
+      - "${SYSLOG_TLS_PORT:-6514}:6514/tcp"
+    environment:
+      - ELASTICSEARCH_URL=https://elasticsearch:9200
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
+    volumes:
+      - ${OPENSOC_LOG_DIR:-/var/log/opensoc}/syslog:/var/log/opensoc/syslog:rw,z
+      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/etc/opensoc/certs:ro,z
+      - ./configs/syslog/vector.toml:/etc/vector/vector.toml:ro,z
+      - ./configs/syslog/syslog-collector.json:/etc/opensoc/syslog/config.json:ro,z
+    networks:
+      - opensoc-net
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 514 || nc -z -u 127.0.0.1 514 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# ------------------------------------------------------------------------------
+# Network Topology: Explicit Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  opensoc-net:
+    name: opensoc-net
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+
+# ------------------------------------------------------------------------------
+# Persistent Volume Storage
+# ------------------------------------------------------------------------------
+volumes:
+  es_data:
+    name: opensoc_es_data
+  kibana_data:
+    name: opensoc_kibana_data
+  wazuh_etc:
+    name: opensoc_wazuh_etc
+  wazuh_logs:
+    name: opensoc_wazuh_logs
+  wazuh_queue:
+    name: opensoc_wazuh_queue
+  suricata_rules:
+    name: opensoc_suricata_rules

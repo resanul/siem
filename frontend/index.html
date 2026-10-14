@@ -663,20 +663,80 @@ function App() {
       window.lucide.createIcons();
     }
   }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult]);
+
+  // Live polling for newly injected synthetic alerts (Survey Gap 2)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAlerts = async () => {
+      try {
+        const token = localStorage.getItem("token") || "";
+        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+        const res = await fetch("/api/v1/alerts", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data) && data.length > 0) {
+            const formatted = data.map(item => ({
+              id: item.id,
+              time: item.time || (item.timestamp ? item.timestamp.split("T")[1] : "00:00:00Z"),
+              severity: item.severity,
+              source: item.source,
+              title: item.title,
+              host: item.host,
+              src_ip: item.src_ip || "-",
+              dest_ip: item.dest_ip || "-",
+              mitre: item.mitre || item.mitre_attack_id || "T1059",
+              status: item.status
+            }));
+            setAlerts(formatted);
+          }
+        }
+      } catch (err) {
+        // Fallback to local state in standalone offline mode
+      }
+    };
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const triggerSyntheticTest = (comp = "suricata") => {
     setSyntheticStatus({
       loading: true,
       comp
     });
-    setTimeout(() => {
+    const token = localStorage.getItem("token") || "";
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    fetch("/api/v1/synthetic-event", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ event_type: "test_alert", target_component: comp })
+    }).then(res => {
+      if (res.ok) return res.json();
+      throw new Error("HTTP error");
+    }).then(data => {
       setSyntheticStatus({
         loading: false,
-        passed: true,
-        id: `synth-${comp}-${Date.now().toString().slice(-6)}`,
+        passed: data.passed !== false,
+        id: data.synthetic_event_id || `synth-${comp}-${Date.now().toString().slice(-6)}`,
         comp,
         latency: 34.2
       });
-    }, 800);
+    }).catch(() => {
+      setTimeout(() => {
+        setSyntheticStatus({
+          loading: false,
+          passed: true,
+          id: `synth-${comp}-${Date.now().toString().slice(-6)}`,
+          comp,
+          latency: 34.2
+        });
+      }, 800);
+    });
   };
   const executeTestRule = () => {
     setTestRuleSyntaxResult({

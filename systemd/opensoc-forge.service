@@ -1,0 +1,26 @@
+[Unit]
+Description=OpenSOC Forge All-in-One SIEM/SOC Platform
+Documentation=https://github.com/opensoc-forge/opensoc
+After=network.target network-online.target docker.service podman.service firewalld.service
+Wants=network-online.target
+RequiresMountsFor=/opt/opensoc-forge
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/opensoc-forge
+EnvironmentFile=-/opt/opensoc-forge/.env
+ExecStartPre=-/usr/local/bin/opensoc-ctl prestart
+ExecStart=/usr/local/bin/opensoc-ctl start-foreground
+ExecStop=/usr/local/bin/opensoc-ctl stop
+ExecReload=/usr/local/bin/opensoc-ctl restart
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=300
+TimeoutStopSec=60
+KillMode=mixed
+LimitNOFILE=65536
+LimitNPROC=4096
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

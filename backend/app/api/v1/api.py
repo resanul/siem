@@ -21,6 +21,7 @@ from backend.app.core.security import (
 from backend.app.models.schemas import (
     AlertItem,
     AlertSeverity,
+    AlertSource,
     AlertStatus,
     AlertUpdate,
     BackupRestoreRequest,
@@ -552,6 +553,33 @@ def inject_synthetic_event(
         raise HTTPException(status_code=400, detail=f"Component {request.target_component} has no synthetic injection adapter.")
 
     test_res = adapter.integration_test()
+
+    # Prepend new AlertItem to DEMO_ALERTS so GET /api/v1/alerts reflects synthetic verification
+    src_component = request.target_component.lower()
+    source_val = AlertSource.SURICATA
+    for s in AlertSource:
+        if s.value == src_component:
+            source_val = s
+            break
+
+    new_alert = AlertItem(
+        id=f"ALT-{int(time.time() * 1000)}",
+        timestamp=datetime.utcnow().isoformat() + "Z",
+        severity=AlertSeverity.HIGH,
+        source=source_val,
+        title=f"SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert ({test_res.synthetic_event_id})",
+        description=f"Automated synthetic event injected for component '{request.target_component}' via opensoc-ctl test to verify pipeline delivery.",
+        host="opensoc-sensor-01",
+        src_ip="198.51.100.99",
+        dest_ip="10.0.1.15",
+        mitre_attack_id="T1059",
+        mitre_tactic="Execution",
+        status=AlertStatus.NEW,
+        raw_payload={"stages": test_res.stages, "synthetic_id": test_res.synthetic_event_id, "event_type": request.event_type},
+        is_demo=True,
+    )
+    DEMO_ALERTS.insert(0, new_alert)
+
     audit_service.log(
         actor=current_user["sub"],
         role=current_user["role"],

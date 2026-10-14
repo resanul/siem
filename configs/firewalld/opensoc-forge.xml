@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>OpenSOC Forge</short>
+  <description>OpenSOC Forge All-in-One SIEM/SOC platform data plane and management ports.</description>
+  <!-- Management Web Console & API -->
+  <port port="8000" protocol="tcp"/>
+  <!-- Kibana Analytics Dashboard -->
+  <port port="5601" protocol="tcp"/>
+  <!-- Elasticsearch Search & Telemetry REST API -->
+  <port port="9200" protocol="tcp"/>
+  <!-- Wazuh Agent Communication (Events) -->
+  <port port="1514" protocol="tcp"/>
+  <port port="1514" protocol="udp"/>
+  <!-- Wazuh Agent Registration (Authd) -->
+  <port port="1515" protocol="tcp"/>
+  <!-- Wazuh RESTful Management API -->
+  <port port="55000" protocol="tcp"/>
+  <!-- Syslog Collector (RFC 3164 / 5424) -->
+  <port port="514" protocol="udp"/>
+  <port port="514" protocol="tcp"/>
+  <!-- Syslog Collector over TLS -->
+  <port port="6514" protocol="tcp"/>
+</service>

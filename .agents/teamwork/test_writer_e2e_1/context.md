@@ -1,0 +1,11 @@
+# Context for E2E Test Writer
+- Project Root: c:\Users\USER\Documents\SIEM
+- Working Directory: c:\Users\USER\Documents\SIEM\.agents\teamwork\test_writer_e2e_1
+- Original Request: c:\Users\USER\Documents\SIEM\.agents\teamwork\ORIGINAL_REQUEST.md
+- Scope Document: c:\Users\USER\Documents\SIEM\PROJECT.md
+- Test Infra Specification: c:\Users\USER\Documents\SIEM\TEST_INFRA.md
+- Survey Reports:
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\explorer_survey_1\handoff.md
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\explorer_survey_2\handoff.md
+  - c:\Users\USER\Documents\SIEM\.agents\teamwork\explorer_survey_3\handoff.md
+- Exclusive Write Ownership: `tests/e2e/*`, `c:\Users\USER\Documents\SIEM\TEST_READY.md`

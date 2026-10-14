@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "listeners": [
+    {
+      "protocol": "udp",
+      "port": 514,
+      "bind_address": "0.0.0.0",
+      "rfc_standard": "RFC3164_RFC5424",
+      "description": "Standard UDP Syslog Receiver"
+    },
+    {
+      "protocol": "tcp",
+      "port": 514,
+      "bind_address": "0.0.0.0",
+      "rfc_standard": "RFC5424",
+      "description": "Reliable TCP Syslog Receiver"
+    },
+    {
+      "protocol": "tls",
+      "port": 6514,
+      "bind_address": "0.0.0.0",
+      "rfc_standard": "RFC5425",
+      "tls_cert": "/etc/opensoc/certs/syslog.crt",
+      "tls_key": "/etc/opensoc/certs/syslog.key",
+      "description": "Secure TLS Syslog Receiver"
+    }
+  ],
+  "parser": {
+    "extract_rfc5424_structured_data": true,
+    "normalize_to_ecs": true,
+    "ecs_version": "8.11.0",
+    "timestamp_fallback_to_arrival": true
+  },
+  "outputs": {
+    "elasticsearch": {
+      "enabled": true,
+      "endpoint": "https://elasticsearch:9200",
+      "index_prefix": "opensoc-syslog",
+      "tls_ca_cert": "/etc/opensoc/certs/ca.crt"
+    },
+    "local_file": {
+      "enabled": true,
+      "path": "/var/log/opensoc/syslog/syslog.log",
+      "format": "json"
+    }
+  }
+}
