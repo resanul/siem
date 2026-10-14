@@ -32,11 +32,10 @@ COPY configs/ ./configs/
 COPY scripts/ ./scripts/
 COPY orchestration/ ./orchestration/
 COPY compatibility/ ./compatibility/
-COPY rules/ ./rules/
 COPY releases/ ./releases/
 
-# Create runtime directories for state, logs, and cert mounts
-RUN mkdir -p /var/log/suricata /var/lib/opensoc /etc/opensoc /var/log/opensoc/syslog
+# Create runtime directories and fallback rules structure
+RUN mkdir -p /opt/opensoc-forge/rules /var/log/suricata /var/lib/opensoc /etc/opensoc /var/log/opensoc/syslog
 
 # Expose FastAPI and static UI port
 EXPOSE 8080

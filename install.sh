@@ -261,10 +261,10 @@ mkdir -p "${INSTALL_DIR}"
 mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs" "${INSTALL_DIR}/backups"
 
 # Copy repository tree to target directory idempotently
-for dir_item in configs scripts systemd bin backend frontend adapters orchestration compatibility releases; do
+for dir_item in configs scripts systemd bin backend frontend adapters orchestration compatibility releases rules; do
+    mkdir -p "${INSTALL_DIR}/${dir_item}"
     if [ -d "${SOURCE_DIR}/${dir_item}" ]; then
-        mkdir -p "${INSTALL_DIR}/${dir_item}"
-        cp -a "${SOURCE_DIR}/${dir_item}/." "${INSTALL_DIR}/${dir_item}/"
+        cp -a "${SOURCE_DIR}/${dir_item}/." "${INSTALL_DIR}/${dir_item}/" 2>/dev/null || true
     fi
 done
 
