@@ -1,0 +1,185 @@
+manifest_version: "1.0.0"
+release_id: "v1.1.0-candidate"
+channel: "candidate"
+profile: "lab"
+created_at: "2026-10-14T21:00:00Z"
+provenance:
+  author: "OpenSOC Forge Core Team"
+  git_commit: "b2c3d4e5f6a12345"
+  signature: "sha256:8a82c23491823abce...candidate"
+
+supported_platforms:
+  - os_family: "ubuntu"
+    os_version: "22.04"
+    architectures: ["x86_64", "aarch64"]
+  - os_family: "ubuntu"
+    os_version: "24.04"
+    architectures: ["x86_64", "aarch64"]
+  - os_family: "debian"
+    os_version: "12"
+    architectures: ["x86_64"]
+
+components:
+  elasticsearch:
+    version: "7.17.24"
+    type: "native_package"
+    package_name: "elasticsearch"
+    package_repo: "https://artifacts.elastic.co/packages/7.x/apt"
+    required_ports:
+      - port: 9200
+        protocol: "tcp"
+        purpose: "REST API & Ingestion"
+    required_paths:
+      config_dir: "/etc/elasticsearch"
+      data_dir: "/var/lib/elasticsearch"
+      log_dir: "/var/log/elasticsearch"
+    min_system_specs:
+      min_ram_mb: 4096
+      min_disk_gb: 20
+      min_cores: 2
+    health_check:
+      type: "systemd_and_http"
+      endpoint: "http://127.0.0.1:9200/_cluster/health"
+      expected_status: 200
+      timeout_seconds: 15
+
+  kibana:
+    version: "7.17.24"
+    type: "native_package"
+    package_name: "kibana"
+    package_repo: "https://artifacts.elastic.co/packages/7.x/apt"
+    required_ports:
+      - port: 5601
+        protocol: "tcp"
+        purpose: "Web Console"
+    required_paths:
+      config_dir: "/etc/kibana"
+      data_dir: "/var/lib/kibana"
+      log_dir: "/var/log/kibana"
+    min_system_specs:
+      min_ram_mb: 1024
+      min_disk_gb: 5
+      min_cores: 1
+    health_check:
+      type: "http"
+      endpoint: "http://127.0.0.1:5601/api/status"
+      expected_status: 200
+      timeout_seconds: 20
+
+  filebeat:
+    version: "7.17.24"
+    type: "native_package"
+    package_name: "filebeat"
+    package_repo: "https://artifacts.elastic.co/packages/7.x/apt"
+    required_ports: []
+    required_paths:
+      config_dir: "/etc/filebeat"
+      data_dir: "/var/lib/filebeat"
+      log_dir: "/var/log/filebeat"
+    min_system_specs:
+      min_ram_mb: 512
+      min_disk_gb: 5
+      min_cores: 1
+    health_check:
+      type: "process"
+      timeout_seconds: 10
+
+  wazuh_manager:
+    version: "4.8.2"
+    type: "native_package"
+    package_name: "wazuh-manager"
+    package_repo: "https://packages.wazuh.com/4.x/apt"
+    required_ports:
+      - port: 1514
+        protocol: "tcp"
+        purpose: "Agent Telemetry & Communication"
+      - port: 1515
+        protocol: "tcp"
+        purpose: "Agent Enrollment Service"
+      - port: 55000
+        protocol: "tcp"
+        purpose: "Wazuh REST API"
+    required_paths:
+      config_dir: "/var/ossec/etc"
+      data_dir: "/var/ossec/data"
+      log_dir: "/var/ossec/logs"
+    min_system_specs:
+      min_ram_mb: 2048
+      min_disk_gb: 15
+      min_cores: 2
+    health_check:
+      type: "systemd_and_http"
+      endpoint: "https://127.0.0.1:55000/manager/status"
+      expected_status: 200
+      timeout_seconds: 15
+
+  wazuh_agent:
+    version: "4.8.2"
+    type: "native_package"
+    package_name: "wazuh-agent"
+    package_repo: "https://packages.wazuh.com/4.x/apt"
+    required_ports: []
+    required_paths:
+      config_dir: "/var/ossec/etc"
+      data_dir: "/var/ossec/var"
+      log_dir: "/var/ossec/logs"
+    min_system_specs:
+      min_ram_mb: 256
+      min_disk_gb: 2
+      min_cores: 1
+    health_check:
+      type: "process"
+      timeout_seconds: 10
+
+  suricata:
+    version: "7.0.6"
+    type: "native_package"
+    package_name: "suricata"
+    package_repo: "ppa:oisf/suricata-stable"
+    required_ports: []
+    required_paths:
+      config_dir: "/etc/suricata"
+      data_dir: "/var/lib/suricata"
+      log_dir: "/var/log/suricata"
+    min_system_specs:
+      min_ram_mb: 1024
+      min_disk_gb: 10
+      min_cores: 2
+    health_check:
+      type: "process"
+      timeout_seconds: 10
+
+compatibility_constraints:
+  - rule_id: "RULE-ELK-LOCK"
+    source_component: "elasticsearch"
+    target_component: "kibana"
+    constraint: "elasticsearch == kibana"
+    description: "Elasticsearch and Kibana must match identical semantic version"
+
+  - rule_id: "RULE-AGENT-MANAGER"
+    source_component: "wazuh_agent"
+    target_component: "wazuh_manager"
+    constraint: "wazuh_agent <= wazuh_manager"
+    description: "Wazuh Agent version cannot exceed Manager version"
+
+supported_upgrade_paths:
+  - from_release: "v1.0.0-lab"
+    migration_required: false
+    breaking_changes:
+      - "Wazuh 4.8.x uses updated alerting decoders for Linux auditd logs"
+    pre_upgrade_steps:
+      - "Create system snapshot of metadata database and /etc configuration trees"
+      - "Verify all Wazuh agents report connected before triggering manager upgrade"
+
+backup_requirements:
+  snapshot_required: true
+  config_paths:
+    - "/etc/elasticsearch"
+    - "/etc/kibana"
+    - "/etc/filebeat"
+    - "/var/ossec/etc"
+    - "/etc/suricata"
+  metadata_database: true
+
+known_limitations:
+  - "Candidate release: test thoroughly in staging lab before deploying to mission-critical workloads"

@@ -1,0 +1,87 @@
+version: "1.0"
+description: "OpenSOC Forge Component Compatibility & Interoperability Matrix"
+generated_at: "2026-10-14T20:00:00Z"
+
+profiles:
+  lab:
+    description: "Single-node Lab Profile for development and evaluation"
+    min_ram_gb: 8
+    min_disk_gb: 40
+    min_cores: 4
+    default_release: "v1.0.0-lab"
+  distributed:
+    description: "Multi-node Production Distributed Profile"
+    min_ram_gb: 32
+    min_disk_gb: 250
+    min_cores: 16
+    default_release: "v1.0.0-dist"
+
+supported_combinations:
+  - id: "matrix-v1.0-lab"
+    name: "OpenSOC Forge v1.0.0 Stable Lab Profile"
+    channel: "stable"
+    target_os:
+      - os: "ubuntu"
+        versions: ["22.04", "20.04"]
+      - os: "debian"
+        versions: ["11", "12"]
+    components:
+      elasticsearch: "7.17.13"
+      kibana: "7.17.13"
+      filebeat: "7.17.13"
+      wazuh_manager: "4.5.4"
+      wazuh_agent: "4.5.4"
+      suricata: "7.0.5"
+    eve_json_version: "2.0"
+    filebeat_suricata_module: true
+    wazuh_filebeat_module: true
+    tls_required: true
+
+  - id: "matrix-v1.1-modern"
+    name: "OpenSOC Forge v1.1.0 Modernized Stack"
+    channel: "candidate"
+    target_os:
+      - os: "ubuntu"
+        versions: ["22.04", "24.04"]
+      - os: "rhel"
+        versions: ["9.2", "9.4"]
+    components:
+      elasticsearch: "7.17.24"
+      kibana: "7.17.24"
+      filebeat: "7.17.24"
+      wazuh_manager: "4.8.2"
+      wazuh_agent: "4.8.2"
+      suricata: "7.0.6"
+    eve_json_version: "2.0"
+    filebeat_suricata_module: true
+    wazuh_filebeat_module: true
+    tls_required: true
+
+incompatible_rules:
+  - rule_id: "INCOMPAT-001"
+    name: "Elasticsearch 8.x + Wazuh 4.5 Kibana Plugin"
+    condition: "elasticsearch >= 8.0.0 and wazuh_manager < 4.8.0"
+    severity: "CRITICAL"
+    reason: "Wazuh 4.5 Kibana app plugin relies on legacy 7.x UI runtime primitives removed in Elastic 8.x."
+    remediation: "Pin Elasticsearch/Kibana to 7.17.x or upgrade to Wazuh Indexer/Dashboard 2.x."
+
+  - rule_id: "INCOMPAT-002"
+    name: "Suricata 7.x + Filebeat < 7.16"
+    condition: "suricata >= 7.0.0 and filebeat < 7.16.0"
+    severity: "HIGH"
+    reason: "Legacy Filebeat suricata module fails to parse extended EVE JSON v2 fields (flow_id 64-bit, ja4 TLS fingerprints, quic protocol)."
+    remediation: "Upgrade Filebeat to >= 7.17.13 or use OpenSOC Forge normalized ingestion pipeline."
+
+  - rule_id: "INCOMPAT-003"
+    name: "Wazuh Agent / Manager Major Version Inversion"
+    condition: "wazuh_agent > wazuh_manager"
+    severity: "CRITICAL"
+    reason: "Wazuh Agent cannot be of a higher major/minor version than the Wazuh Manager it connects to."
+    remediation: "Always upgrade Wazuh Manager prior to enrolling or upgrading agents."
+
+  - rule_id: "INCOMPAT-004"
+    name: "Ubuntu 24.04 + Wazuh < 4.7"
+    condition: "os == 'ubuntu' and os_version == '24.04' and wazuh_manager < 4.7.0"
+    severity: "HIGH"
+    reason: "Ubuntu 24.04 Noble Numbat uses systemd v255 and glibc 2.39 which causes legacy Wazuh 4.5 daemon startup crashes."
+    remediation: "Deploy on Ubuntu 22.04 LTS or upgrade to OpenSOC Forge v1.1.0 (Wazuh 4.8.2)."

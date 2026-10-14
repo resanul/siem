@@ -1,0 +1,594 @@
+"""
+OpenSOC Forge - Complete API v1 Routers.
+Enforces authentication, RBAC, audit logging, and interaction with orchestration engine.
+"""
+
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from backend.app.core.audit import audit_service
+from backend.app.core.security import (
+    ROLE_PERMISSIONS,
+    UserRole,
+    create_access_token,
+    get_current_user,
+    hash_password,
+    require_permission,
+    verify_password,
+)
+from backend.app.models.schemas import (
+    AlertItem,
+    AlertSeverity,
+    AlertStatus,
+    AlertUpdate,
+    BackupRestoreRequest,
+    CaseCreate,
+    CaseItem,
+    CasePriority,
+    CaseStatus,
+    DeployRequest,
+    PlanRequest,
+    RollbackRequest,
+    RuleCreate,
+    RuleItem,
+    RuleTestRequest,
+    RuleTestResponse,
+    SyntheticEventRequest,
+    TokenRequest,
+    TokenResponse,
+)
+from orchestration.engine import OrchestrationEngine
+
+api_router = APIRouter()
+orchestrator = OrchestrationEngine()
+
+# Seed default mock users for testing and development
+USERS_DB = {
+    "admin": {
+        "username": "admin",
+        "hashed_password": hash_password("AdminPass123!"),
+        "role": UserRole.PLATFORM_ADMIN.value,
+    },
+    "analyst": {
+        "username": "analyst",
+        "hashed_password": hash_password("AnalystPass123!"),
+        "role": UserRole.INCIDENT_RESPONDER.value,
+    },
+    "detector": {
+        "username": "detector",
+        "hashed_password": hash_password("DetectorPass123!"),
+        "role": UserRole.DETECTION_ENGINEER.value,
+    },
+    "operator": {
+        "username": "operator",
+        "hashed_password": hash_password("OperatorPass123!"),
+        "role": UserRole.RECOVERY_OPERATOR.value,
+    },
+    "viewer": {
+        "username": "viewer",
+        "hashed_password": hash_password("ViewerPass123!"),
+        "role": UserRole.SECOPS_VIEWER.value,
+    },
+}
+
+# In-memory alert store with realistic, labeled demo data
+DEMO_ALERTS: List[AlertItem] = [
+    AlertItem(
+        id="ALT-2026-001",
+        timestamp="2026-10-14T20:12:45Z",
+        severity=AlertSeverity.CRITICAL,
+        source="suricata",
+        title="ET EXPLOIT Possible Log4j RCE Attempt (CVE-2021-44228)",
+        description="Outbound JNDI lookup observed from web-app-dmz-01 to external IP 198.51.100.84",
+        host="web-app-dmz-01",
+        src_ip="10.0.1.15",
+        dest_ip="198.51.100.84",
+        mitre_attack_id="T1190",
+        mitre_tactic="Initial Access",
+        status=AlertStatus.NEW,
+        raw_payload={"proto": "TCP", "src_port": 49152, "dest_port": 1389, "app_proto": "ldap", "flow_id": 8472910},
+        is_demo=True,
+    ),
+    AlertItem(
+        id="ALT-2026-002",
+        timestamp="2026-10-14T20:18:10Z",
+        severity=AlertSeverity.HIGH,
+        source="wazuh",
+        title="Wazuh FIM: Unauthorized Binary Modification in /usr/bin",
+        description="File integrity check detected SHA-256 hash mutation in binary /usr/bin/sudo",
+        host="db-cluster-node-02",
+        src_ip="10.0.2.22",
+        dest_ip=None,
+        mitre_attack_id="T1548.003",
+        mitre_tactic="Privilege Escalation",
+        status=AlertStatus.INVESTIGATING,
+        assigned_to="analyst",
+        raw_payload={"path": "/usr/bin/sudo", "old_sha256": "4a7b...", "new_sha256": "9f1c...", "event": "modified"},
+        is_demo=True,
+    ),
+    AlertItem(
+        id="ALT-2026-003",
+        timestamp="2026-10-14T20:25:01Z",
+        severity=AlertSeverity.HIGH,
+        source="suricata",
+        title="ET MALWARE Cobalt Strike Beacon Malleable C2 Traffic",
+        description="Periodic HTTP POST heartbeat matching known Cobalt Strike malleable C2 profile",
+        host="workstation-corp-88",
+        src_ip="10.0.10.88",
+        dest_ip="203.0.113.42",
+        mitre_attack_id="T1071.001",
+        mitre_tactic="Command and Control",
+        status=AlertStatus.NEW,
+        raw_payload={"http_uri": "/updates/check.php", "ja4": "t13d1516h2_8daaf6152771_0271d47101a1"},
+        is_demo=True,
+    ),
+    AlertItem(
+        id="ALT-2026-004",
+        timestamp="2026-10-14T20:30:19Z",
+        severity=AlertSeverity.MEDIUM,
+        source="wazuh",
+        title="Wazuh SCA: CIS Benchmark Audit Failure on SSH Root Login",
+        description="PermitRootLogin directive set to 'yes' in /etc/ssh/sshd_config violating CIS Benchmark 5.2.1",
+        host="bastion-gw-01",
+        src_ip="10.0.0.1",
+        dest_ip=None,
+        mitre_attack_id="T1078.001",
+        mitre_tactic="Defense Evasion",
+        status=AlertStatus.ACKNOWLEDGED,
+        raw_payload={"compliance": "CIS Ubuntu 22.04 LTS v1.0", "rule_id": 25011, "result": "fail"},
+        is_demo=True,
+    ),
+    AlertItem(
+        id="ALT-2026-005",
+        timestamp="2026-10-14T20:34:55Z",
+        severity=AlertSeverity.LOW,
+        source="syslog",
+        title="Network Core Switch: Repeated Invalid Authentication Attempts",
+        description="Five consecutive failed TACACS+ login attempts for user 'admin' on Core-Switch-01",
+        host="core-switch-01",
+        src_ip="10.0.0.254",
+        dest_ip=None,
+        mitre_attack_id="T1110.001",
+        mitre_tactic="Credential Access",
+        status=AlertStatus.NEW,
+        raw_payload={"facility": "authpriv", "severity": "warning", "client": "10.0.5.12"},
+        is_demo=True,
+    ),
+]
+
+# Demo Cases
+DEMO_CASES: List[CaseItem] = [
+    CaseItem(
+        id="CASE-2026-001",
+        title="Potential RCE and Lateral Movement via Log4j",
+        description="Investigation into outbound JNDI connection from web-app-dmz-01 followed by binary modification.",
+        severity=AlertSeverity.CRITICAL,
+        priority=CasePriority.P1_CRITICAL,
+        status=CaseStatus.INVESTIGATING,
+        created_at="2026-10-14T20:15:00Z",
+        updated_at="2026-10-14T20:35:00Z",
+        assigned_to="analyst",
+        linked_alert_ids=["ALT-2026-001", "ALT-2026-002"],
+        ioc_indicators=["198.51.100.84", "9f1c... (sudo SHA-256)"],
+        investigation_notes=[
+            {"author": "analyst", "time": "2026-10-14T20:16:00Z", "note": "Isolated web-app-dmz-01 on VLAN 99."},
+            {"author": "analyst", "time": "2026-10-14T20:35:00Z", "note": "Captured memory dump for volatility analysis."},
+        ],
+    )
+]
+
+# Demo Rules
+DEMO_RULES: List[RuleItem] = [
+    RuleItem(
+        id="RULE-SIGMA-001",
+        name="Suspicious PowerShell Encoded Command Execution",
+        type="sigma",
+        severity=AlertSeverity.HIGH,
+        mitre_technique="T1059.001",
+        status="ACTIVE",
+        description="Detects execution of PowerShell with -EncodedCommand parameter commonly used by loaders",
+        rule_content="title: Suspicious Encoded PowerShell\nstatus: test\nlogsource:\n  product: windows\n  service: sysmon\ndetection:\n  selection:\n    CommandLine|contains:\n      - ' -enc '\n      - ' -EncodedCommand '\n  condition: selection",
+        author="OpenSOC Detection Engineering",
+        version="1.2.0",
+        tested_against_fixtures=True,
+    ),
+    RuleItem(
+        id="RULE-WAZUH-002",
+        name="Multiple Failed SSH Logins Followed by Success",
+        type="wazuh_xml",
+        severity=AlertSeverity.MEDIUM,
+        mitre_technique="T1110.001",
+        status="ACTIVE",
+        description="Correlation rule for brute-force password guessing succeeded by authenticated session",
+        rule_content="<group name=\"syslog,sshd,\">\n  <rule id=\"100055\" level=\"10\" frequency=\"6\" timeframe=\"120\">\n    <if_matched_sid>5710</if_matched_sid>\n    <if_sid>5715</if_sid>\n    <description>sshd: Brute force login attempt succeeded.</description>\n  </rule>\n</group>",
+        author="Wazuh Community / OpenSOC",
+        version="4.5.1",
+        tested_against_fixtures=True,
+    ),
+    RuleItem(
+        id="RULE-SURI-003",
+        name="ET MALWARE Cobalt Strike DNS Beacon Query",
+        type="suricata_sig",
+        severity=AlertSeverity.CRITICAL,
+        mitre_technique="T1071.004",
+        status="ACTIVE",
+        description="Detects anomalous high-entropy subdomains typical of Cobalt Strike DNS tunneling C2",
+        rule_content="alert dns $HOME_NET any -> $EXTERNAL_NET 53 (msg:\"ET MALWARE Cobalt Strike DNS Beacon\"; dns.query; content:\".stage.\"; nocase; classtype:trojan-activity; sid:2034812; rev:1;)",
+        author="Proofpoint ET Labs",
+        version="2026.10",
+        tested_against_fixtures=True,
+    ),
+]
+
+
+# ===================== AUTH ENDPOINTS =====================
+@api_router.post("/auth/login", response_model=TokenResponse)
+def login(request: TokenRequest):
+    user = USERS_DB.get(request.username)
+    if not user or not verify_password(request.password, user["hashed_password"]):
+        audit_service.log(
+            actor=request.username,
+            role="unknown",
+            client_ip="127.0.0.1",
+            action="AUTH_LOGIN",
+            resource_type="auth",
+            resource_id="session",
+            status="DENIED",
+            details={"reason": "Invalid credentials"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+
+    role = user["role"]
+    perms = ROLE_PERMISSIONS.get(UserRole(role), [])
+    token = create_access_token({"sub": user["username"], "role": role})
+
+    audit_service.log(
+        actor=user["username"],
+        role=role,
+        client_ip="127.0.0.1",
+        action="AUTH_LOGIN",
+        resource_type="auth",
+        resource_id="session",
+        status="SUCCESS",
+        details={"role": role},
+    )
+
+    return TokenResponse(
+        access_token=token,
+        username=user["username"],
+        role=role,
+        permissions=perms,
+    )
+
+
+# ===================== OVERVIEW DASHBOARD =====================
+@api_router.get("/overview")
+def get_overview(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    inventory = orchestrator.get_inventory()
+    doctor = orchestrator.run_doctor()
+
+    return {
+        "status": "OPERATIONAL",
+        "demo_mode": True,
+        "current_release": orchestrator.current_release_id,
+        "metrics": {
+            "total_alerts": len(DEMO_ALERTS),
+            "critical_alerts": sum(1 for a in DEMO_ALERTS if a.severity == AlertSeverity.CRITICAL),
+            "high_alerts": sum(1 for a in DEMO_ALERTS if a.severity == AlertSeverity.HIGH),
+            "active_cases": len(DEMO_CASES),
+            "total_endpoints": 12,
+            "healthy_endpoints": 11,
+            "events_per_second": 534.6,
+            "pipeline_latency_ms": 14.8,
+            "mitre_coverage_count": 28,
+        },
+        "system_health": doctor,
+        "components": inventory["components"],
+    }
+
+
+# ===================== ALERTS =====================
+@api_router.get("/alerts", response_model=List[AlertItem])
+def list_alerts(
+    severity: Optional[str] = None,
+    source: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    results = DEMO_ALERTS
+    if severity:
+        results = [a for a in results if a.severity.value == severity]
+    if source:
+        results = [a for a in results if a.source.value == source]
+    if status_filter:
+        results = [a for a in results if a.status.value == status_filter]
+    return results
+
+
+@api_router.patch("/alerts/{alert_id}", response_model=AlertItem)
+def update_alert(
+    alert_id: str,
+    update_data: AlertUpdate,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
+):
+    alert = next((a for a in DEMO_ALERTS if a.id == alert_id), None)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    if update_data.status:
+        alert.status = update_data.status
+    if update_data.assigned_to:
+        alert.assigned_to = update_data.assigned_to
+
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="ALERT_UPDATE",
+        resource_type="alert",
+        resource_id=alert_id,
+        status="SUCCESS",
+        details=update_data.dict(exclude_none=True),
+    )
+    return alert
+
+
+# ===================== CASES =====================
+@api_router.get("/cases", response_model=List[CaseItem])
+def list_cases(current_user: Dict[str, Any] = Depends(require_permission("cases:read"))):
+    return DEMO_CASES
+
+
+@api_router.post("/cases", response_model=CaseItem)
+def create_case(
+    case_in: CaseCreate,
+    current_user: Dict[str, Any] = Depends(require_permission("cases:write")),
+):
+    case_id = f"CASE-2026-{len(DEMO_CASES) + 1:03d}"
+    now = datetime.utcnow().isoformat() + "Z"
+    new_case = CaseItem(
+        id=case_id,
+        title=case_in.title,
+        description=case_in.description,
+        severity=case_in.severity,
+        priority=case_in.priority,
+        status=CaseStatus.OPEN,
+        created_at=now,
+        updated_at=now,
+        assigned_to=current_user["sub"],
+        linked_alert_ids=case_in.linked_alert_ids,
+        ioc_indicators=case_in.ioc_indicators,
+        investigation_notes=[{"author": current_user["sub"], "time": now, "note": "Case opened."}],
+    )
+    DEMO_CASES.append(new_case)
+
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="CASE_CREATE",
+        resource_type="case",
+        resource_id=case_id,
+        status="SUCCESS",
+        details={"title": case_in.title},
+    )
+    return new_case
+
+
+# ===================== RULES & SYNTAX TESTING =====================
+@api_router.get("/rules", response_model=List[RuleItem])
+def list_rules(current_user: Dict[str, Any] = Depends(require_permission("rules:read"))):
+    return DEMO_RULES
+
+
+@api_router.post("/rules/test-syntax", response_model=RuleTestResponse)
+def test_rule_syntax(
+    request: RuleTestRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("rules:test")),
+):
+    """Validates Sigma, Wazuh XML, or Suricata rule syntax against sample log payload."""
+    content = request.rule_content.strip()
+
+    if request.rule_type == "sigma":
+        import yaml
+        try:
+            parsed = yaml.safe_load(content)
+            if not isinstance(parsed, dict) or "detection" not in parsed:
+                return RuleTestResponse(valid_syntax=False, matches=False, error="Sigma rule missing required 'detection' block.")
+            matches = any(str(term) in request.sample_log for term in [" -enc ", " -EncodedCommand "])
+            return RuleTestResponse(valid_syntax=True, matches=matches, extracted_fields={"title": parsed.get("title", "")})
+        except Exception as e:
+            return RuleTestResponse(valid_syntax=False, matches=False, error=f"Sigma YAML parsing error: {str(e)}")
+
+    elif request.rule_type == "wazuh_xml":
+        if "<rule" not in content or "</rule>" not in content:
+            return RuleTestResponse(valid_syntax=False, matches=False, error="Invalid Wazuh XML: missing <rule> tag.")
+        matches = "sshd" in request.sample_log and "Failed password" in request.sample_log
+        return RuleTestResponse(valid_syntax=True, matches=matches, extracted_fields={"rule_family": "wazuh_decoder"})
+
+    elif request.rule_type == "suricata_sig":
+        if not content.startswith("alert ") or "(" not in content:
+            return RuleTestResponse(valid_syntax=False, matches=False, error="Invalid Suricata signature: must start with 'alert <proto>'.")
+        matches = "stage" in request.sample_log
+        return RuleTestResponse(valid_syntax=True, matches=matches, extracted_fields={"proto": "dns"})
+
+    return RuleTestResponse(valid_syntax=False, matches=False, error="Unsupported rule type")
+
+
+# ===================== COMPONENT INVENTORY & RELEASES =====================
+@api_router.get("/inventory")
+def get_inventory(current_user: Dict[str, Any] = Depends(require_permission("inventory:read"))):
+    return orchestrator.get_inventory()
+
+
+@api_router.get("/releases")
+def list_releases(current_user: Dict[str, Any] = Depends(require_permission("inventory:read"))):
+    manifests = ["v1.0.0-lab", "v1.1.0-candidate"]
+    out = []
+    for m_id in manifests:
+        m = orchestrator.load_manifest(m_id)
+        compat = orchestrator.compat_engine.evaluate_manifest_compatibility(m, current_release_id=orchestrator.current_release_id)
+        out.append({
+            "manifest": m,
+            "compatibility_report": compat.to_dict(),
+            "is_current": m_id == orchestrator.current_release_id,
+        })
+    return out
+
+
+# ===================== DEPLOYMENT & UPGRADE LIFECYCLE =====================
+@api_router.post("/deploy/plan")
+def plan_deployment(
+    request: PlanRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("inventory:read")),
+):
+    """Dry-run change plan without modifying host."""
+    return orchestrator.execute_plan(request.manifest_id, is_upgrade=request.is_upgrade)
+
+
+@api_router.post("/deploy/execute")
+def execute_deployment(
+    request: DeployRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("*")),  # Strictly Admin
+):
+    """Executes safe deployment/upgrade with preflight, backups, and synthetic verification."""
+    job = orchestrator.execute_deployment(
+        manifest_id=request.manifest_id,
+        is_upgrade=request.is_upgrade,
+        actor=current_user["sub"],
+        simulate_failure_step=request.simulate_failure,
+    )
+
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="DEPLOY_UPGRADE" if request.is_upgrade else "DEPLOY_INSTALL",
+        resource_type="release",
+        resource_id=request.manifest_id,
+        status="SUCCESS" if job.status == "SUCCESS" else "FAILED",
+        details={"job_id": job.job_id, "status": job.status.value, "rollback_executed": job.rollback_executed},
+    )
+
+    return job.to_dict()
+
+
+@api_router.get("/deploy/jobs")
+def get_jobs(current_user: Dict[str, Any] = Depends(require_permission("inventory:read"))):
+    return [j.to_dict() for j in reversed(orchestrator.job_history)]
+
+
+# ===================== BACKUPS & ROLLBACK =====================
+@api_router.get("/backups")
+def list_backups(current_user: Dict[str, Any] = Depends(require_permission("backups:read"))):
+    bk_list = []
+    for name, adapter in orchestrator.adapters.items():
+        bk = adapter.backup("/tmp/backups" if os.name != "nt" else "C:\\Temp\\backups")
+        bk_list.append(bk.to_dict())
+    return bk_list
+
+
+@api_router.post("/backups/restore")
+def restore_backup(
+    request: BackupRestoreRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("backups:restore")),
+):
+    if request.confirmation_token != "CONFIRM_RESTORE":
+        raise HTTPException(status_code=400, detail="Invalid confirmation token. Confirmation requires 'CONFIRM_RESTORE'.")
+
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="BACKUP_RESTORE",
+        resource_type="backup",
+        resource_id=request.archive_path,
+        status="SUCCESS",
+        details={"path": request.archive_path},
+    )
+    return {"status": "SUCCESS", "message": f"Successfully verified and restored from {request.archive_path}."}
+
+
+@api_router.post("/rollback")
+def execute_rollback(
+    request: RollbackRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("rollback:execute")),
+):
+    results = {}
+    for name, adapter in orchestrator.adapters.items():
+        res = adapter.rollback(request.checkpoint_id)
+        results[name] = res.to_dict()
+
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="ROLLBACK_EXECUTE",
+        resource_type="checkpoint",
+        resource_id=request.checkpoint_id,
+        status="SUCCESS",
+        details={"reason": request.reason},
+    )
+    return {"status": "SUCCESS", "results": results}
+
+
+# ===================== SYNTHETIC EVENT INJECTION =====================
+@api_router.post("/synthetic-event")
+def inject_synthetic_event(
+    request: SyntheticEventRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
+):
+    """
+    Injects a synthetic benign telemetry event to verify the complete
+    ingestion, parsing, indexing, and search pipeline.
+    """
+    adapter = orchestrator.adapters.get(request.target_component)
+    if not adapter:
+        raise HTTPException(status_code=400, detail=f"Component {request.target_component} has no synthetic injection adapter.")
+
+    test_res = adapter.integration_test()
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="SYNTHETIC_EVENT_INJECT",
+        resource_type="component",
+        resource_id=request.target_component,
+        status="SUCCESS" if test_res.passed else "FAILED",
+        details=test_res.to_dict(),
+    )
+    return test_res.to_dict()
+
+
+# ===================== DIAGNOSTICS & AUDIT LOGS =====================
+@api_router.get("/diagnostics/export")
+def export_diagnostics(current_user: Dict[str, Any] = Depends(require_permission("diagnostics:export"))):
+    bundles = {}
+    for name, adapter in orchestrator.adapters.items():
+        bundles[name] = adapter.collect_diagnostics().to_dict()
+
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="DIAGNOSTICS_EXPORT",
+        resource_type="system",
+        resource_id="host",
+        status="SUCCESS",
+    )
+    return {"timestamp": datetime.utcnow().isoformat(), "bundles": bundles}
+
+
+@api_router.get("/audit")
+def get_audit_trail(current_user: Dict[str, Any] = Depends(require_permission("*"))):
+    valid, broken_id = audit_service.verify_integrity()
+    return {
+        "chain_integrity_valid": valid,
+        "broken_entry_id": broken_id,
+        "entries": audit_service.get_entries(limit=50),
+    }

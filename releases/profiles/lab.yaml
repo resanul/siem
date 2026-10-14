@@ -1,0 +1,29 @@
+profile_id: "lab"
+name: "OpenSOC Forge Lab Profile (Single-Node)"
+description: "Optimized for development, malware analysis labs, POCs, and training environments."
+architecture: "single_node"
+components_enabled:
+  - "elasticsearch"
+  - "kibana"
+  - "filebeat"
+  - "wazuh_manager"
+  - "wazuh_agent"
+  - "suricata"
+  - "syslog"
+
+hardware_requirements:
+  min_cores: 4
+  min_ram_mb: 8192
+  recommended_ram_mb: 16384
+  min_disk_gb: 40
+
+network:
+  listen_address: "0.0.0.0"
+  management_interface: "auto"
+  monitor_interface: "auto"
+  promiscuous_mode: true
+  enable_tls: true
+
+warnings:
+  - "Single-node deployment has single point of failure (no ES cluster redundancy)."
+  - "Suricata packet engine shares CPU cores with Wazuh and Elasticsearch indexing."

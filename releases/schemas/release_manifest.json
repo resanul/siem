@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenSOCForgeReleaseManifest",
+  "description": "Schema for immutable version-controlled OpenSOC Forge release manifests",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "release_id",
+    "channel",
+    "created_at",
+    "supported_platforms",
+    "components",
+    "compatibility_constraints",
+    "supported_upgrade_paths"
+  ],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "enum": ["1.0.0", "1.1.0"]
+    },
+    "release_id": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?$"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["stable", "candidate", "experimental"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "author": { "type": "string" },
+        "git_commit": { "type": "string" },
+        "signature": { "type": "string" }
+      }
+    },
+    "supported_platforms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["os_family", "os_version", "architectures"],
+        "properties": {
+          "os_family": { "type": "string", "enum": ["ubuntu", "rhel", "debian", "rocky", "alma"] },
+          "os_version": { "type": "string" },
+          "architectures": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["x86_64", "aarch64"] }
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["version", "type"],
+        "properties": {
+          "version": { "type": "string" },
+          "type": { "type": "string", "enum": ["native_package", "container", "binary"] },
+          "package_repo": { "type": "string" },
+          "package_name": { "type": "string" },
+          "image": { "type": "string" },
+          "digest_or_checksum": { "type": "string" },
+          "required_ports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["port", "protocol", "purpose"],
+              "properties": {
+                "port": { "type": "integer" },
+                "protocol": { "type": "string", "enum": ["tcp", "udp"] },
+                "purpose": { "type": "string" }
+              }
+            }
+          },
+          "required_paths": {
+            "type": "object",
+            "properties": {
+              "config_dir": { "type": "string" },
+              "data_dir": { "type": "string" },
+              "log_dir": { "type": "string" }
+            }
+          },
+          "min_system_specs": {
+            "type": "object",
+            "properties": {
+              "min_ram_mb": { "type": "integer" },
+              "min_disk_gb": { "type": "integer" },
+              "min_cores": { "type": "integer" }
+            }
+          },
+          "health_check": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "enum": ["systemd_and_http", "http", "process", "socket"] },
+              "endpoint": { "type": "string" },
+              "expected_status": { "type": "integer" },
+              "timeout_seconds": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "compatibility_constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "source_component", "target_component", "constraint"],
+        "properties": {
+          "rule_id": { "type": "string" },
+          "source_component": { "type": "string" },
+          "target_component": { "type": "string" },
+          "constraint": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "supported_upgrade_paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from_release", "migration_required", "breaking_changes"],
+        "properties": {
+          "from_release": { "type": "string" },
+          "migration_required": { "type": "boolean" },
+          "breaking_changes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "pre_upgrade_steps": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "backup_requirements": {
+      "type": "object",
+      "properties": {
+        "snapshot_required": { "type": "boolean" },
+        "config_paths": { "type": "array", "items": { "type": "string" } },
+        "metadata_database": { "type": "boolean" }
+      }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
