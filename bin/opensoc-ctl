@@ -11,7 +11,7 @@ if [ ! -d "${INSTALL_DIR}" ] && [ -d "${REPO_ROOT}" ]; then
     INSTALL_DIR="${REPO_ROOT}"
 fi
 
-API_BASE="${API_BASE:-http://127.0.0.1:8080}"
+API_BASE="${API_BASE:-http://127.0.0.1:7070}"
 ES_BASE="${ES_BASE:-http://127.0.0.1:9200}"
 
 # -----------------------------------------------------------------------------
@@ -86,7 +86,7 @@ cmd_status() {
     # 3. Listening Network Ports
     echo ""
     echo " Service Network Listeners:"
-    local ports=(8080 5601 9200 1514 1515 55000 514 6514)
+    local ports=(7070 5601 9200 1514 1515 55000 514 6514)
     for p in "${ports[@]}"; do
         if check_port_open "$p"; then
             echo "   - Port ${p}: [LISTENING / OPEN]"

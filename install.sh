@@ -282,7 +282,7 @@ if [ ! -f "${INSTALL_DIR}/.env" ]; then
         cat <<EOF > "${INSTALL_DIR}/.env"
 OPENSOC_ENV=production
 HOST_IP=${HOST_IP}
-MGMT_PORT=8080
+MGMT_PORT=7070
 ES_PORT=9200
 KIBANA_PORT=5601
 WAZUH_PORT=1514
@@ -371,8 +371,8 @@ echo " [SUCCESS] OpenSOC Forge Deployment Completed Successfully!"
 echo "================================================================================"
 echo -e "${NC}"
 echo " Access Information:"
-echo "   - Web Console UI   : http://${HOST_IP}:8080/console/"
-echo "   - Management API   : http://${HOST_IP}:8080/api/v1/docs"
+echo "   - Web Console UI   : http://${HOST_IP}:7070/console/"
+echo "   - Management API   : http://${HOST_IP}:7070/api/v1/docs"
 echo "   - Kibana Dashboard : http://${HOST_IP}:5601"
 echo "   - Elasticsearch    : http://${HOST_IP}:9200"
 echo "   - Wazuh Manager    : ports 1514 (events), 1515 (auth), 55000 (api)"
