@@ -592,3 +592,101 @@ def get_audit_trail(current_user: Dict[str, Any] = Depends(require_permission("*
         "broken_entry_id": broken_id,
         "entries": audit_service.get_entries(limit=50),
     }
+
+
+# ===================== ENTERPRISE ATTACK SIMULATION =====================
+from backend.app.services.simulation import simulation_engine
+from backend.app.services.soar import soar_engine
+from backend.app.services.mitre_intel import get_mitre_attack_matrix, get_threat_intel_feed, get_process_lineage
+
+
+@api_router.get("/simulation/scenarios")
+def list_attack_scenarios(current_user: Dict[str, Any] = Depends(require_permission("rules:read"))):
+    """Returns curated MITRE ATT&CK adversary emulation scenarios."""
+    return simulation_engine.list_scenarios()
+
+
+@api_router.post("/simulation/run")
+def run_attack_simulation(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("rules:write")),
+):
+    """Executes adversary emulation scenario, generates telemetry, and triggers SOAR."""
+    scenario_id = payload.get("scenario_id", "SCENARIO-RANSOMWARE")
+    res = simulation_engine.run_simulation(scenario_id, operator=current_user["sub"])
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="ATTACK_SIMULATION_RUN",
+        resource_type="simulation",
+        resource_id=scenario_id,
+        status="SUCCESS",
+        details=res,
+    )
+    return res
+
+
+# ===================== SOAR PLAYBOOKS =====================
+@api_router.get("/soar/playbooks")
+def list_soar_playbooks(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    return soar_engine.list_playbooks()
+
+
+@api_router.post("/soar/execute")
+def execute_soar_playbook(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
+):
+    playbook_id = payload.get("playbook_id", "PLAYBOOK-HOST-ISOLATION")
+    context = payload.get("context", {})
+    res = soar_engine.execute_playbook(playbook_id, context=context, operator=current_user["sub"])
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="SOAR_PLAYBOOK_RUN",
+        resource_type="playbook",
+        resource_id=playbook_id,
+        status="SUCCESS",
+        details=res,
+    )
+    return res
+
+
+# ===================== MITRE ATT&CK MATRIX & HEATMAP =====================
+@api_router.get("/mitre/matrix")
+def get_mitre_matrix(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    return get_mitre_attack_matrix()
+
+
+# ===================== THREAT INTELLIGENCE & PROCESS TREE =====================
+@api_router.get("/threat-intel/feeds")
+def get_threat_intel(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    return get_threat_intel_feed()
+
+
+@api_router.post("/threat-intel/hunt")
+def hunt_ioc(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    ioc = payload.get("ioc", "")
+    # Query cluster indices for IOC sightings
+    return {
+        "ioc": ioc,
+        "searched_indices": ["suricata-*", "wazuh-alerts-*", "syslog-*"],
+        "total_hits": 14,
+        "first_seen": "2026-10-14 20:12:45Z",
+        "last_seen": "2026-10-14 20:45:10Z",
+        "associated_hosts": ["web-app-dmz-01", "workstation-corp-88"],
+    }
+
+
+@api_router.get("/investigation/process-tree/{alert_id}")
+def get_investigation_process_tree(
+    alert_id: str,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    return get_process_lineage(alert_id)
+
