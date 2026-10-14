@@ -11,8 +11,8 @@ if [ ! -d "${INSTALL_DIR}" ] && [ -d "${REPO_ROOT}" ]; then
     INSTALL_DIR="${REPO_ROOT}"
 fi
 
-API_BASE="${API_BASE:-http://127.0.0.1:8000}"
-ES_BASE="${ES_BASE:-https://127.0.0.1:9200}"
+API_BASE="${API_BASE:-http://127.0.0.1:8080}"
+ES_BASE="${ES_BASE:-http://127.0.0.1:9200}"
 
 # -----------------------------------------------------------------------------
 # Resolve Container Engine & Compose Command
@@ -86,7 +86,7 @@ cmd_status() {
     # 3. Listening Network Ports
     echo ""
     echo " Service Network Listeners:"
-    local ports=(8000 5601 9200 1514 1515 55000 514 6514)
+    local ports=(8080 5601 9200 1514 1515 55000 514 6514)
     for p in "${ports[@]}"; do
         if check_port_open "$p"; then
             echo "   - Port ${p}: [LISTENING / OPEN]"

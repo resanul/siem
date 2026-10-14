@@ -23,10 +23,10 @@ services:
     container_name: opensoc-forge-mgmt
     restart: unless-stopped
     ports:
-      - "${MGMT_PORT:-8000}:8000"
+      - "${MGMT_PORT:-8080}:8080"
     environment:
-      - PORT=8000
-      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-https://elasticsearch:9200}
+      - PORT=8080
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
       - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
       - ELASTICSEARCH_SSL_VERIFY=${ELASTICSEARCH_SSL_VERIFY:-false}
@@ -41,15 +41,12 @@ services:
       - /etc/opensoc:/etc/opensoc:ro,z
     networks:
       - opensoc-net
-    depends_on:
-      - elasticsearch
-      - wazuh-manager
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
   # ----------------------------------------------------------------------------
   # Service 2: Elasticsearch Datastore (Single-Node, TLS Enabled)
@@ -65,25 +62,15 @@ services:
       - discovery.type=single-node
       - cluster.name=opensoc-cluster
       - node.name=opensoc-node-01
-      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.enrollment.enabled=false
-      - xpack.security.http.ssl.enabled=true
-      - xpack.security.http.ssl.verification_mode=certificate
-      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
-      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
-      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
-      - xpack.security.transport.ssl.enabled=true
-      - xpack.security.transport.ssl.verification_mode=certificate
-      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
-      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
-      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
     volumes:
       - es_data:/usr/share/elasticsearch/data:rw,z
-      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/usr/share/elasticsearch/config/certs:ro,z
-      - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,z
     ulimits:
       memlock:
         soft: -1
@@ -94,11 +81,11 @@ services:
     networks:
       - opensoc-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -k -u elastic:$${ELASTIC_PASSWORD:-OpenSocForge2026!} https://localhost:9200/_cluster/health | grep -q '\"status\":\"\\(green\\|yellow\\)\"' || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD:-OpenSocForge2026!} http://localhost:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' || exit 1"]
+      interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   # ----------------------------------------------------------------------------
   # Service 3: Kibana Analytics Frontend
@@ -112,24 +99,19 @@ services:
     environment:
       - SERVER_NAME=opensoc-kibana
       - SERVER_HOST=0.0.0.0
-      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
-      - ELASTICSEARCH_SSL_VERIFICATIONMODE=none
-      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca.crt
-    volumes:
-      - kibana_data:/usr/share/kibana/data:rw,z
-      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/usr/share/kibana/config/certs:ro,z
     networks:
       - opensoc-net
     depends_on:
       - elasticsearch
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status | grep -q '\"level\":\"available\"' || exit 1"]
-      interval: 15s
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status | grep -q 'available' || exit 1"]
+      interval: 20s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   # ----------------------------------------------------------------------------
   # Service 4: Wazuh Manager
@@ -144,7 +126,7 @@ services:
       - "${WAZUH_ENROLL_PORT:-1515}:1515/tcp"
       - "${WAZUH_API_PORT:-55000}:55000/tcp"
     environment:
-      - INDEXER_URL=https://elasticsearch:9200
+      - INDEXER_URL=http://elasticsearch:9200
       - INDEXER_USER=elastic
       - INDEXER_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
       - WAZUH_API_USER=${WAZUH_API_USER:-wazuh}

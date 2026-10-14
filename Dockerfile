@@ -39,11 +39,11 @@ COPY releases/ ./releases/
 RUN mkdir -p /var/log/suricata /var/lib/opensoc /etc/opensoc /var/log/opensoc/syslog
 
 # Expose FastAPI and static UI port
-EXPOSE 8000
+EXPOSE 8080
 
-# Healthcheck testing HTTP endpoint on port 8000
-HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
-    CMD curl -f http://localhost:8000/ || exit 1
+# Healthcheck testing HTTP endpoint on port 8080
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
+    CMD curl -f http://localhost:8080/ || exit 1
 
 # Launch central management plane
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8080"]

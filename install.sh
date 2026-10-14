@@ -282,11 +282,12 @@ if [ ! -f "${INSTALL_DIR}/.env" ]; then
         cat <<EOF > "${INSTALL_DIR}/.env"
 OPENSOC_ENV=production
 HOST_IP=${HOST_IP}
-MGMT_PORT=8000
+MGMT_PORT=8080
 ES_PORT=9200
 KIBANA_PORT=5601
 WAZUH_PORT=1514
 SYSLOG_PORT=514
+ELASTICSEARCH_URL=http://elasticsearch:9200
 EOF
     fi
 fi
@@ -370,10 +371,10 @@ echo " [SUCCESS] OpenSOC Forge Deployment Completed Successfully!"
 echo "================================================================================"
 echo -e "${NC}"
 echo " Access Information:"
-echo "   - Web Console UI   : http://${HOST_IP}:8000/console/"
-echo "   - Management API   : http://${HOST_IP}:8000/docs"
+echo "   - Web Console UI   : http://${HOST_IP}:8080/console/"
+echo "   - Management API   : http://${HOST_IP}:8080/api/v1/docs"
 echo "   - Kibana Dashboard : http://${HOST_IP}:5601"
-echo "   - Elasticsearch    : https://${HOST_IP}:9200"
+echo "   - Elasticsearch    : http://${HOST_IP}:9200"
 echo "   - Wazuh Manager    : ports 1514 (events), 1515 (auth), 55000 (api)"
 echo "   - Syslog Collector : ports 514 (udp/tcp), 6514 (tls)"
 echo ""
@@ -383,4 +384,8 @@ echo "   - Unified Logs     : journalctl -u opensoc-forge -f"
 echo "   - CLI Tool Status  : opensoc-ctl status"
 echo "   - Pipeline Test    : opensoc-ctl test"
 echo "   - Backup Archive   : opensoc-ctl backup"
+echo ""
+echo " Credentials:"
+echo "   - Elasticsearch / Kibana: elastic / OpenSocForge2026!"
+echo "   - Wazuh API             : wazuh  / OpenSocForge2026!"
 echo "================================================================================"
