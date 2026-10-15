@@ -390,9 +390,9 @@ MAX_WAIT=24
 ALL_HEALTHY=false
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if curl -s --connect-timeout 2 "http://127.0.0.1:8000/" >/dev/null 2>&1; then
+    if curl -s --connect-timeout 2 "http://127.0.0.1:7070/" >/dev/null 2>&1; then
         ALL_HEALTHY=true
-        log_ok "Management API is ONLINE and responding at http://${HOST_IP}:8000/."
+        log_ok "Management API is ONLINE and responding at http://${HOST_IP}:7070/."
         break
     fi
     echo -n "."
