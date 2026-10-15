@@ -244,8 +244,12 @@ if [ -z "${COMPOSE_CMD}" ]; then
         systemctl enable --now docker 2>/dev/null || true
         COMPOSE_CMD="docker compose"
     elif [ "${OS_FAMILY}" = "rhel" ]; then
-        log_info "Installing Podman and podman-compose via dnf..."
-        dnf install -y podman podman-compose curl jq
+        log_info "Installing EPEL and container engine via dnf..."
+        dnf install -y epel-release 2>/dev/null || true
+        dnf install -y podman podman-compose curl jq || {
+            log_warn "podman-compose dnf install failed, attempting pip fallback..."
+            dnf install -y python3-pip && pip3 install podman-compose || true
+        }
         systemctl enable --now podman.socket 2>/dev/null || true
         COMPOSE_CMD="podman-compose"
     fi
@@ -290,6 +294,16 @@ SYSLOG_PORT=514
 ELASTICSEARCH_URL=http://elasticsearch:9200
 EOF
     fi
+fi
+
+# Ensure active interface is bound for Suricata to prevent startup crash
+if [ -n "${ACTIVE_IFACE:-}" ]; then
+    if grep -q "MONITORED_INTERFACE=" "${INSTALL_DIR}/.env" 2>/dev/null; then
+        sed -i "s/^MONITORED_INTERFACE=.*/MONITORED_INTERFACE=${ACTIVE_IFACE}/" "${INSTALL_DIR}/.env"
+    else
+        echo "MONITORED_INTERFACE=${ACTIVE_IFACE}" >> "${INSTALL_DIR}/.env"
+    fi
+    log_ok "Suricata monitoring interface bound to host interface: ${ACTIVE_IFACE}"
 fi
 
 # Ensure executable permissions on scripts and CLI
@@ -349,17 +363,47 @@ ln -sf "${INSTALL_DIR}/bin/opensoc-ctl" /usr/local/bin/opensoc-ctl
 log_ok "CLI tool linked to /usr/local/bin/opensoc-ctl."
 
 # ------------------------------------------------------------------------------
-# 10. Start Platform Service
+# 10. Start Platform Service & Pre-pull Images
 # ------------------------------------------------------------------------------
+log_info "Pre-pulling core container images (Elasticsearch, Kibana, Wazuh, Suricata, Vector)..."
+log_info "This may take 5 to 15 minutes depending on your internet bandwidth. Please wait..."
+(cd "${INSTALL_DIR}" && ${COMPOSE_CMD} pull || true)
+
+log_info "Building OpenSOC Forge management container..."
+(cd "${INSTALL_DIR}" && ${COMPOSE_CMD} build || true)
+
 log_info "Starting OpenSOC Forge systemd service..."
 if command -v systemctl >/dev/null 2>&1 && [ -f "${SYSTEMD_TARGET}" ]; then
-    systemctl start opensoc-forge.service 2>/dev/null || {
-        log_warn "Systemd start command issued; containers launching in background."
+    systemctl restart opensoc-forge.service 2>/dev/null || {
+        log_warn "Systemd restart command issued; containers launching in background."
     }
 else
     # Fallback in non-systemd container environments
     log_info "Starting platform via compose background runner..."
-    "${INSTALL_DIR}/bin/opensoc-ctl" start || true
+    (cd "${INSTALL_DIR}" && ${COMPOSE_CMD} up -d)
+fi
+
+# Synchronous Health Verification Loop
+log_info "Waiting for core services to reach healthy status (up to 120s)..."
+WAIT_COUNT=0
+MAX_WAIT=24
+ALL_HEALTHY=false
+
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    if curl -s --connect-timeout 2 "http://127.0.0.1:8000/" >/dev/null 2>&1; then
+        ALL_HEALTHY=true
+        log_ok "Management API is ONLINE and responding at http://${HOST_IP}:8000/."
+        break
+    fi
+    echo -n "."
+    sleep 5
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+echo ""
+
+if [ "${ALL_HEALTHY}" != "true" ]; then
+    log_warn "Services are still initializing in the background."
+    log_warn "Check live logs with: 'cd ${INSTALL_DIR} && ${COMPOSE_CMD} logs -f'"
 fi
 
 # ------------------------------------------------------------------------------
