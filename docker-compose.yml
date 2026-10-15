@@ -198,6 +198,7 @@ services:
     image: timberio/vector:0.38.0-alpine
     container_name: opensoc-syslog-collector
     restart: unless-stopped
+    command: ["--config", "/etc/vector/vector.toml"]
     ports:
       - "${SYSLOG_UDP_PORT:-514}:514/udp"
       - "${SYSLOG_TCP_PORT:-514}:514/tcp"
@@ -209,6 +210,7 @@ services:
       - ${OPENSOC_LOG_DIR:-/var/log/opensoc}/syslog:/var/log/opensoc/syslog:rw,z
       - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/etc/opensoc/certs:ro,z
       - ./configs/syslog/vector.toml:/etc/vector/vector.toml:ro,z
+      - ./configs/syslog/vector.toml:/etc/vector/vector.yaml:ro,z
       - ./configs/syslog/syslog-collector.json:/etc/opensoc/syslog/config.json:ro,z
     networks:
       - opensoc-net
