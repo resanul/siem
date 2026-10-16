@@ -236,7 +236,7 @@ elif command -v docker-compose >/dev/null 2>&1; then
 fi
 
 if [ -z "${COMPOSE_CMD}" ]; then
-    log_info "Container engine not detected. Provisioning container runtime for ${OS_FAMILY}..."
+    log_info "Container compose engine not detected. Provisioning container runtime for ${OS_FAMILY}..."
     if [ "${OS_FAMILY}" = "debian" ]; then
         log_info "Installing Docker engine and compose plugin via apt-get..."
         apt-get update -y
@@ -251,7 +251,11 @@ if [ -z "${COMPOSE_CMD}" ]; then
             dnf install -y python3-pip && pip3 install podman-compose || true
         }
         systemctl enable --now podman.socket 2>/dev/null || true
-        COMPOSE_CMD="podman-compose"
+        if command -v podman-compose >/dev/null 2>&1; then
+            COMPOSE_CMD="podman-compose"
+        elif podman compose version >/dev/null 2>&1; then
+            COMPOSE_CMD="podman compose"
+        fi
     fi
 fi
 
