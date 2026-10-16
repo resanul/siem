@@ -35,6 +35,8 @@ services:
       - WAZUH_API_PASSWORD=${WAZUH_API_PASSWORD:-OpenSocForge2026!}
       - SURICATA_EVE_PATH=${SURICATA_EVE_PATH:-/var/log/suricata/eve.json}
     volumes:
+      - ./backend:/opt/opensoc-forge/backend:ro,z
+      - ./frontend:/opt/opensoc-forge/frontend:ro,z
       - ${SURICATA_LOG_DIR:-/var/log/suricata}:/var/log/suricata:ro,z
       - ${OPENSOC_DATA_DIR:-/var/lib/opensoc}:/var/lib/opensoc:rw,z
       - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/etc/opensoc/certs:ro,z
