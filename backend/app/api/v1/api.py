@@ -44,6 +44,7 @@ from orchestration.engine import OrchestrationEngine
 from backend.app.services.live_telemetry import (
     get_live_alerts_pool,
     get_live_overview_data,
+    get_live_network_telemetry,
     LIVE_SIMULATION_ALERTS,
 )
 
@@ -276,6 +277,12 @@ def login(request: TokenRequest):
 @api_router.get("/overview")
 def get_overview(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
     return get_live_overview_data()
+
+
+# ===================== NETWORK TELEMETRY =====================
+@api_router.get("/network/telemetry")
+def get_network_telemetry(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    return get_live_network_telemetry()
 
 
 # ===================== ALERTS =====================
