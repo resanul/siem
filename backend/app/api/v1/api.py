@@ -45,6 +45,7 @@ from backend.app.services.live_telemetry import (
     get_live_alerts_pool,
     get_live_overview_data,
     get_live_network_telemetry,
+    get_live_health_diagnostics,
     LIVE_SIMULATION_ALERTS,
 )
 
@@ -283,6 +284,12 @@ def get_overview(current_user: Dict[str, Any] = Depends(require_permission("aler
 @api_router.get("/network/telemetry")
 def get_network_telemetry(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
     return get_live_network_telemetry()
+
+
+# ===================== HEALTH & DIAGNOSTICS =====================
+@api_router.get("/health/diagnostics")
+def get_health_diagnostics(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    return get_live_health_diagnostics()
 
 
 # ===================== ALERTS =====================
@@ -601,7 +608,12 @@ def export_diagnostics(current_user: Dict[str, Any] = Depends(require_permission
         resource_id="host",
         status="SUCCESS",
     )
-    return {"timestamp": datetime.utcnow().isoformat(), "bundles": bundles}
+    return {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "host_diagnostics": get_live_health_diagnostics(),
+        "bundles": bundles,
+        "status": "REDACTED_SUCCESS"
+    }
 
 
 @api_router.get("/audit")
