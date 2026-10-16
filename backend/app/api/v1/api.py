@@ -733,7 +733,7 @@ def sync_threat_intel(
     feeds = get_threat_intel_feed(force_refresh=True)
     return {
         "status": "success",
-        "message": f"Successfully synced {len(feeds)} IOCs from CISA KEV, abuse.ch ThreatFox, and Feodo Tracker",
+        "message": f"Successfully synced {len(feeds)} IOCs from CISA KEV, Cisco Talos, abuse.ch ThreatFox, and Feodo Tracker",
         "total": len(feeds),
         "feeds": feeds,
     }

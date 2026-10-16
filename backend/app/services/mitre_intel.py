@@ -244,6 +244,73 @@ def fetch_feodo(limit: int = 20) -> List[Dict[str, Any]]:
         return []
 
 
+def fetch_cisco_talos(limit: int = 30) -> List[Dict[str, Any]]:
+    """Fetches high-fidelity campaign IOCs from Cisco Talos Intelligence official repository."""
+    talos_iocs = []
+    # Search current and prior month folders
+    for folder in ["2026/10", "2026/09", "2026/08"]:
+        url = f"https://api.github.com/repos/Cisco-Talos/IOCs/contents/{folder}"
+        req = urllib.request.Request(url, headers={"User-Agent": "OpenSOC-ThreatHunter/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                files = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            continue
+
+        txt_files = [f for f in files if isinstance(f, dict) and f.get("name", "").endswith(".txt")]
+        for tf in txt_files:
+            file_title = tf["name"].replace(".txt", "").replace("-", " ").title()
+            campaign_name = file_title
+            dl_url = tf.get("download_url")
+            if not dl_url:
+                continue
+            try:
+                with urllib.request.urlopen(dl_url, timeout=5) as dl:
+                    content = dl.read().decode("utf-8", errors="replace")
+                for line in content.splitlines():
+                    cleaned = line.strip().replace("[.]", ".").replace("[:]", ":").strip()
+                    if not cleaned or cleaned.startswith("#"):
+                        continue
+
+                    # If line has no dot, slash, colon, and is not a hash, it is a section heading
+                    if (("." not in cleaned and "/" not in cleaned and ":" not in cleaned and len(cleaned) < 32) or " " in cleaned):
+                        campaign_name = f"{file_title} ({cleaned})"
+                        continue
+
+                    # Detect indicator type
+                    ioc_type = "Domain"
+                    if cleaned.startswith("http://") or cleaned.startswith("https://"):
+                        ioc_type = "URL"
+                    elif len(cleaned) == 64 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+                        ioc_type = "SHA-256"
+                    elif len(cleaned) == 32 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+                        ioc_type = "MD5"
+                    elif len(cleaned) == 40 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+                        ioc_type = "SHA-1"
+                    elif any(c.isdigit() for c in cleaned) and all(p.isdigit() for p in cleaned.split(":")[0].split(".") if p):
+                        ioc_type = "IPv4"
+
+                    talos_iocs.append({
+                        "indicator": cleaned,
+                        "type": ioc_type,
+                        "reputation": "MALICIOUS THREAT ACTOR",
+                        "confidence": 100,
+                        "threat_actor": "Cisco Talos Intelligence",
+                        "malware_family": campaign_name,
+                        "source": "Cisco Talos",
+                        "last_seen": folder.replace("/", "-"),
+                        "ransomware_use": "Targeted Campaign",
+                        "cvss_score": "100% CONFIRMED",
+                        "status": "ACTIVE IOC",
+                        "description": f"Cisco Talos Intelligence advisory indicator for {campaign_name}"
+                    })
+                    if len(talos_iocs) >= limit:
+                        return talos_iocs
+            except Exception:
+                pass
+    return talos_iocs
+
+
 def get_threat_intel_feed(force_refresh: bool = False) -> List[Dict[str, Any]]:
     """Aggregates multi-source threat intelligence with local persistent caching."""
     # Check cache if not forcing refresh
@@ -258,11 +325,12 @@ def get_threat_intel_feed(force_refresh: bool = False) -> List[Dict[str, Any]]:
         except Exception:
             pass
 
-    cisa = fetch_cisa_kev(35)
-    tf = fetch_threatfox(35)
+    cisa = fetch_cisa_kev(30)
+    talos = fetch_cisco_talos(25)
+    tf = fetch_threatfox(30)
     feodo = fetch_feodo(15)
 
-    combined = cisa + tf + feodo
+    combined = cisa + talos + tf + feodo
     if not combined:
         combined = [
             {
