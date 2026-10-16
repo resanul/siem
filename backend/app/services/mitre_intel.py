@@ -304,14 +304,99 @@ def get_threat_intel_feed(force_refresh: bool = False) -> List[Dict[str, Any]]:
     return combined
 
 
+def enrich_ioc_metadata(ioc: str) -> Dict[str, Any]:
+    """Enriches an indicator with GeoIP, ASN, ISP, and format classification."""
+    cleaned = ioc.strip()
+    ip_candidate = cleaned.split(":")[0] if ":" in cleaned and not cleaned.startswith("http") else cleaned
+    parts = ip_candidate.split(".")
+    is_ipv4 = len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+
+    if is_ipv4:
+        first_octet = int(parts[0])
+        second_octet = int(parts[1])
+        if first_octet == 10 or (first_octet == 172 and 16 <= second_octet <= 31) or (first_octet == 192 and second_octet == 168) or first_octet == 127:
+            return {
+                "type": "IPv4 (Internal / Private)",
+                "country": "Internal Network (RFC 1918)",
+                "city": "Cluster Subnet",
+                "isp": "Enterprise Intranet",
+                "org": "OpenSOC Forge Cluster",
+                "asn": "Private AS",
+                "is_private": True,
+            }
+
+        # Public IP lookup via free IP-API service
+        try:
+            url = f"http://ip-api.com/json/{ip_candidate}?fields=status,country,regionName,city,isp,org,as,query"
+            req = urllib.request.Request(url, headers={"User-Agent": "OpenSOC-ThreatHunter/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("status") == "success":
+                    return {
+                        "type": "IPv4 (Public Internet)",
+                        "country": f"{data.get('country', 'Unknown')} ({data.get('regionName', '')})",
+                        "city": data.get("city", "Unknown"),
+                        "isp": data.get("isp", "Unknown ISP"),
+                        "org": data.get("org", "Unknown Org"),
+                        "asn": data.get("as", "Unknown ASN"),
+                        "is_private": False,
+                    }
+        except Exception:
+            pass
+
+        return {
+            "type": "IPv4 (Public Internet)",
+            "country": "Public Internet",
+            "city": "External",
+            "isp": "Global IP Routing",
+            "org": "Autonomous System",
+            "asn": "Unknown ASN",
+            "is_private": False,
+        }
+
+    # For domains or hashes or CVE
+    if cleaned.upper().startswith("CVE-"):
+        return {
+            "type": "Vulnerability Identifier (CVE)",
+            "country": "Global Security Advisories",
+            "city": "NVD / MITRE",
+            "isp": "Vulnerability Database",
+            "org": "Common Vulnerabilities and Exposures",
+            "asn": "CVE Reference",
+            "is_private": False,
+        }
+
+    if len(cleaned) in (32, 40, 64) and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+        return {
+            "type": "File Hash (MD5/SHA1/SHA256)",
+            "country": "Cryptographic Checksum",
+            "city": "Malware Artifact",
+            "isp": "Payload Hash",
+            "org": "Static Threat Artifact",
+            "asn": "Hash IOC",
+            "is_private": False,
+        }
+
+    return {
+        "type": "Domain / FQDN / Endpoint",
+        "country": "Internet Endpoint",
+        "city": "DNS Hostname",
+        "isp": "Nameserver Routing",
+        "org": cleaned,
+        "asn": "Host Indicator",
+        "is_private": False,
+    }
+
+
 def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
-    """Hunts an indicator of compromise across Elasticsearch and Suricata EVE logs."""
+    """Hunts an indicator of compromise across Elasticsearch and Suricata EVE logs with threat enrichment."""
     hits = []
     associated_hosts = set()
     first_seen = None
     last_seen = None
 
     cleaned_ioc = ioc.strip()
+    ioc_intel = enrich_ioc_metadata(cleaned_ioc)
 
     # 1. Search Elasticsearch (opensoc-syslog-* and wazuh-alerts-*)
     try:
@@ -368,15 +453,37 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Cross-reference with threat feeds
+    # 3. Cross-reference with threat feeds (exact match, prefix match, and substring match)
     feeds = get_threat_intel_feed()
-    matched_feed = next((f for f in feeds if f.get("indicator", "").lower() == cleaned_ioc.lower()), None)
+    matched_feed = None
+    target_lower = cleaned_ioc.lower()
+    for f in feeds:
+        ind = f.get("indicator", "").lower()
+        if ind == target_lower or ind.startswith(target_lower + ":") or target_lower.startswith(ind):
+            matched_feed = f
+            break
+        if f.get("cve", "").lower() == target_lower:
+            matched_feed = f
+            break
 
-    reputation = "CLEAN / UNSEEN" if len(hits) == 0 and not matched_feed else "SUSPICIOUS"
+    # Determine classification and reputation
     if matched_feed:
-        reputation = matched_feed.get("reputation", "MALICIOUS")
+        reputation = matched_feed.get("reputation", "KNOWN MALICIOUS C2")
+        classification = f"MALICIOUS: {matched_feed.get('malware_family') or matched_feed.get('threat_actor') or 'Threat Actor'}"
     elif len(hits) > 0:
-        reputation = "LOCAL ACTIVITY DETECTED"
+        if ioc_intel.get("is_private"):
+            reputation = "LOCAL ACTIVITY DETECTED"
+            classification = "Internal Cluster Telemetry Match"
+        else:
+            reputation = "ACTIVE EXTERNAL COMMUNICATOR"
+            classification = f"Active traffic in cluster ({ioc_intel.get('org') or ioc_intel.get('country')})"
+    else:
+        if ioc_intel.get("is_private"):
+            reputation = "INTERNAL CLEAN (No Sighting)"
+            classification = "RFC 1918 Private IP - No Active Alert in Telemetry"
+        else:
+            reputation = "EXTERNAL (Clean / No Cluster Compromise)"
+            classification = f"External IP ({ioc_intel.get('org') or ioc_intel.get('country')}) - Clean in Local Telemetry"
 
     return {
         "ioc": cleaned_ioc,
@@ -386,7 +493,9 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
         "last_seen": last_seen or ("2026-10-16 12:30:00Z" if len(hits) > 0 else "None"),
         "associated_hosts": list(associated_hosts) if associated_hosts else ([] if len(hits) == 0 else ["enp0s3"]),
         "reputation": reputation,
+        "classification": classification,
         "threat_info": matched_feed,
+        "ioc_intel": ioc_intel,
         "sample_events": hits[:6],
         "sightings": hits[:6],
     }
