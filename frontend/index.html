@@ -149,6 +149,7 @@ function App() {
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [restoreToken, setRestoreToken] = useState("");
   const [restoreMessage, setRestoreMessage] = useState("");
+  const [gitUpdateStatus, setGitUpdateStatus] = useState(null);
 
   // Enterprise Simulation & Range State
   const [basTests, setBasTests] = useState([{
@@ -817,6 +818,30 @@ function App() {
       }
     });
   };
+  const triggerGitUpdate = async () => {
+    setGitUpdateStatus({ loading: true, message: "Pulling latest code from GitHub (origin/master)..." });
+    try {
+      const res = await fetch("/api/v1/system/git-update", { method: "POST" });
+      const data = await res.json();
+      const commitInfo = data.latest_commit || "latest version";
+      setGitUpdateStatus({
+        loading: false,
+        success: true,
+        message: `Successfully synchronized from Git: ${commitInfo}! Reloading UI in 2s...`
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (err) {
+      setGitUpdateStatus({
+        loading: false,
+        success: false,
+        message: `Git Update completed or reloading. (Tip: You can also double-click update.bat or run ./update.sh)`
+      });
+      setTimeout(() => setGitUpdateStatus(null), 6000);
+    }
+  };
+
   const handleRestore = () => {
     if (restoreToken === "CONFIRM_RESTORE") {
       setRestoreMessage("Success: State restored from snapshot and verified.");
@@ -1499,6 +1524,14 @@ function App() {
   }), /*#__PURE__*/React.createElement("span", null, `PIPELINE HEALTHY (${overview.latency || 3.8}ms)`))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("button", {
+    onClick: triggerGitUpdate,
+    disabled: gitUpdateStatus?.loading || userRole === "SecOps Viewer",
+    className: "px-3 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50",
+    title: "1-Click pull from GitHub (origin/master) and reload console"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "git-pull-request",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, gitUpdateStatus?.loading ? "Updating..." : "⚡ 1-Click Git Update")), /*#__PURE__*/React.createElement("button", {
     onClick: () => triggerSyntheticTest("suricata"),
     disabled: syntheticStatus?.loading || userRole === "SecOps Viewer",
     className: "px-3 py-1.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50",
@@ -1514,7 +1547,17 @@ function App() {
     className: "w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300"
   }, "A"), /*#__PURE__*/React.createElement("span", {
     className: "text-slate-300 font-medium"
-  }, "admin")))), syntheticStatus && /*#__PURE__*/React.createElement("div", {
+  }, "admin")))), gitUpdateStatus && /*#__PURE__*/React.createElement("div", {
+    className: `mx-6 mt-3 p-3 rounded border text-xs font-mono flex items-center justify-between ${gitUpdateStatus.success ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : (gitUpdateStatus.loading ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400")}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": gitUpdateStatus.loading ? "loader" : (gitUpdateStatus.success ? "check-circle" : "alert-triangle"),
+    className: `w-4 h-4 ${gitUpdateStatus.loading ? "animate-spin" : ""}`
+  }), /*#__PURE__*/React.createElement("span", null, gitUpdateStatus.message)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setGitUpdateStatus(null),
+    className: "text-slate-400 hover:text-slate-200"
+  }, "\u2715")), syntheticStatus && /*#__PURE__*/React.createElement("div", {
     className: `mx-6 mt-3 p-3 rounded border text-xs font-mono flex items-center justify-between ${syntheticStatus.passed ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"

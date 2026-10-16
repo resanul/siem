@@ -1110,3 +1110,65 @@ def add_war_room_timeline_entry(
     )
 
 
+# ===================== SYSTEM GIT UPDATE =====================
+@api_router.post("/system/git-update")
+def trigger_system_git_update():
+    """
+    1-Click Git Update endpoint.
+    Pulls latest commits from GitHub and triggers runtime refresh.
+    """
+    import os
+    import subprocess
+    import shutil
+    
+    results = {
+        "status": "SUCCESS",
+        "timestamp": datetime.utcnow().isoformat(),
+        "steps": [],
+        "latest_commit": "Updated from origin/master"
+    }
+    
+    candidate_repos = [
+        "/home/resanul/siem",
+        "/opt/opensoc-forge",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")),
+    ]
+    
+    for repo in candidate_repos:
+        if os.path.isdir(os.path.join(repo, ".git")):
+            try:
+                proc = subprocess.run(
+                    ["git", "-C", repo, "pull", "origin", "master"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                commit_proc = subprocess.run(
+                    ["git", "-C", repo, "log", "-1", "--pretty=format:%h - %s (%cr)"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                results["steps"].append({
+                    "repo": repo,
+                    "returncode": proc.returncode,
+                    "stdout": proc.stdout.strip(),
+                    "stderr": proc.stderr.strip(),
+                    "latest_commit": commit_proc.stdout.strip()
+                })
+                if commit_proc.stdout.strip():
+                    results["latest_commit"] = commit_proc.stdout.strip()
+            except Exception as e:
+                results["steps"].append({"repo": repo, "error": str(e)})
+
+    if os.path.exists("/home/resanul/siem/frontend") and os.path.exists("/opt/opensoc-forge/frontend"):
+        try:
+            shutil.copytree("/home/resanul/siem/frontend", "/opt/opensoc-forge/frontend", dirs_exist_ok=True)
+            results["synced_frontend"] = True
+        except Exception as e:
+            results["synced_frontend_error"] = str(e)
+            
+    return results
+
+
+

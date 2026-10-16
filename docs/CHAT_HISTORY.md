@@ -21,6 +21,34 @@
 
 ## 📅 Session Timeline & Development History
 
+### Session 11 — 1-Click Universal Git Sync & Deploy System
+- **Date / Time:** 2026-10-16 23:40 – 23:55 UTC+6
+- **Context:** Home / Office Seamless Git Execution
+- **User Request:**
+  - *"ami যে যে কাজ আপডেট করলাম এতা single click a git থেকে direct নেমে যাতে কাজ করে।"* (I want whatever work I updated to be pulled directly from git with a single click and work automatically.)
+- **Actions Taken:**
+  1. **Windows 1-Click Batch (`update.bat`):**
+     - Created root `update.bat` for Windows workstations.
+     - Single double-click executes:
+       - Local git pull (`git pull origin master`)
+       - Automated SSH VM deployment via `scripts/deploy_vm.py`
+       - Pulls git directly on target VM (`192.168.10.177`)
+       - Synchronizes `/opt/opensoc-forge/backend` and `/frontend`
+       - Restarts `opensoc-forge-mgmt` container
+       - Performs HTTP health check probe
+       - Automatically launches Web Console at `http://192.168.10.177:7070/console/`
+  2. **Linux 1-Click Script (`update.sh`):**
+     - Created root `update.sh` with executable permissions.
+     - Automatically checks environment, pulls latest git commits, syncs deployment assets, restarts services via Podman/systemd, and validates health.
+  3. **Management CLI Integration (`bin/opensoc-ctl update`):**
+     - Added `update` subcommand to `opensoc-ctl` CLI wrapper for direct terminal management.
+  4. **Web Console UI 1-Click Git Update (`⚡ 1-Click Git Update`):**
+     - Added `POST /api/v1/system/git-update` endpoint in FastAPI management API.
+     - Added `⚡ 1-Click Git Update` button in `frontend/index.html` header next to pipeline controls.
+     - Displays live update status banner with latest commit message and auto-reloads the console.
+  5. **Enhanced Remote Deployer (`scripts/deploy_vm.py`):**
+     - Structured 7-step deployment sequence with latest commit hash reporting and HTTP 200 health check verification.
+
 ### Session 10 — Threat Intel UI/UX Polish & Documentation Alignment
 - **Date / Time:** 2026-10-16 22:45 – 23:25 UTC+6
 - **Context:** Office / Home Dev Sync

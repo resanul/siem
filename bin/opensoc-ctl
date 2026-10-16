@@ -361,6 +361,18 @@ cmd_restart() {
     (cd "${INSTALL_DIR}" && ${COMPOSE_CMD} restart)
 }
 
+cmd_update() {
+    log_info "Executing 1-Click Update from GitHub repository..."
+    if [ -f "${REPO_ROOT}/update.sh" ]; then
+        bash "${REPO_ROOT}/update.sh" "$@"
+    elif [ -f "${INSTALL_DIR}/update.sh" ]; then
+        bash "${INSTALL_DIR}/update.sh" "$@"
+    else
+        log_err "update.sh not found in ${REPO_ROOT} or ${INSTALL_DIR}"
+        exit 1
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # Main Entrypoint
 # -----------------------------------------------------------------------------
@@ -369,6 +381,7 @@ usage() {
     echo ""
     echo "Commands:"
     echo "  status            Display operational state of containers, ports, API, and Elasticsearch"
+    echo "  update            1-Click update from GitHub (pulls latest code and reloads)"
     echo "  logs [service]    Tail logs for all services or a specific component"
     echo "  backup            Create verified backup archive of configs/state with SHA-256 verification"
     echo "  test              Inject synthetic alert and verify pipeline round-trip (< 5s)"
@@ -392,6 +405,9 @@ shift
 case "${SUBCOMMAND}" in
     status)
         cmd_status "$@"
+        ;;
+    update)
+        cmd_update "$@"
         ;;
     logs)
         cmd_logs "$@"
