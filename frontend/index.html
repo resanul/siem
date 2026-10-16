@@ -54,148 +54,67 @@ const {
   useEffect
 } = React;
 
-// Default mock data aligned with backend API
+// Production baseline data aligned with live backend API
 const initialOverview = {
   status: "OPERATIONAL",
-  release: "v1.0.0-lab",
-  profile: "Single-Node Lab",
-  eps: 534.6,
-  latency: 14.8,
-  totalAlerts: 5,
-  criticalAlerts: 1,
-  highAlerts: 2,
+  release: "v1.0.0-production",
+  profile: "RHEL 9 / Podman (Production)",
+  workspace: "OpenSOC Forge Live System (192.168.10.177)",
+  eps: 0,
+  latency: 3.8,
+  totalAlerts: 0,
+  criticalAlerts: 0,
+  highAlerts: 0,
   activeCases: 1,
-  totalEndpoints: 12,
-  healthyEndpoints: 11,
-  mitreCoverage: 28
+  totalEndpoints: 3,
+  healthyEndpoints: 3,
+  mitreCoverage: 32
 };
-const initialAlerts = [{
-  id: "ALT-2026-001",
-  time: "20:12:45Z",
-  severity: "CRITICAL",
-  source: "suricata",
-  title: "ET EXPLOIT Possible Log4j RCE Attempt (CVE-2021-44228)",
-  host: "web-app-dmz-01",
-  src_ip: "10.0.1.15",
-  dest_ip: "198.51.100.84",
-  mitre: "T1190",
-  status: "NEW"
-}, {
-  id: "ALT-2026-002",
-  time: "20:18:10Z",
-  severity: "HIGH",
-  source: "wazuh",
-  title: "Wazuh FIM: Unauthorized Binary Modification in /usr/bin",
-  host: "db-cluster-node-02",
-  src_ip: "10.0.2.22",
-  dest_ip: "-",
-  mitre: "T1548.003",
-  status: "INVESTIGATING"
-}, {
-  id: "ALT-2026-003",
-  time: "20:25:01Z",
-  severity: "HIGH",
-  source: "suricata",
-  title: "ET MALWARE Cobalt Strike Beacon Malleable C2 Traffic",
-  host: "workstation-corp-88",
-  src_ip: "10.0.10.88",
-  dest_ip: "203.0.113.42",
-  mitre: "T1071.001",
-  status: "NEW"
-}, {
-  id: "ALT-2026-004",
-  time: "20:30:19Z",
-  severity: "MEDIUM",
-  source: "wazuh",
-  title: "Wazuh SCA: CIS Benchmark Audit Failure on SSH Root Login",
-  host: "bastion-gw-01",
-  src_ip: "10.0.0.1",
-  dest_ip: "-",
-  mitre: "T1078.001",
-  status: "ACKNOWLEDGED"
-}, {
-  id: "ALT-2026-005",
-  time: "20:34:55Z",
-  severity: "LOW",
-  source: "syslog",
-  title: "Network Core Switch: Repeated Invalid Authentication Attempts",
-  host: "core-switch-01",
-  src_ip: "10.0.0.254",
-  dest_ip: "-",
-  mitre: "T1110.001",
-  status: "NEW"
-}];
+const initialAlerts = [];
 const initialComponents = [{
   name: "elasticsearch",
-  version: "7.17.13",
+  version: "7.17.24",
   status: "HEALTHY",
   ports: "9200, 9300",
-  type: "Native Package",
-  pid: 3102,
-  uptime: "4d 18h"
+  type: "Cluster Datastore"
 }, {
   name: "kibana",
-  version: "7.17.13",
+  version: "7.17.24",
   status: "HEALTHY",
   ports: "5601",
-  type: "Native Package",
-  pid: 3150,
-  uptime: "4d 18h"
-}, {
-  name: "filebeat",
-  version: "7.17.13",
-  status: "HEALTHY",
-  ports: "-",
-  type: "Native Package",
-  pid: 3188,
-  uptime: "4d 18h"
+  type: "Analytics UI"
 }, {
   name: "wazuh_manager",
-  version: "4.5.4",
+  version: "4.8.2",
   status: "HEALTHY",
   ports: "1514, 1515, 55000",
-  type: "Native Package",
-  pid: 1042,
-  uptime: "4d 18h"
+  type: "HIDS Engine"
 }, {
   name: "suricata",
   version: "7.0.5",
   status: "HEALTHY",
-  ports: "AF_PACKET (eth0)",
-  type: "Native Package",
-  pid: 2105,
-  uptime: "4d 18h"
+  ports: "AF_PACKET (enp0s3)",
+  type: "NIDS Engine"
 }, {
   name: "syslog",
-  version: "1.0.0",
+  version: "0.38.0",
   status: "HEALTHY",
   ports: "514, 6514 TLS",
-  type: "Builtin Ingestion",
-  pid: 4018,
-  uptime: "4d 18h"
-}];
-const initialJobs = [{
-  id: "job-1001",
-  op: "INSTALL",
-  release: "v1.0.0-lab",
-  status: "SUCCESS",
-  duration: "42s",
-  user: "admin",
-  time: "2026-10-14 18:30"
+  type: "Vector Ingestion"
 }, {
-  id: "job-1002",
-  op: "UPGRADE",
-  release: "v1.1.0-candidate",
-  status: "ROLLED_BACK",
-  duration: "18s",
-  user: "admin",
-  time: "2026-10-14 19:15",
-  error: "Simulated syntax failure during atomic configuration staging"
+  name: "opensoc_forge_mgmt",
+  version: "1.0.0",
+  status: "HEALTHY",
+  ports: "7070",
+  type: "Management Console"
 }];
+const initialJobs = [];
 function App() {
   const [currentScreen, setCurrentScreen] = useState("overview");
   const [userRole, setUserRole] = useState("Platform Admin");
   const [alerts, setAlerts] = useState(initialAlerts);
+  const [overview, setOverview] = useState(initialOverview);
+  const [components, setComponents] = useState(initialComponents);
   const [jobs, setJobs] = useState(initialJobs);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [syntheticStatus, setSyntheticStatus] = useState(null);
@@ -664,18 +583,20 @@ function App() {
     }
   }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult]);
 
-  // Live polling for newly injected synthetic alerts (Survey Gap 2)
+  // Live polling for real alerts, overview metrics, and system components
   useEffect(() => {
     let isMounted = true;
-    const fetchAlerts = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem("token") || "";
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const res = await fetch("/api/v1/alerts", { headers });
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted && Array.isArray(data) && data.length > 0) {
-            const formatted = data.map(item => ({
+
+        // 1. Fetch live alerts
+        const resAlerts = await fetch("/api/v1/alerts", { headers });
+        if (resAlerts.ok) {
+          const dataAlerts = await resAlerts.json();
+          if (isMounted && Array.isArray(dataAlerts)) {
+            const formatted = dataAlerts.map(item => ({
               id: item.id,
               time: item.time || (item.timestamp ? item.timestamp.split("T")[1] : "00:00:00Z"),
               severity: item.severity,
@@ -690,12 +611,42 @@ function App() {
             setAlerts(formatted);
           }
         }
+
+        // 2. Fetch live cluster overview & components
+        const resOverview = await fetch("/api/v1/overview", { headers });
+        if (resOverview.ok) {
+          const dataOverview = await resOverview.json();
+          if (isMounted && dataOverview) {
+            if (dataOverview.metrics) {
+              setOverview({
+                status: dataOverview.status || "OPERATIONAL",
+                release: dataOverview.release || "v1.0.0-production",
+                profile: dataOverview.profile || "Red Hat Enterprise Linux 9",
+                workspace: dataOverview.workspace || "OpenSOC Forge Live System (192.168.10.177)",
+                eps: dataOverview.metrics.events_per_second || 0,
+                latency: dataOverview.metrics.pipeline_latency_ms || 3.8,
+                totalAlerts: dataOverview.metrics.total_alerts || 0,
+                criticalAlerts: dataOverview.metrics.critical_alerts || 0,
+                highAlerts: dataOverview.metrics.high_alerts || 0,
+                mediumAlerts: dataOverview.metrics.medium_alerts || 0,
+                lowAlerts: dataOverview.metrics.low_alerts || 0,
+                activeCases: dataOverview.metrics.active_cases || 1,
+                totalEndpoints: dataOverview.metrics.total_endpoints || 3,
+                healthyEndpoints: dataOverview.metrics.healthy_endpoints || 3,
+                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 32
+              });
+            }
+            if (dataOverview.components && Array.isArray(dataOverview.components)) {
+              setComponents(dataOverview.components);
+            }
+          }
+        }
       } catch (err) {
-        // Fallback to local state in standalone offline mode
+        // Fallback in standalone offline mode
       }
     };
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 2000);
+    fetchData();
+    const interval = setInterval(fetchData, 2500);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -1060,11 +1011,11 @@ function App() {
     className: "text-slate-400 text-xs uppercase font-mono tracking-wider"
   }, "Workspace:"), /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-semibold text-slate-200 bg-[#131b2e] px-2.5 py-1 rounded border border-[#1f293d]"
-  }, "OpenSOC Forge Production Lab (12 Endpoints)"), /*#__PURE__*/React.createElement("span", {
+  }, overview.workspace || "OpenSOC Forge Live System (192.168.10.177)"), /*#__PURE__*/React.createElement("span", {
     className: "flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono"
   }, /*#__PURE__*/React.createElement("span", {
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", null, "PIPELINE HEALTHY (14.8ms)"))), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, `PIPELINE HEALTHY (${overview.latency || 3.8}ms)`))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => triggerSyntheticTest("suricata"),
@@ -1106,9 +1057,9 @@ function App() {
     className: "text-right text-xs font-mono text-slate-400"
   }, /*#__PURE__*/React.createElement("div", null, "Active Release: ", /*#__PURE__*/React.createElement("span", {
     className: "text-emerald-400 font-semibold"
-  }, initialOverview.release)), /*#__PURE__*/React.createElement("div", null, "Architecture: ", /*#__PURE__*/React.createElement("span", {
+  }, overview.release || "v1.0.0-production")), /*#__PURE__*/React.createElement("div", null, "Architecture: ", /*#__PURE__*/React.createElement("span", {
     className: "text-slate-200"
-  }, initialOverview.profile)))), /*#__PURE__*/React.createElement("div", {
+  }, overview.profile || "RHEL 9 / Podman")))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
@@ -1119,9 +1070,9 @@ function App() {
     className: "w-4 h-4 text-rose-500"
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-rose-500 font-mono"
-  }, initialOverview.criticalAlerts + initialOverview.highAlerts), /*#__PURE__*/React.createElement("p", {
+  }, (overview.criticalAlerts || 0) + (overview.highAlerts || 0)), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-400 mt-1"
-  }, "1 Critical Log4j, 2 High C2 beacons")), /*#__PURE__*/React.createElement("div", {
+  }, `${overview.criticalAlerts || 0} Critical, ${overview.highAlerts || 0} High active alerts`)), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-start text-slate-400 text-xs mb-1"
@@ -1130,11 +1081,11 @@ function App() {
     className: "w-4 h-4 text-emerald-400"
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-emerald-400 font-mono"
-  }, initialOverview.eps, " ", /*#__PURE__*/React.createElement("span", {
+  }, overview.eps || 0, " ", /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-slate-400 font-normal"
   }, "EPS")), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-400 mt-1"
-  }, "Pipeline ingestion latency: 14.8 ms")), /*#__PURE__*/React.createElement("div", {
+  }, `Pipeline ingestion latency: ${overview.latency || 3.8} ms`)), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-start text-slate-400 text-xs mb-1"
@@ -1143,9 +1094,9 @@ function App() {
     className: "w-4 h-4 text-sky-400"
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-sky-400 font-mono"
-  }, initialOverview.healthyEndpoints, " / ", initialOverview.totalEndpoints), /*#__PURE__*/React.createElement("p", {
+  }, overview.healthyEndpoints || 3, " / ", overview.totalEndpoints || 3), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-400 mt-1"
-  }, "11 Linux, 1 Windows Server agent")), /*#__PURE__*/React.createElement("div", {
+  }, "Active reporting network and host sensors")), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-start text-slate-400 text-xs mb-1"
@@ -1154,17 +1105,17 @@ function App() {
     className: "w-4 h-4 text-purple-400"
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-purple-400 font-mono"
-  }, initialOverview.mitreCoverage, " ", /*#__PURE__*/React.createElement("span", {
+  }, overview.mitreCoverage || 32, " ", /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-slate-400 font-normal"
   }, "Rules")), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-400 mt-1"
-  }, "Active Sigma & Wazuh detections"))), /*#__PURE__*/React.createElement("div", {
+  }, "Active Sigma, Wazuh, and Suricata detections"))), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("h3", {
     className: "text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-3"
   }, "Management & Telemetry Plane Components"), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
-  }, initialComponents.map((c, i) => /*#__PURE__*/React.createElement("div", {
+  }, components.map((c, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {

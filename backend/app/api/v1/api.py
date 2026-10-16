@@ -41,6 +41,11 @@ from backend.app.models.schemas import (
     TokenResponse,
 )
 from orchestration.engine import OrchestrationEngine
+from backend.app.services.live_telemetry import (
+    get_live_alerts_pool,
+    get_live_overview_data,
+    LIVE_SIMULATION_ALERTS,
+)
 
 api_router = APIRouter()
 orchestrator = OrchestrationEngine()
@@ -270,27 +275,7 @@ def login(request: TokenRequest):
 # ===================== OVERVIEW DASHBOARD =====================
 @api_router.get("/overview")
 def get_overview(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
-    inventory = orchestrator.get_inventory()
-    doctor = orchestrator.run_doctor()
-
-    return {
-        "status": "OPERATIONAL",
-        "demo_mode": True,
-        "current_release": orchestrator.current_release_id,
-        "metrics": {
-            "total_alerts": len(DEMO_ALERTS),
-            "critical_alerts": sum(1 for a in DEMO_ALERTS if a.severity == AlertSeverity.CRITICAL),
-            "high_alerts": sum(1 for a in DEMO_ALERTS if a.severity == AlertSeverity.HIGH),
-            "active_cases": len(DEMO_CASES),
-            "total_endpoints": 12,
-            "healthy_endpoints": 11,
-            "events_per_second": 534.6,
-            "pipeline_latency_ms": 14.8,
-            "mitre_coverage_count": 28,
-        },
-        "system_health": doctor,
-        "components": inventory["components"],
-    }
+    return get_live_overview_data()
 
 
 # ===================== ALERTS =====================
@@ -301,7 +286,7 @@ def list_alerts(
     status_filter: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
 ):
-    results = DEMO_ALERTS
+    results = get_live_alerts_pool()
     if severity:
         results = [a for a in results if a.severity.value == severity]
     if source:
@@ -317,7 +302,7 @@ def update_alert(
     update_data: AlertUpdate,
     current_user: Dict[str, Any] = Depends(require_permission("alerts:write")),
 ):
-    alert = next((a for a in DEMO_ALERTS if a.id == alert_id), None)
+    alert = next((a for a in get_live_alerts_pool() if a.id == alert_id), None)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
@@ -576,9 +561,9 @@ def inject_synthetic_event(
         mitre_tactic="Execution",
         status=AlertStatus.NEW,
         raw_payload={"stages": test_res.stages, "synthetic_id": test_res.synthetic_event_id, "event_type": request.event_type},
-        is_demo=True,
+        is_demo=False,
     )
-    DEMO_ALERTS.insert(0, new_alert)
+    LIVE_SIMULATION_ALERTS.insert(0, new_alert)
 
     audit_service.log(
         actor=current_user["sub"],
@@ -642,6 +627,24 @@ def run_attack_simulation(
     """Executes adversary emulation scenario, generates telemetry, and triggers SOAR."""
     scenario_id = payload.get("scenario_id", "SCENARIO-RANSOMWARE")
     res = simulation_engine.run_simulation(scenario_id, operator=current_user["sub"])
+    for stage in res.get("stages_executed", []):
+        src_val = AlertSource.WAZUH if stage.get("source") == "wazuh" else (AlertSource.SURICATA if stage.get("source") == "suricata" else AlertSource.SYSLOG)
+        LIVE_SIMULATION_ALERTS.insert(0, AlertItem(
+            id=f"ALT-SIM-{int(time.time()*1000)}-{stage.get('stage_id', '1')}",
+            timestamp=stage.get("timestamp", datetime.utcnow().isoformat() + "Z"),
+            severity=AlertSeverity.CRITICAL if stage.get("tactic") in ["Initial Access", "Impact"] else AlertSeverity.HIGH,
+            source=src_val,
+            title=f"Adversary Emulation: {stage.get('technique_name')} ({stage.get('technique_id')})",
+            description=stage.get("action", ""),
+            host="workstation-corp-88" if "workstation" in stage.get("action", "") else "rhel-server-01",
+            src_ip="198.51.100.84",
+            dest_ip="192.168.10.177",
+            mitre_attack_id=stage.get("technique_id", "T1059"),
+            mitre_tactic=stage.get("tactic", "Execution"),
+            status=AlertStatus.NEW,
+            raw_payload=stage,
+            is_demo=False
+        ))
     audit_service.log(
         actor=current_user["sub"],
         role=current_user["role"],
