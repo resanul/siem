@@ -1,6 +1,6 @@
 # OpenSOC Forge Central Management Plane & Web Console Container
 # Multi-service management API (FastAPI) and pre-compiled React 18 UI
-FROM python:3.12-slim
+FROM docker.io/library/python:3.12-slim
 
 # Prevent Python from writing .pyc files and enable unbuffered output
 ENV PYTHONDONTWRITEBYTECODE=1 \
