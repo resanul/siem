@@ -33,9 +33,11 @@ COPY scripts/ ./scripts/
 COPY orchestration/ ./orchestration/
 COPY compatibility/ ./compatibility/
 COPY releases/ ./releases/
+COPY rules/ ./rules/
 
-# Create runtime directories and fallback rules structure
-RUN mkdir -p /opt/opensoc-forge/rules /var/log/suricata /var/lib/opensoc /etc/opensoc /var/log/opensoc/syslog
+# Create runtime directories
+RUN touch /opt/opensoc-forge/rules/__init__.py /opt/opensoc-forge/rules/sigma/__init__.py && \
+    mkdir -p /var/log/suricata /var/lib/opensoc /etc/opensoc /var/log/opensoc/syslog
 
 # Expose FastAPI and static UI port
 EXPOSE 7070
