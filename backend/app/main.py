@@ -61,6 +61,18 @@ def root():
     }
 
 
+from fastapi.responses import RedirectResponse
+
+@app.get("/docs", include_in_schema=False)
+def redirect_docs():
+    return RedirectResponse(url="/api/v1/docs")
+
+
+@app.get("/redoc", include_in_schema=False)
+def redirect_redoc():
+    return RedirectResponse(url="/api/v1/redoc")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
