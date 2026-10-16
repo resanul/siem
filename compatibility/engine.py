@@ -143,6 +143,7 @@ class CompatibilityEngine:
             for p in supported_platforms
         )
         if not os_supported and supported_platforms:
+            plat_str = ", ".join([f"{p.get('os_family')} {p.get('os_version')}" for p in supported_platforms])
             issues.append(
                 CompatibilityIssue(
                     rule_id="OS-UNSUPPORTED",
@@ -150,7 +151,7 @@ class CompatibilityEngine:
                     source=f"{target_os} {target_os_version}",
                     target=release_id,
                     message=f"Target OS '{target_os} {target_os_version}' is not in the manifest's supported platforms list.",
-                    remediation=f"Deploy on one of: {[f'{p.get('os_family')} {p.get('os_version')}' for p in supported_platforms]}",
+                    remediation=f"Deploy on one of: {plat_str}",
                 )
             )
 
