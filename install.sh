@@ -249,6 +249,7 @@ if [ -z "${COMPOSE_CMD}" ]; then
         dnf install -y podman podman-compose curl jq || {
             log_warn "podman-compose dnf install failed, attempting pip fallback..."
             dnf install -y python3-pip && pip3 install podman-compose || true
+            [ -f /usr/local/bin/podman-compose ] && ln -sf /usr/local/bin/podman-compose /usr/bin/podman-compose || true
         }
         systemctl enable --now podman.socket 2>/dev/null || true
         if command -v podman-compose >/dev/null 2>&1; then
