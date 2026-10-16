@@ -21,6 +21,22 @@
 
 ## 📅 Session Timeline & Development History
 
+### Session 12 — HIDS (Wazuh) Agent Deployment & 1-Liner Enrollment System
+- **Date / Time:** 2026-10-17 00:40 – 00:45 UTC+6
+- **Context:** Endpoint Fleet Onboarding & HIDS Operations
+- **User Request:**
+  - *"আমি যে HIDS এর জন্য agent install করবো, এটা কিভাবে করনো?"* (How do I install the agent for HIDS?)
+- **Actions Taken:**
+  1. **Web Console Interactive Enrollment Modal:**
+     - Added `[+ Deploy / Enroll New Agent]` button in the "Hosts & Wazuh Endpoint Fleet" screen (`frontend/index.html`).
+     - Implemented dynamic 1-liner copyable command generator supporting:
+       - **Linux (Ubuntu / Debian / Kali):** APT repo setup, GPG dearmor, `WAZUH_MANAGER` env, systemd daemon-reload, enable, and restart.
+       - **Linux (RHEL 9 / Rocky / CentOS):** YUM repo config, GPG import, DNF install, and systemd enable.
+       - **Windows (PowerShell):** Silent MSI download & execution via `msiexec` with `WAZUH_MANAGER` & `WAZUH_REGISTRATION_SERVER` parameters, followed by `Start-Service WazuhSvc`.
+       - **macOS:** PKG installer with environment file configuration.
+     - Automatically adapts manager IP from `window.location.hostname` (or default `192.168.10.177`).
+     - Added 1-click "Copy Command" with clipboard integration and verification instructions.
+
 ### Session 11 — 1-Click Universal Git Sync & Deploy System
 - **Date / Time:** 2026-10-16 23:40 – 23:55 UTC+6
 - **Context:** Home / Office Seamless Git Execution
