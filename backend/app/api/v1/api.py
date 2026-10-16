@@ -739,10 +739,11 @@ def sync_threat_intel(
     """Force re-syncs live threat feeds from external open-source intelligence platforms."""
     if source == "Cisco Talos" or source == "talos":
         return update_cisco_talos_from_github()
-    feeds = get_threat_intel_feed(force_refresh=True)
+    feeds = get_threat_intel_feed(force_refresh=True, source=source)
+    source_label = f" ({source})" if source and source != "ALL" else ""
     return {
         "status": "success",
-        "message": f"Successfully synced {len(feeds)} IOCs from CISA KEV, Cisco Talos, abuse.ch ThreatFox, and Feodo Tracker",
+        "message": f"Successfully synced {len(feeds)} IOCs from live threat intelligence feeds{source_label}",
         "total": len(feeds),
         "feeds": feeds,
     }

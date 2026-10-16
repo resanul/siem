@@ -632,6 +632,8 @@ function App() {
   const [testingKeyProvider, setTestingKeyProvider] = useState("");
   const [keyTestResults, setKeyTestResults] = useState({});
   const [savingThreatConfig, setSavingThreatConfig] = useState(false);
+  const [autoSyncInterval, setAutoSyncInterval] = useState(300); // 300s = 5m
+  const [lastSyncTime, setLastSyncTime] = useState("");
 
   useEffect(() => {
     if (window.lucide) {
@@ -647,6 +649,15 @@ function App() {
       loadThreatConfig();
     }
   }, [currentScreen]);
+
+  // Periodic Auto-Sync for Live Malware & Threat Feeds
+  useEffect(() => {
+    if (currentScreen !== "threat_intel" || !autoSyncInterval || autoSyncInterval <= 0) return;
+    const timer = setInterval(() => {
+      fetchThreatFeeds(true, threatFilter, threatSearchQuery);
+    }, autoSyncInterval * 1000);
+    return () => clearInterval(timer);
+  }, [currentScreen, autoSyncInterval, threatFilter, threatSearchQuery]);
 
   // Auto-init token for lab session
   useEffect(() => {
@@ -937,8 +948,10 @@ function App() {
       let url = "/api/v1/threat-intel/feeds";
       const params = new URLSearchParams();
       if (forceRefresh) params.append("force_refresh", "true");
-      if (source && source !== "ALL") params.append("source", source);
-      if (search) params.append("search", search);
+      const activeSource = source !== null ? source : threatFilter;
+      if (activeSource && activeSource !== "ALL") params.append("source", activeSource);
+      const activeSearch = search !== null ? search : threatSearchQuery;
+      if (activeSearch) params.append("search", activeSearch);
       const queryStr = params.toString();
       if (queryStr) url += "?" + queryStr;
       const res = await fetch(url, { headers });
@@ -946,6 +959,7 @@ function App() {
         const data = await res.json();
         if (Array.isArray(data)) {
           setThreatFeeds(data);
+          setLastSyncTime(new Date().toLocaleTimeString());
         }
       }
     } catch (e) {
@@ -957,25 +971,26 @@ function App() {
 
   const handleThreatFilterChange = (tab) => {
     setThreatFilter(tab);
-    if (tab === "Cisco Talos") {
-      fetchThreatFeeds(false, "Cisco Talos", threatSearchQuery);
-    } else if (threatFilter === "Cisco Talos") {
-      fetchThreatFeeds(false);
-    }
+    fetchThreatFeeds(false, tab, threatSearchQuery);
   };
 
   const syncThreatFeeds = async () => {
     setSyncingFeeds(true);
-    setSyncMessage("Syncing live feeds from CISA KEV, Cisco Talos, abuse.ch ThreatFox & Feodo...");
+    const sourceLabel = threatFilter && threatFilter !== "ALL" ? ` (${threatFilter})` : "";
+    setSyncMessage(`Syncing live threat feeds${sourceLabel}...`);
     try {
       const token = localStorage.getItem("token") || "";
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/v1/threat-intel/sync", { method: "POST", headers });
+      const url = threatFilter && threatFilter !== "ALL"
+        ? `/api/v1/threat-intel/sync?source=${encodeURIComponent(threatFilter)}`
+        : "/api/v1/threat-intel/sync";
+      const res = await fetch(url, { method: "POST", headers });
       if (res.ok) {
         const data = await res.json();
         if (data.feeds && Array.isArray(data.feeds)) {
           setThreatFeeds(data.feeds);
+          setLastSyncTime(new Date().toLocaleTimeString());
         }
         setSyncMessage(data.message || "Feeds synced successfully!");
       } else {
@@ -3038,9 +3053,33 @@ function App() {
     className: "px-2 py-0.5 text-[10px] font-mono rounded bg-sky-500/10 border border-sky-500/30 text-sky-400 font-bold"
   }, "LIVE OPEN-SOURCE FEEDS")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-1"
-  }, "Live indicators from CISA KEV, Cisco Talos Intelligence, abuse.ch ThreatFox, and Feodo Tracker.")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2"
-  }, syncMessage && /*#__PURE__*/React.createElement("span", {
+  }, "Continuous real-time threat intelligence from abuse.ch (ThreatFox, URLhaus, Feodo, MalwareBazaar), AlienVault OTX, Proofpoint ET, CISA KEV, and Cisco Talos.")), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#131b2e] border border-slate-700/60 text-xs font-mono text-slate-300 shadow-sm"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `w-2 h-2 rounded-full ${autoSyncInterval > 0 ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 text-[11px]"
+  }, "Auto-Sync:"), /*#__PURE__*/React.createElement("select", {
+    value: autoSyncInterval,
+    onChange: (e) => setAutoSyncInterval(Number(e.target.value)),
+    className: "bg-transparent text-emerald-400 text-[11px] font-bold focus:outline-none cursor-pointer"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: 60,
+    className: "bg-[#0e1422] text-slate-200"
+  }, "1m"), /*#__PURE__*/React.createElement("option", {
+    value: 300,
+    className: "bg-[#0e1422] text-slate-200"
+  }, "5m (Rec)"), /*#__PURE__*/React.createElement("option", {
+    value: 900,
+    className: "bg-[#0e1422] text-slate-200"
+  }, "15m"), /*#__PURE__*/React.createElement("option", {
+    value: 0,
+    className: "bg-[#0e1422] text-slate-200"
+  }, "OFF")), lastSyncTime && /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 border-l border-slate-700 pl-1.5"
+  }, `Last: ${lastSyncTime}`)), syncMessage && /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20"
   }, syncMessage), /*#__PURE__*/React.createElement("button", {
     onClick: () => setShowThreatConfigModal(true),

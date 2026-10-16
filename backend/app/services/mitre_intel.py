@@ -518,7 +518,7 @@ def fetch_emerging_threats(limit: int = 40) -> List[Dict[str, Any]]:
         return []
 
 
-def fetch_alienvault_otx(limit: int = 30) -> List[Dict[str, Any]]:
+def fetch_alienvault_otx(limit: int = 40) -> List[Dict[str, Any]]:
     """Fetches community threat pulses from AlienVault Open Threat Exchange (OTX)."""
     cfg = load_threat_intel_config()
     key = cfg.get("otx_api_key", "").strip()
@@ -526,13 +526,31 @@ def fetch_alienvault_otx(limit: int = 30) -> List[Dict[str, Any]]:
         return []
 
     try:
-        req = urllib.request.Request(
-            "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=15",
-            headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
-        )
-        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
-            data = json.loads(r.read())
-            pulses = data.get("results", [])
+        pulses = []
+        # First try subscribed pulses
+        try:
+            req = urllib.request.Request(
+                "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=15",
+                headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
+            )
+            with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
+                data = json.loads(r.read())
+                pulses = data.get("results", [])
+        except Exception:
+            pulses = []
+
+        # If user has no subscribed pulses yet, fallback to recent community activity pulses
+        if not pulses:
+            try:
+                act_req = urllib.request.Request(
+                    "https://otx.alienvault.com/api/v1/pulses/activity?limit=15",
+                    headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
+                )
+                with urllib.request.urlopen(act_req, timeout=8, context=_ssl_ctx) as r:
+                    data = json.loads(r.read())
+                    pulses = data.get("results", [])
+            except Exception:
+                pulses = []
             items = []
             for pulse in pulses:
                 if len(items) >= limit:
@@ -820,17 +838,17 @@ def get_threat_intel_feed(
         if "cisa" in src_lower:
             items = fetch_cisa_kev(60)
         elif "threatfox" in src_lower:
-            items = fetch_threatfox(60)
+            items = fetch_threatfox(80)
         elif "urlhaus" in src_lower:
-            items = fetch_urlhaus(60)
+            items = fetch_urlhaus(80)
         elif "feodo" in src_lower:
-            items = fetch_feodo(50)
+            items = fetch_feodo(60)
         elif "malwarebazaar" in src_lower or "bazaar" in src_lower:
-            items = fetch_malwarebazaar(50)
+            items = fetch_malwarebazaar(60)
         elif "emerging" in src_lower or "threats" in src_lower:
-            items = fetch_emerging_threats(60)
+            items = fetch_emerging_threats(80)
         elif "alienvault" in src_lower or "otx" in src_lower:
-            items = fetch_alienvault_otx(50)
+            items = fetch_alienvault_otx(60)
         else:
             items = []
 
@@ -839,11 +857,11 @@ def get_threat_intel_feed(
             return [x for x in items if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower() or q in str(x.get("description", "")).lower()]
         return items
 
-    # Check cache if not forcing refresh and not searching
+    # Check cache if not forcing refresh and not searching (valid for 5 minutes / 300 seconds)
     if not force_refresh and not search and not source and os.path.exists(CACHE_FILE):
         try:
             mtime = os.path.getmtime(CACHE_FILE)
-            if (time.time() - mtime) < 3600:  # 1 hour valid
+            if (time.time() - mtime) < 300:  # 5 minutes valid
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
                     cached = json.load(f)
                     if isinstance(cached, list) and len(cached) > 0:
@@ -853,23 +871,23 @@ def get_threat_intel_feed(
 
     combined = []
     if providers.get("cisa_kev", True):
-        combined.extend(fetch_cisa_kev(25))
+        combined.extend(fetch_cisa_kev(30))
     if providers.get("cisco_talos", True):
         combined.extend(fetch_cisco_talos(35))
     if providers.get("threatfox", True):
-        combined.extend(fetch_threatfox(25))
+        combined.extend(fetch_threatfox(35))
     if providers.get("urlhaus", True):
-        combined.extend(fetch_urlhaus(25))
+        combined.extend(fetch_urlhaus(35))
     if providers.get("feodo", True):
-        combined.extend(fetch_feodo(20))
+        combined.extend(fetch_feodo(25))
     if providers.get("malwarebazaar", True):
-        mb = fetch_malwarebazaar(20)
+        mb = fetch_malwarebazaar(25)
         if mb:
             combined.extend(mb)
     if providers.get("emerging_threats", True):
-        combined.extend(fetch_emerging_threats(25))
+        combined.extend(fetch_emerging_threats(35))
     if providers.get("alienvault_otx", True):
-        otx = fetch_alienvault_otx(20)
+        otx = fetch_alienvault_otx(25)
         if otx:
             combined.extend(otx)
 
