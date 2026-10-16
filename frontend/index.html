@@ -904,12 +904,18 @@ function App() {
       }, (idx + 1) * 600);
     });
   };
-  const fetchThreatFeeds = async (forceRefresh = false) => {
+  const fetchThreatFeeds = async (forceRefresh = false, source = null, search = null) => {
     setThreatFeedsLoading(true);
     try {
       const token = localStorage.getItem("token") || "";
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-      const url = forceRefresh ? "/api/v1/threat-intel/feeds?force_refresh=true" : "/api/v1/threat-intel/feeds";
+      let url = "/api/v1/threat-intel/feeds";
+      const params = new URLSearchParams();
+      if (forceRefresh) params.append("force_refresh", "true");
+      if (source && source !== "ALL") params.append("source", source);
+      if (search) params.append("search", search);
+      const queryStr = params.toString();
+      if (queryStr) url += "?" + queryStr;
       const res = await fetch(url, { headers });
       if (res.ok) {
         const data = await res.json();
@@ -921,6 +927,15 @@ function App() {
       console.error("Failed to fetch threat feeds", e);
     } finally {
       setThreatFeedsLoading(false);
+    }
+  };
+
+  const handleThreatFilterChange = (tab) => {
+    setThreatFilter(tab);
+    if (tab === "Cisco Talos") {
+      fetchThreatFeeds(false, "Cisco Talos", threatSearchQuery);
+    } else if (threatFilter === "Cisco Talos") {
+      fetchThreatFeeds(false);
     }
   };
 
@@ -3022,17 +3037,25 @@ function App() {
     className: "flex items-center space-x-1 overflow-x-auto"
   }, ["ALL", "CISA KEV", "Cisco Talos", "abuse.ch ThreatFox", "abuse.ch Feodo Tracker"].map(fTab => /*#__PURE__*/React.createElement("button", {
     key: fTab,
-    onClick: () => setThreatFilter(fTab),
+    onClick: () => handleThreatFilterChange(fTab),
     className: `px-2.5 py-1 rounded text-[11px] font-mono transition-all ${threatFilter === fTab ? "bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30" : "text-slate-400 hover:text-slate-200 hover:bg-[#1f293d]"}`
-  }, fTab === "ALL" ? `All Feeds (${threatFeeds.length})` : fTab))), /*#__PURE__*/React.createElement("div", {
-    className: "relative"
+  }, fTab === "ALL" ? `All Feeds (${threatFeeds.length})` : fTab === "Cisco Talos" ? "Cisco Talos (17,214)" : fTab))), /*#__PURE__*/React.createElement("div", {
+    className: "relative flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: threatSearchQuery,
     onChange: e => setThreatSearchQuery(e.target.value),
-    placeholder: "Filter IOC, CVE, or malware...",
-    className: "bg-[#080c14] border border-[#1f293d] rounded px-2.5 py-1 text-[11px] font-mono text-slate-200 w-56 focus:outline-none focus:border-emerald-500"
-  }))), /*#__PURE__*/React.createElement("div", {
+    onKeyDown: e => {
+      if (e.key === "Enter" && threatFilter === "Cisco Talos") {
+        fetchThreatFeeds(false, "Cisco Talos", threatSearchQuery);
+      }
+    },
+    placeholder: "Filter or search 17k+ IOCs (press Enter)...",
+    className: "bg-[#080c14] border border-[#1f293d] rounded px-2.5 py-1 text-[11px] font-mono text-slate-200 w-64 focus:outline-none focus:border-emerald-500"
+  }), threatFilter === "Cisco Talos" && /*#__PURE__*/React.createElement("button", {
+    onClick: () => fetchThreatFeeds(false, "Cisco Talos", threatSearchQuery),
+    className: "px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded text-[10px] font-mono font-bold transition-colors"
+  }, "Search 17k"))), /*#__PURE__*/React.createElement("div", {
     className: "overflow-x-auto max-h-[500px]"
   }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs font-mono"

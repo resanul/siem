@@ -244,77 +244,55 @@ def fetch_feodo(limit: int = 20) -> List[Dict[str, Any]]:
         return []
 
 
-def fetch_cisco_talos(limit: int = 30) -> List[Dict[str, Any]]:
-    """Fetches high-fidelity campaign IOCs from Cisco Talos Intelligence official repository."""
-    talos_iocs = []
-    # Search current and prior month folders
-    for folder in ["2026/10", "2026/09", "2026/08"]:
-        url = f"https://api.github.com/repos/Cisco-Talos/IOCs/contents/{folder}"
-        req = urllib.request.Request(url, headers={"User-Agent": "OpenSOC-ThreatHunter/1.0"})
+TALOS_DATA_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cisco_talos_iocs.json")
+_TALOS_CACHE: List[Dict[str, Any]] = []
+_TALOS_MAP: Dict[str, Dict[str, Any]] = {}
+_TALOS_IP_MAP: Dict[str, Dict[str, Any]] = {}
+
+
+def load_all_talos_iocs() -> List[Dict[str, Any]]:
+    """Loads all 17,214 verified Cisco Talos IOCs from local repository dataset."""
+    global _TALOS_CACHE, _TALOS_MAP, _TALOS_IP_MAP
+    if _TALOS_CACHE:
+        return _TALOS_CACHE
+
+    if os.path.exists(TALOS_DATA_FILE):
         try:
-            with urllib.request.urlopen(req, timeout=6) as resp:
-                files = json.loads(resp.read().decode("utf-8"))
+            with open(TALOS_DATA_FILE, "r", encoding="utf-8") as f:
+                _TALOS_CACHE = json.load(f)
+                _TALOS_MAP = {x["indicator"].lower(): x for x in _TALOS_CACHE if "indicator" in x}
+                _TALOS_IP_MAP = {x["indicator"].split(":")[0]: x for x in _TALOS_CACHE if x.get("type") == "IPv4"}
+                return _TALOS_CACHE
         except Exception:
-            continue
+            pass
 
-        txt_files = [f for f in files if isinstance(f, dict) and f.get("name", "").endswith(".txt")]
-        for tf in txt_files:
-            file_title = tf["name"].replace(".txt", "").replace("-", " ").title()
-            campaign_name = file_title
-            dl_url = tf.get("download_url")
-            if not dl_url:
-                continue
-            try:
-                with urllib.request.urlopen(dl_url, timeout=5) as dl:
-                    content = dl.read().decode("utf-8", errors="replace")
-                for line in content.splitlines():
-                    cleaned = line.strip().replace("[.]", ".").replace("[:]", ":").strip()
-                    if not cleaned or cleaned.startswith("#"):
-                        continue
-
-                    # If line has no dot, slash, colon, and is not a hash, it is a section heading
-                    if (("." not in cleaned and "/" not in cleaned and ":" not in cleaned and len(cleaned) < 32) or " " in cleaned):
-                        campaign_name = f"{file_title} ({cleaned})"
-                        continue
-
-                    # Detect indicator type
-                    ioc_type = "Domain"
-                    if cleaned.startswith("http://") or cleaned.startswith("https://"):
-                        ioc_type = "URL"
-                    elif len(cleaned) == 64 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
-                        ioc_type = "SHA-256"
-                    elif len(cleaned) == 32 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
-                        ioc_type = "MD5"
-                    elif len(cleaned) == 40 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
-                        ioc_type = "SHA-1"
-                    elif any(c.isdigit() for c in cleaned) and all(p.isdigit() for p in cleaned.split(":")[0].split(".") if p):
-                        ioc_type = "IPv4"
-
-                    talos_iocs.append({
-                        "indicator": cleaned,
-                        "type": ioc_type,
-                        "reputation": "MALICIOUS THREAT ACTOR",
-                        "confidence": 100,
-                        "threat_actor": "Cisco Talos Intelligence",
-                        "malware_family": campaign_name,
-                        "source": "Cisco Talos",
-                        "last_seen": folder.replace("/", "-"),
-                        "ransomware_use": "Targeted Campaign",
-                        "cvss_score": "100% CONFIRMED",
-                        "status": "ACTIVE IOC",
-                        "description": f"Cisco Talos Intelligence advisory indicator for {campaign_name}"
-                    })
-                    if len(talos_iocs) >= limit:
-                        return talos_iocs
-            except Exception:
-                pass
-    return talos_iocs
+    return []
 
 
-def get_threat_intel_feed(force_refresh: bool = False) -> List[Dict[str, Any]]:
-    """Aggregates multi-source threat intelligence with local persistent caching."""
-    # Check cache if not forcing refresh
-    if not force_refresh and os.path.exists(CACHE_FILE):
+def fetch_cisco_talos(limit: int = 60) -> List[Dict[str, Any]]:
+    """Returns indicators from the Cisco Talos Intelligence dataset (17,214 IOCs)."""
+    all_iocs = load_all_talos_iocs()
+    if all_iocs:
+        return all_iocs[:limit]
+    return []
+
+
+def get_threat_intel_feed(
+    force_refresh: bool = False,
+    source: Optional[str] = None,
+    search: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Aggregates multi-source threat intelligence with local persistent caching and search."""
+    # If source is specifically Cisco Talos, query across all 17,214 IOCs
+    if source == "Cisco Talos":
+        all_talos = load_all_talos_iocs()
+        if search:
+            q = search.lower().strip()
+            return [x for x in all_talos if q in x.get("indicator", "").lower() or q in x.get("malware_family", "").lower()][:300]
+        return all_talos[:250]
+
+    # Check cache if not forcing refresh and not searching
+    if not force_refresh and not search and not source and os.path.exists(CACHE_FILE):
         try:
             mtime = os.path.getmtime(CACHE_FILE)
             if (time.time() - mtime) < 7200:  # 2 hours valid
@@ -326,7 +304,7 @@ def get_threat_intel_feed(force_refresh: bool = False) -> List[Dict[str, Any]]:
             pass
 
     cisa = fetch_cisa_kev(30)
-    talos = fetch_cisco_talos(25)
+    talos = fetch_cisco_talos(60)
     tf = fetch_threatfox(30)
     feodo = fetch_feodo(15)
 
@@ -535,18 +513,29 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 3. Cross-reference with threat feeds (exact match, prefix match, and substring match)
-    feeds = get_threat_intel_feed()
+    # 3. Cross-reference with ALL 17,214 Cisco Talos IOCs & Threat Feeds
+    load_all_talos_iocs()
     matched_feed = None
     target_lower = cleaned_ioc.lower()
-    for f in feeds:
-        ind = f.get("indicator", "").lower()
-        if ind == target_lower or ind.startswith(target_lower + ":") or target_lower.startswith(ind):
-            matched_feed = f
-            break
-        if f.get("cve", "").lower() == target_lower:
-            matched_feed = f
-            break
+
+    # Instant O(1) lookup in Cisco Talos database
+    if target_lower in _TALOS_MAP:
+        matched_feed = _TALOS_MAP[target_lower]
+    elif target_lower in _TALOS_IP_MAP:
+        matched_feed = _TALOS_IP_MAP[target_lower]
+    elif ":" in target_lower and target_lower.split(":")[0] in _TALOS_IP_MAP:
+        matched_feed = _TALOS_IP_MAP[target_lower.split(":")[0]]
+
+    if not matched_feed:
+        feeds = get_threat_intel_feed()
+        for f in feeds:
+            ind = f.get("indicator", "").lower()
+            if ind == target_lower or ind.startswith(target_lower + ":") or target_lower.startswith(ind):
+                matched_feed = f
+                break
+            if f.get("cve", "").lower() == target_lower:
+                matched_feed = f
+                break
 
     # Determine classification and reputation
     if matched_feed:

@@ -719,10 +719,12 @@ def get_mitre_matrix(current_user: Dict[str, Any] = Depends(require_permission("
 @api_router.get("/threat-intel/feeds")
 def get_threat_intel(
     force_refresh: bool = False,
+    source: Optional[str] = None,
+    search: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
 ):
-    """Returns aggregated threat intelligence feeds from CISA KEV, abuse.ch ThreatFox, and Feodo Tracker."""
-    return get_threat_intel_feed(force_refresh=force_refresh)
+    """Returns aggregated threat intelligence feeds from Cisco Talos, CISA KEV, abuse.ch ThreatFox, and Feodo Tracker."""
+    return get_threat_intel_feed(force_refresh=force_refresh, source=source, search=search)
 
 
 @api_router.post("/threat-intel/sync")
