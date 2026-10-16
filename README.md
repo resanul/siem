@@ -107,9 +107,9 @@ Every component adapter (`adapters/base.py`) implements the complete operational
 
 ---
 
-## 5. Web Console (15 Screens)
+## 5. Web Console (21 Enterprise SOC Screens)
 
-The Web Console (`frontend/index.html`) is accessible at `http://127.0.0.1:8000/console/`:
+The Web Console (`frontend/index.html`) is accessible at `http://<HOST_IP>:8000/console/`:
 
 1. **Overview Dashboard**: High-level SOC operations KPIs, events per second (EPS), pipeline latency, MITRE coverage counter, component health cards, and live telemetry preview.
 2. **Alerts & Detections**: Central alert queue with severity filters, source filters (Wazuh, Suricata, Syslog), search, and pivot drawer with raw JSON payloads.
@@ -118,18 +118,74 @@ The Web Console (`frontend/index.html`) is accessible at `http://127.0.0.1:8000/
 5. **Network Telemetry**: Suricata EVE JSON metrics, AF_PACKET drop rate gauge, TLS JA4 fingerprinting, DNS/HTTP distribution.
 6. **Rules & Integrations**: Sigma, Wazuh XML, and Suricata rule catalog with an interactive **Syntax & Fixture Test Harness**.
 7. **Cases & Incident Management**: Investigation tracker with priority flags, assigned responders, IOC indicators, and timestamped evidence notes.
-8. **Reports & Compliance**: Executive security briefing, MTTD, MTTR, and CIS benchmark compliance posture.
-9. **Component Inventory**: Detailed binary paths, ports, PIDs, and package versions for all active components.
-10. **Deployment Jobs**: Idempotent execution log with step-by-step progress, duration, operator, and rollback state.
-11. **Health & Diagnostics**: Multi-tier health diagnostic, RAM/disk pressure, and one-click Redacted Diagnostic Bundle export.
-12. **Release & Compatibility Registry**: Version-controlled manifests, compatibility evaluation reports, and upgrade readiness score.
-13. **Backup & Disaster Recovery**: Checkpoint table, SHA-256 checksums, and safety-gated restore dialog requiring `CONFIRM_RESTORE`.
-14. **Users, Roles & Audit Logs**: RBAC permissions matrix and a **tamper-evident append-only audit log** with cryptographic SHA-256 hash chaining.
-15. **Platform Settings**: Deployment profiles (Lab vs Distributed), TLS certificates, secret vault provider, and index retention policies.
+8. **Threat Intelligence & Multi-Source IOC Hunter**: Multi-provider OSINT threat feed aggregator (17,500+ IOCs), persistent offline SQLite database, instant telemetry sightings correlation, custom IOC authoring, and automated 2x/day GitHub backup.
+9. **Sigma Rule Studio & Multi-Target Transpiler**: Author vendor-neutral Sigma detection YAML and compile simultaneously to Elasticsearch KQL, Wazuh XML, and Suricata signatures.
+10. **Enterprise Attack Simulation Engine**: Atomic adversary emulation (T1059.001 PowerShell execution, T1562.001 Defense Evasion, T1490 Shadow Copy Deletion, Ransomware Canary encryption).
+11. **SOAR Playbook Execution Center**: Automated host network isolation, memory dumps, and containment workflows via Wazuh Active Response.
+12. **Purple Team Exercise Matrix**: Matrix cross-referencing offensive techniques against defensive detection coverage and verification scores.
+13. **SecOps War Room**: Multi-analyst collaborative timeline with evidence sharing, case elevation, and incident commander logging.
+14. **Reports & Compliance**: Executive security briefing, MTTD, MTTR, and CIS benchmark compliance posture.
+15. **Component Inventory**: Detailed binary paths, ports, PIDs, and package versions for all active components.
+16. **Deployment Jobs**: Idempotent execution log with step-by-step progress, duration, operator, and rollback state.
+17. **Health & Diagnostics**: Multi-tier health diagnostic, RAM/disk pressure, and one-click Redacted Diagnostic Bundle export.
+18. **Release & Compatibility Registry**: Version-controlled manifests, compatibility evaluation reports, and upgrade readiness score.
+19. **Backup & Disaster Recovery**: Checkpoint table, SHA-256 checksums, and safety-gated restore dialog requiring `CONFIRM_RESTORE`.
+20. **Users, Roles & Audit Logs**: RBAC permissions matrix and a **tamper-evident append-only audit log** with cryptographic SHA-256 hash chaining.
+21. **Platform Settings**: Deployment profiles, TLS certificates, secret vault provider, and index retention policies.
 
 ---
 
-## 6. Operating CLI Commands
+## 6. Threat Intelligence & Multi-Source IOC Hunter Engine
+
+OpenSOC Forge features an enterprise-grade, offline-first Cyber Threat Intelligence (CTI) and Indicators of Compromise (IOC) hunting platform that aggregates open-source threat data, stores it in a high-speed local database, and correlates telemetry sightings in real time:
+
+### 6.1 Integrated Open-Source Intelligence (OSINT) Providers
+- **Cisco Talos Intelligence**: 17,214+ verified adversary IOCs extracted and continuously updated from `github.com/Cisco-Talos/IOCs`.
+- **abuse.ch ThreatFox**: Live malicious indicators (IPs, domains, hashes) associated with active malware campaigns.
+- **abuse.ch URLhaus**: Active phishing URLs and malware distribution sites.
+- **abuse.ch Feodo Tracker**: Known botnet C2 servers (Dridex, Emotet, QakBot).
+- **abuse.ch MalwareBazaar**: High-confidence malware binary file hashes (SHA-256, MD5).
+- **Proofpoint Emerging Threats (ET Open)**: Firewall drop-lists and malicious scanning IP addresses.
+- **CISA Known Exploited Vulnerabilities (KEV)**: Catalog of CVEs confirmed to be exploited in the wild.
+- **AlienVault Open Threat Exchange (OTX)**: Real-time community threat pulses and malicious indicator campaigns.
+
+### 6.2 High-Speed Offline-First Architecture
+- **Persistent Local SQLite Storage**: All indicators are indexed into `/var/lib/opensoc/threat_intel_iocs.db` (and exported to `data/threat_intel_iocs.json`).
+- **Sub-60ms Tab Switching**: Switching between provider tabs loads directly from SQLite in under 60ms, eliminating slow synchronous HTTP downloads and loading spinners.
+- **Silent Background Auto-Sync**: A background daemon thread periodically polls upstream providers every 5 minutes (debounced) and merges new indicators into the local database without interrupting analyst workflows.
+
+### 6.3 Automated 2x/Day GitHub Dataset Backup Pipeline
+- **Pull-Before-Push Safety**: Before pushing updated datasets to GitHub, the engine automatically pulls remote state and checks dataset equality (0-diff verification) to avoid merge conflicts or overwrites.
+- **Audit-Logged**: Every synchronization and push is logged in the `github_sync_log` table with timestamps, commit SHAs, and status metrics.
+- **Configurable Access**: Easily configured with a GitHub Personal Access Token (PAT) with repository scope.
+
+### 6.4 Analyst Custom IOC Management
+- **Add Custom IOC**: Built-in modal to inject custom indicators (`IPv4`, `IPv6`, `Domain`, `URL`, `SHA-256`, `MD5`, `CVE`) with confidence scores (50%-100%), threat actors, and campaign notes.
+- **Dedicated "Custom / Analyst" Tab**: Instant filtering to view all manually authored indicators.
+- **Management Controls**: One-click deletion (`🗑️`) and hunting for any custom entry.
+
+### 6.5 Instant Telemetry IOC Sightings Search
+- **Cross-Index Hunting**: Hunts any IP, domain, hash, or CVE across `opensoc-syslog-*`, `wazuh-alerts-*`, and Suricata `/var/log/suricata/eve.json`.
+- **Quick Hunt Suggestions**: One-click pre-filled tests (Host VM `192.168.10.127`, Simulated C2 `198.51.100.84`, Log4Shell `CVE-2021-44228`, Talos C2 `4.ddns.me`).
+- **Interactive Reset Controls**: Inline `✕` clear button inside the search field, dedicated `[⟲ Clear]` button to reset inputs and hide results, and dismissible result cards.
+
+### 6.6 Threat Intelligence API Endpoints
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/threat-intel/feeds` | Query indexed indicators (supports `source`, `search`, and `force_refresh`). |
+| `POST` | `/api/v1/threat-intel/sync` | Force synchronous refresh and save to offline DB. |
+| `POST` | `/api/v1/threat-intel/iocs/add` | Insert a custom user/analyst IOC into persistent storage. |
+| `DELETE` | `/api/v1/threat-intel/iocs/{indicator}` | Delete an indicator from the offline database. |
+| `POST` | `/api/v1/threat-intel/hunt` | Search cluster telemetry indices for matching sightings. |
+| `GET` | `/api/v1/threat-intel/db-stats` | Retrieve total stored indicator count and GitHub backup status. |
+| `POST` | `/api/v1/threat-intel/github/push` | Trigger automated Pull-before-Push dataset sync to GitHub. |
+| `POST` | `/api/v1/threat-intel/talos/update` | Pull and re-index the latest Cisco Talos repository from GitHub. |
+| `GET` | `/api/v1/threat-intel/config` | View active provider toggles and masked API keys. |
+| `POST` | `/api/v1/threat-intel/config` | Update provider credentials (abuse.ch, OTX, GitHub token). |
+
+---
+
+## 7. Operating CLI Commands
 
 OpenSOC Forge includes a command-line tool `scripts/opensoc_cli.py` (with `scripts/opensoc-forge.bat` on Windows):
 
@@ -167,7 +223,7 @@ python scripts/opensoc_cli.py report
 
 ---
 
-## 7. Automated Test Suite & Actual Results
+## 8. Automated Test Suite & Actual Results
 
 OpenSOC Forge includes an automated pytest suite covering unit, integration, RBAC, and API contracts:
 
@@ -216,7 +272,7 @@ tests/unit/test_rbac_and_audit.py::TestRBACAndAudit::test_tamper_evident_audit_t
 
 ---
 
-## 8. Definition of Done Checklist
+## 9. Definition of Done Checklist
 
 - [x] **1. Clean lab installation succeeds**: Verified with `execute_deployment('v1.0.0-lab')`.
 - [x] **2. Re-running installer causes no destructive changes**: Verified by idempotency test suite (`test_clean_installation_and_idempotency`).

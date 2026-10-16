@@ -26,6 +26,10 @@ OpenSOC Forge is built with secure-by-default architecture:
    - TLS is strictly enforced for REST APIs, Elasticsearch transport, Filebeat ingestion, and Syslog RFC 5425.
    - Certificate verification is never disabled as a workaround.
 
+6. **Threat Intelligence & CTI Data Hygiene**:
+   - Ingested open-source threat feeds (URLs, malicious domains, IPs) are treated as untrusted data and strictly sanitized.
+   - Sensitive credentials such as GitHub Personal Access Tokens and threat feed API keys are stored in secure local configuration files and masked (`********`) on all API responses.
+
 ## Reporting a Vulnerability
 
 Please report security issues responsibly to: `security@opensoc-forge.internal` or open a confidential security advisory.
