@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import threading
 import base64
 import urllib.request
 import ssl
@@ -840,6 +841,69 @@ def update_cisco_talos_from_github() -> Dict[str, Any]:
         }
 
 
+def _fetch_source_live(source: str) -> List[Dict[str, Any]]:
+    """Fetches live threat indicators for a specific provider."""
+    src_lower = source.lower()
+    if "cisa" in src_lower:
+        return fetch_cisa_kev(80)
+    elif "threatfox" in src_lower:
+        return fetch_threatfox(80)
+    elif "urlhaus" in src_lower:
+        return fetch_urlhaus(80)
+    elif "feodo" in src_lower:
+        return fetch_feodo(60)
+    elif "malwarebazaar" in src_lower or "bazaar" in src_lower:
+        return fetch_malwarebazaar(60)
+    elif "emerging" in src_lower or "threats" in src_lower:
+        return fetch_emerging_threats(80)
+    elif "alienvault" in src_lower or "otx" in src_lower:
+        return fetch_alienvault_otx(60)
+    return []
+
+
+_BG_SYNC_LOCK = threading.Lock()
+_BG_LAST_SYNC: Dict[str, float] = {}
+
+def _trigger_background_refresh(source: Optional[str] = None):
+    """Silently refreshes source or all feeds in background without blocking the user."""
+    def _worker():
+        key = source or "ALL"
+        now = time.time()
+        with _BG_SYNC_LOCK:
+            last = _BG_LAST_SYNC.get(key, 0)
+            if now - last < 300:  # already refreshed within last 5 minutes
+                return
+            _BG_LAST_SYNC[key] = now
+
+        try:
+            from backend.app.services.ioc_storage import save_iocs_to_db
+            if source and source != "ALL":
+                items = _fetch_source_live(source)
+                if items:
+                    save_iocs_to_db(items)
+            else:
+                items = []
+                cfg = load_threat_intel_config()
+                p = cfg.get("providers", DEFAULT_CONFIG["providers"])
+                if p.get("cisa_kev", True): items.extend(fetch_cisa_kev(30))
+                if p.get("threatfox", True): items.extend(fetch_threatfox(35))
+                if p.get("urlhaus", True): items.extend(fetch_urlhaus(35))
+                if p.get("feodo", True): items.extend(fetch_feodo(25))
+                if p.get("malwarebazaar", True):
+                    mb = fetch_malwarebazaar(25)
+                    if mb: items.extend(mb)
+                if p.get("emerging_threats", True): items.extend(fetch_emerging_threats(35))
+                if p.get("alienvault_otx", True):
+                    otx = fetch_alienvault_otx(25)
+                    if otx: items.extend(otx)
+                if items:
+                    save_iocs_to_db(items)
+        except Exception as e:
+            print(f"Background threat intel refresh error: {e}")
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def get_threat_intel_feed(
     force_refresh: bool = False,
     source: Optional[str] = None,
@@ -857,23 +921,21 @@ def get_threat_intel_feed(
             return [x for x in all_talos if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower()][:300]
         return all_talos[:250]
 
-    # Specific source filter
+    # OFFLINE-FIRST: If NOT forcing refresh, ALWAYS serve instantly from SQLite DB in < 2ms!
+    if not force_refresh:
+        try:
+            from backend.app.services.ioc_storage import query_offline_iocs
+            offline_items = query_offline_iocs(source=source, search=search, limit=250)
+            if offline_items and len(offline_items) > 0:
+                # Trigger silent background refresh so newest data downloads in the background
+                _trigger_background_refresh(source)
+                return offline_items
+        except Exception as e:
+            print(f"Error querying offline IOCs: {e}")
+
+    # Specific source filter (when forcing refresh OR when offline DB was completely empty)
     if source and source != "ALL":
-        src_lower = source.lower()
-        if "cisa" in src_lower:
-            items = fetch_cisa_kev(60)
-        elif "threatfox" in src_lower:
-            items = fetch_threatfox(80)
-        elif "urlhaus" in src_lower:
-            items = fetch_urlhaus(80)
-        elif "feodo" in src_lower:
-            items = fetch_feodo(60)
-        elif "malwarebazaar" in src_lower or "bazaar" in src_lower:
-            items = fetch_malwarebazaar(60)
-        elif "emerging" in src_lower or "threats" in src_lower:
-            items = fetch_emerging_threats(80)
-        elif "alienvault" in src_lower or "otx" in src_lower:
-            items = fetch_alienvault_otx(60)
+        items = _fetch_source_live(source)
         if items:
             try:
                 from backend.app.services.ioc_storage import save_iocs_to_db
@@ -892,18 +954,7 @@ def get_threat_intel_feed(
             return [x for x in items if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower() or q in str(x.get("description", "")).lower()]
         return items
 
-    # Check cache if not forcing refresh and not searching (valid for 5 minutes / 300 seconds)
-    if not force_refresh and not search and not source and os.path.exists(CACHE_FILE):
-        try:
-            mtime = os.path.getmtime(CACHE_FILE)
-            if (time.time() - mtime) < 300:  # 5 minutes valid
-                with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                    cached = json.load(f)
-                    if isinstance(cached, list) and len(cached) > 0:
-                        return cached
-        except Exception:
-            pass
-
+    # Full aggregated feeds (for ALL)
     combined = []
     if providers.get("cisa_kev", True):
         combined.extend(fetch_cisa_kev(30))
@@ -940,30 +991,6 @@ def get_threat_intel_feed(
                 combined = offline_combined
         except Exception:
             pass
-
-    if not combined:
-        combined = [
-            {
-                "indicator": "CVE-2021-44228",
-                "type": "CVE",
-                "reputation": "KNOWN EXPLOITED",
-                "confidence": 100,
-                "threat_actor": "Apache Software Foundation",
-                "malware_family": "Log4j2 JNDI Remote Code Execution",
-                "source": "CISA KEV",
-                "last_seen": "2021-12-10",
-                "ransomware_use": "Known",
-                "cvss_score": "10.0 CRITICAL",
-                "status": "EXPLOITED IN WILD",
-                "description": "Apache Log4j2 JNDI features do not protect against attacker controlled LDAP."
-            }
-        ]
-
-    try:
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(combined, f)
-    except Exception:
-        pass
 
     if search:
         q = search.lower().strip()

@@ -948,8 +948,10 @@ function App() {
       }, (idx + 1) * 600);
     });
   };
-  const fetchThreatFeeds = async (forceRefresh = false, source = null, search = null) => {
-    setThreatFeedsLoading(true);
+  const fetchThreatFeeds = async (forceRefresh = false, source = null, search = null, isBackground = false) => {
+    if (!isBackground && threatFeeds.length === 0) {
+      setThreatFeedsLoading(true);
+    }
     try {
       const token = localStorage.getItem("token") || "";
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
@@ -979,7 +981,8 @@ function App() {
 
   const handleThreatFilterChange = (tab) => {
     setThreatFilter(tab);
-    fetchThreatFeeds(false, tab, threatSearchQuery);
+    // Instant offline fetch without disruptive UI spinner
+    fetchThreatFeeds(false, tab, threatSearchQuery, true);
   };
 
   const syncThreatFeeds = async () => {
@@ -1204,7 +1207,11 @@ function App() {
   };
 
   const filteredThreatFeeds = threatFeeds.filter(f => {
-    if (threatFilter !== "ALL" && f.source !== threatFilter) return false;
+    if (threatFilter !== "ALL") {
+      const srcA = (f.source || "").toLowerCase();
+      const srcB = threatFilter.toLowerCase();
+      if (srcA !== srcB && !srcA.includes(srcB) && !srcB.includes(srcA)) return false;
+    }
     if (threatSearchQuery) {
       const q = threatSearchQuery.toLowerCase();
       const ind = (f.indicator || f.cve || "").toLowerCase();
@@ -3364,7 +3371,7 @@ function App() {
     className: "p-3 text-right"
   }, "ACTION"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d] text-slate-300"
-  }, threatFeedsLoading ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+  }, (threatFeedsLoading && filteredThreatFeeds.length === 0) ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 6,
     className: "p-8 text-center text-slate-400"
   }, "Loading real threat feeds from active providers...")) : filteredThreatFeeds.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
