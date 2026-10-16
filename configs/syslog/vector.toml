@@ -60,11 +60,9 @@ encoding.codec = "json"
 [sinks.elasticsearch]
 type = "elasticsearch"
 inputs = ["ecs_normalization"]
-endpoints = ["https://elasticsearch:9200"]
+endpoints = ["http://elasticsearch:9200"]
 mode = "bulk"
 bulk.index = "opensoc-syslog-%Y.%m.%d"
 auth.strategy = "basic"
 auth.user = "elastic"
 auth.password = "${ELASTIC_PASSWORD:-OpenSocForge2026!}"
-tls.verify_certificate = false
-tls.ca_file = "/etc/opensoc/certs/ca.crt"
