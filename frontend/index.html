@@ -2936,9 +2936,9 @@ function App() {
     className: "text-[10px] text-slate-400"
   }, `in ${(huntResult.searched_indices || []).join(", ")}`)), huntResult.last_seen && /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-400"
-  }, `Last Seen: ${huntResult.last_seen}`)), huntResult.sightings && huntResult.sightings.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, `Last Seen: ${huntResult.last_seen}`)), (huntResult.sightings || huntResult.sample_events) && (huntResult.sightings || huntResult.sample_events).length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "mt-2 pt-2 border-t border-red-500/20 space-y-1.5"
-  }, huntResult.sightings.slice(0, 5).map((s, idx) => /*#__PURE__*/React.createElement("div", {
+  }, (huntResult.sightings || huntResult.sample_events).slice(0, 5).map((s, idx) => /*#__PURE__*/React.createElement("div", {
     key: idx,
     className: "flex items-start space-x-2 text-[11px] text-slate-300 bg-[#080c14]/50 p-1.5 rounded"
   }, /*#__PURE__*/React.createElement("span", {
@@ -2947,7 +2947,7 @@ function App() {
     className: "text-slate-400 shrink-0 text-[10px]"
   }, s.timestamp || "-"), /*#__PURE__*/React.createElement("span", {
     className: "text-slate-200 truncate"
-  }, s.message || s.rule_description || JSON.stringify(s))))))), /*#__PURE__*/React.createElement("div", {
+  }, s.summary || s.message || s.rule_description || JSON.stringify(s))))))), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] border border-[#1f293d] rounded-lg overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-3 bg-[#131b2e] border-b border-[#1f293d] flex flex-col md:flex-row md:items-center justify-between gap-3"

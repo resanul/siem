@@ -387,7 +387,8 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
         "associated_hosts": list(associated_hosts) if associated_hosts else ([] if len(hits) == 0 else ["enp0s3"]),
         "reputation": reputation,
         "threat_info": matched_feed,
-        "sample_events": hits[:6]
+        "sample_events": hits[:6],
+        "sightings": hits[:6],
     }
 
 
