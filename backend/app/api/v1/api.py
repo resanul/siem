@@ -738,15 +738,70 @@ def sync_threat_intel(
 ):
     """Force re-syncs live threat feeds from external open-source intelligence platforms."""
     if source == "Cisco Talos" or source == "talos":
-        return update_cisco_talos_from_github()
+        res = update_cisco_talos_from_github()
+        try:
+            from backend.app.services.github_sync import sync_iocs_to_github
+            res["github_sync"] = sync_iocs_to_github()
+        except Exception:
+            pass
+        return res
+
     feeds = get_threat_intel_feed(force_refresh=True, source=source)
     source_label = f" ({source})" if source and source != "ALL" else ""
+
+    # Auto-save to offline DB
+    db_res = {}
+    try:
+        from backend.app.services.ioc_storage import save_iocs_to_db
+        db_res = save_iocs_to_db(feeds)
+    except Exception as e:
+        print(f"Failed to save to offline DB: {e}")
+
+    # Auto-pull verification & push to GitHub
+    gh_res = {}
+    try:
+        from backend.app.services.github_sync import sync_iocs_to_github
+        gh_res = sync_iocs_to_github()
+    except Exception as e:
+        gh_res = {"status": "error", "message": str(e)}
+
+    gh_status_msg = ""
+    if gh_res.get("status") == "pushed":
+        gh_status_msg = f" | GitHub: Pushed ({gh_res.get('commit_sha', '')})"
+    elif gh_res.get("status") == "identical":
+        gh_status_msg = " | GitHub: Up-to-date (0 diff)"
+    elif gh_res.get("status") == "pending_token":
+        gh_status_msg = " | Offline DB: Saved (Set GitHub token to auto-push)"
+
+    total_offline = db_res.get("total", len(feeds))
     return {
         "status": "success",
-        "message": f"Successfully synced {len(feeds)} IOCs from live threat intelligence feeds{source_label}",
+        "message": f"Synced {len(feeds)} IOCs{source_label} | Saved to Offline DB ({total_offline:,} stored){gh_status_msg}",
         "total": len(feeds),
+        "total_offline": total_offline,
         "feeds": feeds,
+        "github_sync": gh_res,
     }
+
+
+@api_router.get("/threat-intel/db-stats")
+def get_threat_db_stats(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Returns persistent offline database metrics and GitHub sync telemetry."""
+    from backend.app.services.github_sync import get_sync_status
+    return get_sync_status()
+
+
+@api_router.post("/threat-intel/github/push")
+def trigger_github_push(
+    payload: Dict[str, Any] = None,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Pulls current remote from GitHub, verifies data equality, and pushes updated dataset."""
+    force = bool((payload or {}).get("force", False))
+    from backend.app.services.github_sync import sync_iocs_to_github
+    return sync_iocs_to_github(force_push=force)
 
 
 @api_router.post("/threat-intel/talos/update")

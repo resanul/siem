@@ -61,6 +61,21 @@ def root():
     }
 
 
+@app.on_event("startup")
+def on_startup():
+    try:
+        from backend.app.services.ioc_storage import init_ioc_database
+        init_ioc_database()
+    except Exception as e:
+        print(f"Failed to init IOC database: {e}")
+
+    try:
+        from backend.app.services.github_sync import start_github_sync_scheduler
+        start_github_sync_scheduler()
+    except Exception as e:
+        print(f"Failed to start GitHub sync scheduler: {e}")
+
+
 from fastapi.responses import RedirectResponse
 
 @app.get("/docs", include_in_schema=False)

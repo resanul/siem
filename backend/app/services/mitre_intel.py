@@ -185,6 +185,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "abuse_ch_api_key": "",
     "otx_api_key": "",
     "virustotal_api_key": "",
+    "github_token": "",
+    "github_repo": "resanul/siem",
+    "github_branch": "master",
+    "github_file_path": "data/threat_intel_iocs.json",
+    "github_auto_push": True,
     "providers": {
         "cisa_kev": True,
         "cisco_talos": True,
@@ -241,6 +246,12 @@ def get_masked_threat_intel_config() -> Dict[str, Any]:
         "has_otx_key": bool(cfg.get("otx_api_key", "").strip()),
         "virustotal_api_key": _mask_key(cfg.get("virustotal_api_key", "")),
         "has_virustotal_key": bool(cfg.get("virustotal_api_key", "").strip()),
+        "github_token": _mask_key(cfg.get("github_token", "")),
+        "has_github_token": bool(cfg.get("github_token", "").strip()),
+        "github_repo": cfg.get("github_repo", "resanul/siem"),
+        "github_branch": cfg.get("github_branch", "master"),
+        "github_file_path": cfg.get("github_file_path", "data/threat_intel_iocs.json"),
+        "github_auto_push": cfg.get("github_auto_push", True),
         "providers": cfg.get("providers", DEFAULT_CONFIG["providers"]),
     }
 
@@ -260,6 +271,14 @@ def save_threat_intel_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         val = str(cfg["virustotal_api_key"]).strip()
         if not "*" in val:
             current["virustotal_api_key"] = val
+    for f in ["github_token", "github_repo", "github_branch", "github_file_path"]:
+        if f in cfg:
+            val = str(cfg[f]).strip()
+            if not "*" in val:
+                current[f] = val
+    if "github_auto_push" in cfg:
+        current["github_auto_push"] = bool(cfg["github_auto_push"])
+
     if "providers" in cfg and isinstance(cfg["providers"], dict):
         if "providers" not in current:
             current["providers"] = DEFAULT_CONFIG["providers"].copy()
@@ -321,6 +340,12 @@ def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
                 if r.status == 200:
                     return {"status": "success", "message": "VirusTotal API Key verified and active!"}
                 return {"status": "error", "message": f"VirusTotal returned HTTP status {r.status}"}
+
+        elif provider == "github":
+            from backend.app.services.github_sync import test_github_connection
+            cfg = load_threat_intel_config()
+            repo = cfg.get("github_repo", "resanul/siem")
+            return test_github_connection(key, repo)
 
         else:
             return {"status": "error", "message": f"Unknown provider: {provider}"}
@@ -849,8 +874,18 @@ def get_threat_intel_feed(
             items = fetch_emerging_threats(80)
         elif "alienvault" in src_lower or "otx" in src_lower:
             items = fetch_alienvault_otx(60)
+        if items:
+            try:
+                from backend.app.services.ioc_storage import save_iocs_to_db
+                save_iocs_to_db(items)
+            except Exception:
+                pass
         else:
-            items = []
+            try:
+                from backend.app.services.ioc_storage import query_offline_iocs
+                items = query_offline_iocs(source=source, search=search, limit=100)
+            except Exception:
+                pass
 
         if search:
             q = search.lower().strip()
@@ -890,6 +925,21 @@ def get_threat_intel_feed(
         otx = fetch_alienvault_otx(25)
         if otx:
             combined.extend(otx)
+
+    if combined:
+        try:
+            from backend.app.services.ioc_storage import save_iocs_to_db
+            save_iocs_to_db(combined)
+        except Exception:
+            pass
+    else:
+        try:
+            from backend.app.services.ioc_storage import query_offline_iocs
+            offline_combined = query_offline_iocs(limit=150)
+            if offline_combined:
+                combined = offline_combined
+        except Exception:
+            pass
 
     if not combined:
         combined = [
