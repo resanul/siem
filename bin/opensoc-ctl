@@ -21,11 +21,11 @@ resolve_compose_cmd() {
     if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
         echo "docker compose"
     elif command -v podman-compose >/dev/null 2>&1; then
-        echo "podman-compose"
+        echo "podman-compose -f podman-compose.yml"
     elif command -v docker-compose >/dev/null 2>&1; then
         echo "docker-compose"
     elif command -v podman >/dev/null 2>&1 && podman compose version >/dev/null 2>&1; then
-        echo "podman compose"
+        echo "podman compose -f podman-compose.yml"
     else
         echo "docker compose"
     fi

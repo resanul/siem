@@ -230,7 +230,7 @@ COMPOSE_CMD=""
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     COMPOSE_CMD="docker compose"
 elif command -v podman-compose >/dev/null 2>&1; then
-    COMPOSE_CMD="podman-compose"
+    COMPOSE_CMD="podman-compose -f podman-compose.yml"
 elif command -v docker-compose >/dev/null 2>&1; then
     COMPOSE_CMD="docker-compose"
 fi
@@ -253,9 +253,9 @@ if [ -z "${COMPOSE_CMD}" ]; then
         }
         systemctl enable --now podman.socket 2>/dev/null || true
         if command -v podman-compose >/dev/null 2>&1; then
-            COMPOSE_CMD="podman-compose"
+            COMPOSE_CMD="podman-compose -f podman-compose.yml"
         elif podman compose version >/dev/null 2>&1; then
-            COMPOSE_CMD="podman compose"
+            COMPOSE_CMD="podman compose -f podman-compose.yml"
         fi
     fi
 fi

@@ -42,7 +42,7 @@ services:
     networks:
       - opensoc-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:7070/ || exit 1"]
+      test: "curl -f http://localhost:7070/ || exit 1"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -81,7 +81,7 @@ services:
     networks:
       - opensoc-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD:-OpenSocForge2026!} http://localhost:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' || exit 1"]
+      test: "curl -sf -u elastic:${ELASTIC_PASSWORD:-OpenSocForge2026!} http://localhost:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' || exit 1"
       interval: 15s
       timeout: 10s
       retries: 10
@@ -107,7 +107,7 @@ services:
     depends_on:
       - elasticsearch
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status | grep -q 'available' || exit 1"]
+      test: "curl -sf http://localhost:5601/api/status | grep -q 'available' || exit 1"
       interval: 20s
       timeout: 10s
       retries: 10
@@ -117,7 +117,7 @@ services:
   # Service 4: Wazuh Manager
   # ----------------------------------------------------------------------------
   wazuh-manager:
-    image: wazuh/wazuh-manager:4.8.2
+    image: docker.io/wazuh/wazuh-manager:4.8.2
     container_name: opensoc-wazuh-manager
     restart: unless-stopped
     ports:
@@ -139,18 +139,12 @@ services:
       - opensoc-net
     depends_on:
       - elasticsearch
-    healthcheck:
-      test: ["CMD-SHELL", "curl -k -u $${WAZUH_API_USER:-wazuh}:$${WAZUH_API_PASSWORD:-OpenSocForge2026!} https://localhost:55000/manager/status | grep -q '\"error\":0' || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
 
   # ----------------------------------------------------------------------------
   # Service 5: Suricata NIDS Engine (Host Networking & AF_PACKET)
   # ----------------------------------------------------------------------------
   suricata:
-    image: jasonish/suricata:7.0.5
+    image: docker.io/jasonish/suricata:7.0.5
     container_name: opensoc-suricata
     restart: unless-stopped
     network_mode: host
@@ -167,17 +161,12 @@ services:
       - ./configs/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro,z
       - ./configs/suricata/suricata.rules:/var/lib/suricata/rules/suricata.rules:ro,z
       - suricata_rules:/var/lib/suricata/rules:rw,z
-    healthcheck:
-      test: ["CMD-SHELL", "test -f /var/log/suricata/eve.json || test -d /var/log/suricata || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
 
   # ----------------------------------------------------------------------------
   # Service 6: Syslog Collector (RFC 5424/3164/5425 Ingestion)
   # ----------------------------------------------------------------------------
   syslog-collector:
-    image: timberio/vector:0.38.0-alpine
+    image: docker.io/timberio/vector:0.38.0-alpine
     container_name: opensoc-syslog-collector
     restart: unless-stopped
     command: ["--config", "/etc/vector/vector.toml"]
@@ -186,7 +175,7 @@ services:
       - "${SYSLOG_TCP_PORT:-514}:514/tcp"
       - "${SYSLOG_TLS_PORT:-6514}:6514/tcp"
     environment:
-      - ELASTICSEARCH_URL=https://elasticsearch:9200
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
     volumes:
       - ${OPENSOC_LOG_DIR:-/var/log/opensoc}/syslog:/var/log/opensoc/syslog:rw,z
@@ -198,11 +187,6 @@ services:
       - opensoc-net
     depends_on:
       - elasticsearch
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 514 || nc -z -u 127.0.0.1 514 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
 # ------------------------------------------------------------------------------
 # Network Topology: Explicit Bridge Network
