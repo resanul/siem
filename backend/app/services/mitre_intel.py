@@ -247,27 +247,30 @@ def fetch_feodo(limit: int = 20) -> List[Dict[str, Any]]:
         return []
 
 
-TALOS_DATA_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cisco_talos_iocs.json")
+DEFAULT_TALOS_DATA_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cisco_talos_iocs.json")
+PERSISTENT_TALOS_DATA_FILE = "/var/lib/opensoc/cisco_talos_iocs.json"
+TEMP_TALOS_DATA_FILE = "/tmp/cisco_talos_iocs.json"
 _TALOS_CACHE: List[Dict[str, Any]] = []
 _TALOS_MAP: Dict[str, Dict[str, Any]] = {}
 _TALOS_IP_MAP: Dict[str, Dict[str, Any]] = {}
 
 
-def load_all_talos_iocs() -> List[Dict[str, Any]]:
-    """Loads all 17,214 verified Cisco Talos IOCs from local repository dataset."""
+def load_all_talos_iocs(reload: bool = False) -> List[Dict[str, Any]]:
+    """Loads all verified Cisco Talos IOCs from local repository dataset or persistent cache."""
     global _TALOS_CACHE, _TALOS_MAP, _TALOS_IP_MAP
-    if _TALOS_CACHE:
+    if _TALOS_CACHE and not reload:
         return _TALOS_CACHE
 
-    if os.path.exists(TALOS_DATA_FILE):
-        try:
-            with open(TALOS_DATA_FILE, "r", encoding="utf-8") as f:
-                _TALOS_CACHE = json.load(f)
-                _TALOS_MAP = {x["indicator"].lower(): x for x in _TALOS_CACHE if "indicator" in x}
-                _TALOS_IP_MAP = {x["indicator"].split(":")[0]: x for x in _TALOS_CACHE if x.get("type") == "IPv4"}
-                return _TALOS_CACHE
-        except Exception:
-            pass
+    for path in [PERSISTENT_TALOS_DATA_FILE, TEMP_TALOS_DATA_FILE, DEFAULT_TALOS_DATA_FILE]:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    _TALOS_CACHE = json.load(f)
+                    _TALOS_MAP = {x["indicator"].lower(): x for x in _TALOS_CACHE if "indicator" in x}
+                    _TALOS_IP_MAP = {x["indicator"].split(":")[0]: x for x in _TALOS_CACHE if x.get("type") == "IPv4"}
+                    return _TALOS_CACHE
+            except Exception:
+                pass
 
     return []
 
@@ -421,9 +424,17 @@ def update_cisco_talos_from_github() -> Dict[str, Any]:
                 pass
 
         if len(all_iocs) > 0:
-            os.makedirs(os.path.dirname(TALOS_DATA_FILE), exist_ok=True)
-            with open(TALOS_DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(all_iocs, f, indent=2)
+            save_path = None
+            for candidate in [DEFAULT_TALOS_DATA_FILE, PERSISTENT_TALOS_DATA_FILE, TEMP_TALOS_DATA_FILE]:
+                parent = os.path.dirname(candidate)
+                try:
+                    os.makedirs(parent, exist_ok=True)
+                    with open(candidate, "w", encoding="utf-8") as f:
+                        json.dump(all_iocs, f, indent=2)
+                    save_path = candidate
+                    break
+                except Exception:
+                    continue
 
             # Invalidate and update memory indexes
             _TALOS_CACHE = all_iocs
@@ -441,6 +452,7 @@ def update_cisco_talos_from_github() -> Dict[str, Any]:
                 "status": "success",
                 "message": f"Successfully updated {len(all_iocs):,} verified IOCs from Cisco-Talos/IOCs GitHub repository",
                 "total": len(all_iocs),
+                "storage": save_path or "in-memory",
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
             }
         else:
