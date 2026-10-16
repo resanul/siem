@@ -143,6 +143,8 @@ services:
       - wazuh_etc:/var/ossec/etc:rw,z
       - wazuh_logs:/var/ossec/logs:rw,z
       - wazuh_queue:/var/ossec/queue:rw,z
+    security_opt:
+      - label=disable
     networks:
       - opensoc-net
     depends_on:

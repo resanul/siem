@@ -1179,7 +1179,11 @@ def get_endpoint_hosts(
     include_demo: bool = False,
 ):
     """Retrieves registered endpoints and fleet metrics."""
-    from backend.app.services.host_storage import list_hosts, get_fleet_stats
+    from backend.app.services.host_storage import list_hosts, get_fleet_stats, try_sync_wazuh_agents
+    try:
+        try_sync_wazuh_agents()
+    except Exception:
+        pass
     hosts = list_hosts(status_filter=status, search=search, include_demo=include_demo)
     stats = get_fleet_stats(include_demo=include_demo)
     return {
@@ -1187,6 +1191,18 @@ def get_endpoint_hosts(
         "active": stats["active"],
         "disconnected": stats["disconnected"],
         "hosts": hosts
+    }
+
+
+@api_router.post("/hosts/sync")
+def sync_endpoint_hosts():
+    """Forces synchronization of registered agents from Wazuh Manager."""
+    from backend.app.services.host_storage import try_sync_wazuh_agents, list_hosts, get_fleet_stats
+    try_sync_wazuh_agents()
+    return {
+        "status": "SUCCESS",
+        "hosts": list_hosts(),
+        "stats": get_fleet_stats()
     }
 
 
