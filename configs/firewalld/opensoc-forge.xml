@@ -4,6 +4,7 @@
   <description>OpenSOC Forge All-in-One SIEM/SOC platform data plane and management ports.</description>
   <!-- Management Web Console & API -->
   <port port="8000" protocol="tcp"/>
+  <port port="7070" protocol="tcp"/>
   <!-- Kibana Analytics Dashboard -->
   <port port="5601" protocol="tcp"/>
   <!-- Elasticsearch Search & Telemetry REST API -->

@@ -65,12 +65,12 @@ services:
       - ES_JAVA_OPTS=-Xms1g -Xmx1g
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
-      - xpack.security.enrollment.enabled=false
       - xpack.security.http.ssl.enabled=false
       - xpack.security.transport.ssl.enabled=false
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
     volumes:
       - es_data:/usr/share/elasticsearch/data:rw,z
+      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/usr/share/elasticsearch/config/certs:ro,z
     ulimits:
       memlock:
         soft: -1
@@ -102,6 +102,9 @@ services:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
+    volumes:
+      - kibana_data:/usr/share/kibana/data:rw,z
+      - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/usr/share/kibana/config/certs:ro,z
     networks:
       - opensoc-net
     depends_on:
@@ -128,9 +131,12 @@ services:
     environment:
       - INDEXER_URL=http://elasticsearch:9200
       - INDEXER_USER=elastic
+      - INDEXER_USERNAME=elastic
       - INDEXER_PASSWORD=${ELASTIC_PASSWORD:-OpenSocForge2026!}
       - WAZUH_API_USER=${WAZUH_API_USER:-wazuh}
       - WAZUH_API_PASSWORD=${WAZUH_API_PASSWORD:-OpenSocForge2026!}
+      - API_USERNAME=${WAZUH_API_USER:-wazuh}
+      - API_PASSWORD=${WAZUH_API_PASSWORD:-OpenSocForge2026!}
     volumes:
       - wazuh_etc:/var/ossec/etc:rw,z
       - wazuh_logs:/var/ossec/logs:rw,z
@@ -139,6 +145,12 @@ services:
       - opensoc-net
     depends_on:
       - elasticsearch
+    healthcheck:
+      test: "curl -k -u $${WAZUH_API_USER:-wazuh}:$${WAZUH_API_PASSWORD:-OpenSocForge2026!} https://localhost:55000/manager/status | grep -q '\"error\":0' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ----------------------------------------------------------------------------
   # Service 5: Suricata NIDS Engine (Host Networking & AF_PACKET)
@@ -158,9 +170,15 @@ services:
       - SURICATA_OPTIONS=-i ${MONITORED_INTERFACE:-eth0} --af-packet
     volumes:
       - ${SURICATA_LOG_DIR:-/var/log/suricata}:/var/log/suricata:rw,z
-      - ./configs/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro,z
-      - ./configs/suricata/suricata.rules:/var/lib/suricata/rules/suricata.rules:ro,z
+      - ./configs/suricata/suricata.yaml:/etc/suricata/suricata.yaml:rw,z
+      - ./configs/suricata/suricata.rules:/var/lib/suricata/rules/suricata.rules:rw,z
       - suricata_rules:/var/lib/suricata/rules:rw,z
+    healthcheck:
+      test: "test -f /var/log/suricata/eve.json || test -d /var/log/suricata || exit 1"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # ----------------------------------------------------------------------------
   # Service 6: Syslog Collector (RFC 5424/3164/5425 Ingestion)
@@ -187,6 +205,12 @@ services:
       - opensoc-net
     depends_on:
       - elasticsearch
+    healthcheck:
+      test: "nc -z 127.0.0.1 514 || nc -z -u 127.0.0.1 514 || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 # ------------------------------------------------------------------------------
 # Network Topology: Explicit Bridge Network
@@ -195,6 +219,11 @@ networks:
   opensoc-net:
     name: opensoc-net
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
 
 # ------------------------------------------------------------------------------
 # Persistent Volume Storage

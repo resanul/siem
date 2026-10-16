@@ -62,6 +62,7 @@ if [ "${OS_FAMILY}" = "rhel" ]; then
 
         # Ensure explicit port fallback
         firewall-cmd --permanent --add-port=8000/tcp 2>/dev/null || true
+        firewall-cmd --permanent --add-port=7070/tcp 2>/dev/null || true
         firewall-cmd --permanent --add-port=5601/tcp 2>/dev/null || true
         firewall-cmd --permanent --add-port=9200/tcp 2>/dev/null || true
         firewall-cmd --permanent --add-port=1514/tcp 2>/dev/null || true
@@ -95,6 +96,7 @@ if [ "${OS_FAMILY}" = "debian" ]; then
     if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qw "active"; then
         log_info "Configuring UFW allowed ports for OpenSOC Forge..."
         ufw allow 8000/tcp comment "OpenSOC Forge Web Console & API" 2>/dev/null || true
+        ufw allow 7070/tcp comment "OpenSOC Forge Web Console & API" 2>/dev/null || true
         ufw allow 5601/tcp comment "OpenSOC Forge Kibana" 2>/dev/null || true
         ufw allow 9200/tcp comment "OpenSOC Forge Elasticsearch" 2>/dev/null || true
         ufw allow 1514/tcp comment "OpenSOC Forge Wazuh Events TCP" 2>/dev/null || true

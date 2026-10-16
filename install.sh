@@ -323,6 +323,10 @@ CERT_DIR="${INSTALL_DIR}/configs/elasticsearch/certs"
 mkdir -p "${CERT_DIR}"
 if [ -f "${INSTALL_DIR}/scripts/generate_certs.sh" ]; then
     bash "${INSTALL_DIR}/scripts/generate_certs.sh" "${CERT_DIR}"
+    mkdir -p /etc/opensoc/certs
+    cp -f "${CERT_DIR}/"* /etc/opensoc/certs/ 2>/dev/null || true
+    chmod 644 /etc/opensoc/certs/*.crt 2>/dev/null || true
+    chmod 600 /etc/opensoc/certs/*.key 2>/dev/null || true
 fi
 
 # ------------------------------------------------------------------------------

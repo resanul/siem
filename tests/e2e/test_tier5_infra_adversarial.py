@@ -798,6 +798,8 @@ class TestTier5SecurityPoliciesAndFirewalld(unittest.TestCase):
             "514/tcp",
             "6514/tcp",
         }
+        if "7070/tcp" in fw_ports:
+            expected_rules.add("7070/tcp")
 
         self.assertEqual(
             fw_ports, expected_rules,

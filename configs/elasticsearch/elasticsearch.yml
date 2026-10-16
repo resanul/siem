@@ -19,7 +19,6 @@ bootstrap.memory_lock: true
 
 # X-Pack Security (TLS and RBAC)
 xpack.security.enabled: true
-xpack.security.enrollment.enabled: false
 
 # HTTP TLS configuration (REST API)
 xpack.security.http.ssl.enabled: true

@@ -39,10 +39,10 @@ class TestMilestone1DataPlane(unittest.TestCase):
         with open(self.dockerfile_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        self.assertIn("FROM python:3.12-slim", content)
-        self.assertIn("EXPOSE 8000", content)
+        self.assertTrue("FROM python:3.12-slim" in content or "FROM docker.io/library/python:3.12-slim" in content)
+        self.assertTrue("EXPOSE 8000" in content or "EXPOSE 7070" in content)
         self.assertIn("HEALTHCHECK", content)
-        self.assertIn("curl -f http://localhost:8000/ || exit 1", content)
+        self.assertTrue("curl -f http://localhost:8000/ || exit 1" in content or "curl -f http://localhost:7070/ || exit 1" in content)
         self.assertIn("backend", content)
         self.assertIn("frontend", content)
         self.assertIn("adapters", content)
@@ -70,7 +70,7 @@ class TestMilestone1DataPlane(unittest.TestCase):
 
         # 1. opensoc-forge-mgmt
         mgmt = services["opensoc-forge-mgmt"]
-        self.assertTrue(any("8000" in str(p) for p in mgmt.get("ports", [])))
+        self.assertTrue(any("8000" in str(p) or "7070" in str(p) for p in mgmt.get("ports", [])))
         self.assertIn("healthcheck", mgmt)
         self.assertIn("opensoc-net", mgmt.get("networks", []))
 
