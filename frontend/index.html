@@ -641,12 +641,24 @@ function App() {
   const [savingThreatConfig, setSavingThreatConfig] = useState(false);
   const [autoSyncInterval, setAutoSyncInterval] = useState(300); // 300s = 5m
   const [lastSyncTime, setLastSyncTime] = useState("");
+  const [showAddIocModal, setShowAddIocModal] = useState(false);
+  const [addingIoc, setAddingIoc] = useState(false);
+  const [newIocData, setNewIocData] = useState({
+    indicator: "",
+    type: "IPv4",
+    malware_family: "",
+    threat_actor: "Analyst Custom",
+    confidence: 100,
+    reputation: "MALICIOUS",
+    source: "Custom / Analyst",
+    description: "",
+  });
 
   useEffect(() => {
     if (window.lucide) {
       window.lucide.createIcons();
     }
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, syncingFeeds, syncingTalos, showThreatConfigModal]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal]);
 
   useEffect(() => {
     if (currentScreen === "threat_intel") {
@@ -1040,6 +1052,73 @@ function App() {
     } finally {
       setSyncingTalos(false);
       setTimeout(() => setSyncMessage(""), 7000);
+    }
+  };
+
+  const handleAddCustomIoc = async (e) => {
+    if (e) e.preventDefault();
+    if (!newIocData.indicator.trim()) return;
+    setAddingIoc(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/v1/threat-intel/iocs/add", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(newIocData)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setThreatFeeds(prev => [data.ioc, ...prev]);
+        if (dbStats) {
+          setDbStats({ ...dbStats, total_iocs: data.total || (dbStats.total_iocs + 1) });
+        }
+        setSyncMessage(`✅ IOC '${data.ioc.indicator}' saved to offline database!`);
+        setShowAddIocModal(false);
+        setNewIocData({
+          indicator: "",
+          type: "IPv4",
+          malware_family: "",
+          threat_actor: "Analyst Custom",
+          confidence: 100,
+          reputation: "MALICIOUS",
+          source: "Custom / Analyst",
+          description: "",
+        });
+        setTimeout(() => setSyncMessage(""), 5000);
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Failed to add IOC");
+      }
+    } catch (err) {
+      console.error("Add IOC error", err);
+      alert("Error adding IOC to database");
+    } finally {
+      setAddingIoc(false);
+    }
+  };
+
+  const handleDeleteIoc = async (indicator) => {
+    if (!confirm(`Are you sure you want to delete IOC: ${indicator}?`)) return;
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch(`/api/v1/threat-intel/iocs/${encodeURIComponent(indicator)}`, {
+        method: "DELETE",
+        headers
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setThreatFeeds(prev => prev.filter(x => x.indicator !== indicator));
+        if (dbStats) {
+          setDbStats({ ...dbStats, total_iocs: data.total || (dbStats.total_iocs - 1) });
+        }
+        setSyncMessage(`Deleted IOC '${indicator}'`);
+        setTimeout(() => setSyncMessage(""), 4000);
+      }
+    } catch (err) {
+      console.error("Delete IOC error", err);
     }
   };
 
@@ -3150,9 +3229,16 @@ function App() {
   }, `Last: ${lastSyncTime}`)), syncMessage && /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20"
   }, syncMessage), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowAddIocModal(true),
+    title: "Add a custom threat indicator (IP, Domain, Hash, CVE) to offline database",
+    className: "px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded text-xs font-mono font-bold flex items-center space-x-1.5 transition-colors shadow-sm"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "plus-circle",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "+ Add Custom IOC")), /*#__PURE__*/React.createElement("button", {
     onClick: () => setShowThreatConfigModal(true),
     title: "Configure abuse.ch, AlienVault OTX, VirusTotal API keys & providers",
-    className: "px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded text-xs font-mono font-bold flex items-center space-x-1.5 transition-colors shadow-sm"
+    className: "px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-600 text-slate-300 rounded text-xs font-mono font-bold flex items-center space-x-1.5 transition-colors shadow-sm"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "key",
     className: "w-3.5 h-3.5"
@@ -3323,27 +3409,27 @@ function App() {
     className: "p-3 bg-[#131b2e] border-b border-[#1f293d] flex flex-col md:flex-row md:items-center justify-between gap-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-1 overflow-x-auto"
-  }, ["ALL", "CISA KEV", "Cisco Talos", "abuse.ch ThreatFox", "abuse.ch URLhaus", "abuse.ch Feodo Tracker", "abuse.ch MalwareBazaar", "Emerging Threats", "AlienVault OTX"].map(fTab => /*#__PURE__*/React.createElement("button", {
+  }, ["ALL", "Custom / Analyst", "CISA KEV", "Cisco Talos", "abuse.ch ThreatFox", "abuse.ch URLhaus", "abuse.ch Feodo Tracker", "abuse.ch MalwareBazaar", "Emerging Threats", "AlienVault OTX"].map(fTab => /*#__PURE__*/React.createElement("button", {
     key: fTab,
     onClick: () => handleThreatFilterChange(fTab),
     className: `px-2.5 py-1 rounded text-[11px] font-mono transition-all ${threatFilter === fTab ? "bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30" : "text-slate-400 hover:text-slate-200 hover:bg-[#1f293d]"}`
-  }, fTab === "ALL" ? `All Feeds (${threatFeeds.length})` : fTab === "Cisco Talos" ? `Cisco Talos (${talosCount.toLocaleString()})` : fTab))), /*#__PURE__*/React.createElement("div", {
+  }, fTab === "ALL" ? `All Feeds (${(dbStats && dbStats.total_iocs ? dbStats.total_iocs : (talosCount ? talosCount + threatFeeds.length : threatFeeds.length)).toLocaleString()})` : fTab === "Cisco Talos" ? `Cisco Talos (${talosCount.toLocaleString()})` : fTab))), /*#__PURE__*/React.createElement("div", {
     className: "relative flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: threatSearchQuery,
     onChange: e => setThreatSearchQuery(e.target.value),
     onKeyDown: e => {
-      if (e.key === "Enter" && threatFilter === "Cisco Talos") {
-        fetchThreatFeeds(false, "Cisco Talos", threatSearchQuery);
+      if (e.key === "Enter") {
+        fetchThreatFeeds(false, threatFilter, threatSearchQuery);
       }
     },
-    placeholder: "Filter or search 17k+ IOCs (press Enter)...",
-    className: "bg-[#080c14] border border-[#1f293d] rounded px-2.5 py-1 text-[11px] font-mono text-slate-200 w-64 focus:outline-none focus:border-emerald-500"
-  }), threatFilter === "Cisco Talos" && /*#__PURE__*/React.createElement("button", {
-    onClick: () => fetchThreatFeeds(false, "Cisco Talos", threatSearchQuery),
+    placeholder: "Search IP, domain, hash, or CVE across all indexed IOCs (press Enter)...",
+    className: "bg-[#080c14] border border-[#1f293d] rounded px-2.5 py-1 text-[11px] font-mono text-slate-200 w-72 focus:outline-none focus:border-emerald-500"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => fetchThreatFeeds(false, threatFilter, threatSearchQuery),
     className: "px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded text-[10px] font-mono font-bold transition-colors"
-  }, "Search 17k"), threatFilter === "Cisco Talos" && /*#__PURE__*/React.createElement("button", {
+  }, "Search"), threatFilter === "Cisco Talos" && /*#__PURE__*/React.createElement("button", {
     onClick: updateCiscoTalos,
     disabled: syncingTalos,
     title: "Fetch latest IOCs live from https://github.com/Cisco-Talos/IOCs",
@@ -3384,6 +3470,7 @@ function App() {
     className: "p-3"
   }, /*#__PURE__*/React.createElement("span", {
     className: `px-1.5 py-0.5 rounded text-[10px] font-bold ${
+      (feed.source === "Custom / Analyst" || (feed.source && feed.source.toLowerCase().includes("custom"))) ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" :
       feed.source === "CISA KEV" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
       feed.source === "Cisco Talos" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
       feed.source === "abuse.ch URLhaus" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
@@ -3410,10 +3497,19 @@ function App() {
     className: "p-3 text-slate-400 text-[11px]"
   }, feed.last_seen || feed.date_added || "-"), /*#__PURE__*/React.createElement("td", {
     className: "p-3 text-right"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-end space-x-1.5"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => executeHunt(feed.indicator || feed.cve),
     className: "px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold font-mono transition-all"
-  }, "Hunt in Cluster →"))))))))), showThreatConfigModal && /*#__PURE__*/React.createElement("div", {
+  }, "Hunt in Cluster →"), (feed.source === "Custom / Analyst" || (feed.source && feed.source.toLowerCase().includes("custom"))) && /*#__PURE__*/React.createElement("button", {
+    onClick: () => handleDeleteIoc(feed.indicator || feed.cve),
+    title: "Delete custom IOC from offline database",
+    className: "p-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold transition-all"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "trash-2",
+    className: "w-3.5 h-3.5"
+  }))))))))))), showThreatConfigModal && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl shadow-2xl max-w-2xl w-full p-6 space-y-6 text-slate-200 font-sans max-h-[90vh] overflow-y-auto"
@@ -3634,7 +3730,111 @@ function App() {
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "check",
     className: "w-4 h-4"
-  }), /*#__PURE__*/React.createElement("span", null, savingThreatConfig ? "Saving..." : "Save Configuration"))))), currentScreen === "sigma_studio" && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, savingThreatConfig ? "Saving..." : "Save Configuration"))))), showAddIocModal && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] border border-[#1f293d] rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-5 text-slate-200 font-sans max-h-[90vh] overflow-y-auto"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between border-b border-[#1f293d] pb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "plus-circle",
+    className: "w-5 h-5"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "text-base font-bold text-slate-100"
+  }, "Add Custom Threat Indicator (IOC)"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400"
+  }, "Save indicators to local SQLite database for offline threat hunting & backup."))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowAddIocModal(false),
+    className: "text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-[#1a2333]"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-5 h-5"
+  }))), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleAddCustomIoc,
+    className: "space-y-4 font-mono text-xs"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "INDICATOR VALUE *"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    required: true,
+    value: newIocData.indicator,
+    onChange: e => setNewIocData({ ...newIocData, indicator: e.target.value }),
+    placeholder: "e.g. 198.51.100.84, evil-domain.com, SHA-256 hash, or CVE-2024-xxxx",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500 font-bold"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "TYPE"), /*#__PURE__*/React.createElement("select", {
+    value: newIocData.type,
+    onChange: e => setNewIocData({ ...newIocData, type: e.target.value }),
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  }, ["IPv4", "Domain", "URL", "SHA-256", "MD5", "CVE", "IPv6"].map(t => /*#__PURE__*/React.createElement("option", { key: t, value: t }, t)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "REPUTATION"), /*#__PURE__*/React.createElement("select", {
+    value: newIocData.reputation,
+    onChange: e => setNewIocData({ ...newIocData, reputation: e.target.value }),
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  }, ["MALICIOUS", "SUSPICIOUS", "HIGH RISK", "KNOWN EXPLOITED"].map(r => /*#__PURE__*/React.createElement("option", { key: r, value: r }, r))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "MALWARE FAMILY / CAMPAIGN"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: newIocData.malware_family,
+    onChange: e => setNewIocData({ ...newIocData, malware_family: e.target.value }),
+    placeholder: "e.g. Cobalt Strike, Ransomware, Phishing",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "THREAT ACTOR / ATTRIBUTED TO"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: newIocData.threat_actor,
+    onChange: e => setNewIocData({ ...newIocData, threat_actor: e.target.value }),
+    placeholder: "e.g. Analyst Custom, APT29",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "CONFIDENCE SCORE"), /*#__PURE__*/React.createElement("select", {
+    value: newIocData.confidence,
+    onChange: e => setNewIocData({ ...newIocData, confidence: parseInt(e.target.value) }),
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  }, [100, 95, 90, 80, 70, 50].map(c => /*#__PURE__*/React.createElement("option", { key: c, value: c }, `${c}% Confidence`)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "SOURCE LABEL"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: newIocData.source,
+    onChange: e => setNewIocData({ ...newIocData, source: e.target.value }),
+    placeholder: "Custom / Analyst",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-300 font-bold mb-1"
+  }, "DESCRIPTION / ANALYST NOTES"), /*#__PURE__*/React.createElement("textarea", {
+    rows: 2,
+    value: newIocData.description,
+    onChange: e => setNewIocData({ ...newIocData, description: e.target.value }),
+    placeholder: "Investigation notes, origin context, or IOC sightings reference...",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-end space-x-3 pt-4 border-t border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setShowAddIocModal(false),
+    className: "px-4 py-2 rounded text-xs font-mono font-bold text-slate-400 hover:text-slate-200 hover:bg-[#1f293d]"
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    disabled: addingIoc || !newIocData.indicator.trim(),
+    className: "px-5 py-2 rounded text-xs font-mono font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center space-x-1.5 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "check",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, addingIoc ? "Saving IOC..." : "Save to Offline DB")))))), currentScreen === "sigma_studio" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"

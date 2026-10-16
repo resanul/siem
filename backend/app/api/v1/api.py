@@ -804,6 +804,36 @@ def trigger_github_push(
     return sync_iocs_to_github(force_push=force)
 
 
+@api_router.post("/threat-intel/iocs/add")
+def add_custom_threat_ioc(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Adds a custom user/analyst IOC to the offline SQLite database."""
+    ind = payload.get("indicator", "").strip()
+    if not ind:
+        raise HTTPException(status_code=400, detail="Indicator cannot be empty.")
+    try:
+        from backend.app.services.ioc_storage import add_custom_ioc
+        res = add_custom_ioc(payload)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.delete("/threat-intel/iocs/{indicator:path}")
+def delete_threat_ioc(
+    indicator: str,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Deletes an indicator from offline SQLite storage."""
+    from backend.app.services.ioc_storage import delete_ioc, get_total_ioc_count
+    success = delete_ioc(indicator)
+    if not success:
+        raise HTTPException(status_code=404, detail="Indicator not found or could not be deleted.")
+    return {"status": "success", "indicator": indicator, "total": get_total_ioc_count()}
+
+
 @api_router.post("/threat-intel/talos/update")
 def update_talos_intel(
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),

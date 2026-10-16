@@ -374,3 +374,55 @@ def record_github_sync_log(total_iocs: int, action: str, commit_sha: str, status
         conn.close()
     except Exception:
         pass
+
+
+def add_custom_ioc(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Adds or updates a single custom analyst IOC in the offline database."""
+    ind = str(item.get("indicator", "")).strip()
+    if not ind:
+        raise ValueError("Indicator cannot be empty")
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    clean_item = {
+        "indicator": ind,
+        "type": str(item.get("type") or "IPv4").strip(),
+        "reputation": str(item.get("reputation") or "MALICIOUS").strip(),
+        "confidence": int(item.get("confidence") or 100),
+        "threat_actor": str(item.get("threat_actor") or "Analyst Custom").strip(),
+        "malware_family": str(item.get("malware_family") or "Custom IOC").strip(),
+        "source": str(item.get("source") or "Custom / Analyst").strip(),
+        "first_seen": str(item.get("first_seen") or now_str),
+        "last_seen": str(item.get("last_seen") or now_str),
+        "ransomware_use": str(item.get("ransomware_use") or "Targeted Threat / Investigation"),
+        "cvss_score": str(item.get("cvss_score") or "CUSTOM IOC"),
+        "status": str(item.get("status") or "ACTIVE IOC"),
+        "description": str(item.get("description") or "Analyst manual threat entry").strip(),
+    }
+    res = save_iocs_to_db([clean_item])
+    return {
+        "status": "success",
+        "indicator": ind,
+        "total": res.get("total", get_total_ioc_count()),
+        "ioc": clean_item
+    }
+
+
+def delete_ioc(indicator: str) -> bool:
+    """Deletes an indicator from the offline database."""
+    ind = indicator.strip()
+    if not ind:
+        return False
+    db_path = init_ioc_database()
+    try:
+        conn = sqlite3.connect(db_path, timeout=10)
+        c = conn.cursor()
+        c.execute("DELETE FROM iocs WHERE indicator = ?", (ind,))
+        deleted = c.rowcount > 0
+        conn.commit()
+        conn.close()
+        if deleted:
+            export_iocs_snapshot()
+        return deleted
+    except Exception as e:
+        print(f"Error deleting IOC: {e}")
+        return False
