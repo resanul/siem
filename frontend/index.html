@@ -658,7 +658,7 @@ function App() {
     if (window.lucide) {
       window.lucide.createIcons();
     }
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal]);
 
   useEffect(() => {
     if (currentScreen === "threat_intel") {
@@ -3318,6 +3318,8 @@ function App() {
     className: "text-[10px] font-mono text-slate-400"
   }, "Searches: opensoc-syslog-*, wazuh-alerts-*, /var/log/suricata/eve.json")), /*#__PURE__*/React.createElement("div", {
     className: "flex space-x-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative flex-1"
   }, /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: huntInput,
@@ -3326,12 +3328,35 @@ function App() {
       if (e.key === "Enter") executeHunt();
     },
     placeholder: "Search IP, domain, or SHA-256 hash across all cluster telemetry...",
-    className: "flex-1 bg-[#131b2e] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
-  }), /*#__PURE__*/React.createElement("button", {
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 pr-8"
+  }), huntInput && /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      setHuntInput("");
+      setHuntResult(null);
+    },
+    title: "Clear input field",
+    className: "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-0.5 rounded hover:bg-slate-700/50 transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-3.5 h-3.5"
+  }))), /*#__PURE__*/React.createElement("button", {
     onClick: () => executeHunt(),
     disabled: huntLoading || !huntInput.trim(),
-    className: "px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-xs font-bold font-mono flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
-  }, huntLoading ? /*#__PURE__*/React.createElement("span", null, "Hunting...") : /*#__PURE__*/React.createElement("span", null, "Hunt IOC"))), /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-xs font-bold font-mono flex items-center space-x-1.5 disabled:opacity-50 transition-colors shadow-sm"
+  }, huntLoading ? /*#__PURE__*/React.createElement("span", null, "Hunting...") : /*#__PURE__*/React.createElement("span", null, "Hunt IOC")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      setHuntInput("");
+      setHuntResult(null);
+    },
+    disabled: !huntInput && !huntResult,
+    title: "Clear search input and hide hunt results",
+    className: "px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 border border-[#1f293d] text-slate-300 hover:text-slate-100 rounded text-xs font-bold font-mono flex items-center space-x-1.5 transition-colors disabled:opacity-40"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "rotate-ccw",
+    className: "w-3.5 h-3.5 text-slate-400"
+  }), /*#__PURE__*/React.createElement("span", null, "Clear"))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2 text-[10px] font-mono text-slate-400 flex-wrap gap-y-1"
   }, /*#__PURE__*/React.createElement("span", null, "Quick Hunt Suggestions:"), /*#__PURE__*/React.createElement("button", {
     onClick: () => executeHunt("192.168.10.127"),
@@ -3361,9 +3386,18 @@ function App() {
     className: "font-bold text-sm text-slate-100 select-all"
   }, huntResult.ioc), /*#__PURE__*/React.createElement("span", {
     className: "text-[11px] text-slate-300 font-sans"
-  }, `— ${huntResult.classification || huntResult.reputation || ""}`)), /*#__PURE__*/React.createElement("span", {
+  }, `— ${huntResult.classification || huntResult.reputation || ""}`)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2 shrink-0"
+  }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-400"
-  }, `Scanned: ${(huntResult.searched_indices || []).join(", ")}`)), huntResult.ioc_intel && /*#__PURE__*/React.createElement("div", {
+  }, `Scanned: ${(huntResult.searched_indices || []).join(", ")}`), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setHuntResult(null),
+    title: "Close result panel",
+    className: "text-slate-400 hover:text-rose-400 p-1 rounded hover:bg-[#1a2333] transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-3.5 h-3.5"
+  })))), huntResult.ioc_intel && /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-2.5 rounded bg-[#080c14]/70 border border-[#1f293d] text-[11px]"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-500 uppercase font-bold block"
