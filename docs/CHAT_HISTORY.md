@@ -21,6 +21,32 @@
 
 ## 📅 Session Timeline & Development History
 
+### Session 13 — Real Endpoints Transition, Demo Data Purge & Manual Host Registration
+- **Date / Time:** 2026-10-17 00:50 – 01:00 UTC+6
+- **Context:** Clean-Slate Host Inventory & Production Onboarding
+- **User Request:**
+  - *"এখানে ত আমার real endpoints থাকার কথা তাই প্রথমে demo data clear করতে হবে। তারপর এখানে Host add করার options থাকতে হবে , এবং সব instructions থাকতে হবে, /ui-styling /ui-ux-pro-max"*
+- **Actions Taken:**
+  1. **Demo Data Purge & Clean Slate Architecture:**
+     - Removed hardcoded fake endpoints (`web-app-dmz-01`, `db-cluster-node-01`, etc.) from frontend React state.
+     - Implemented clean-slate state where inventory defaults to 0 until real workstations or servers are enrolled.
+     - Added `[🗑️ Clear Demo Data]` button to immediately purge any simulated hosts.
+  2. **Persistent Host & Fleet Backend Service (`backend/app/services/host_storage.py`):**
+     - Created SQLite persistent storage for real endpoints (`endpoints` table with indexes on status and OS).
+     - Added background auto-sync hook to discover any live Wazuh agents enrolling on ports 1514/1515.
+     - Created REST API endpoints:
+       - `GET /api/v1/hosts`: Returns real registered endpoints, search results, and fleet KPI counts.
+       - `POST /api/v1/hosts`: Registers a new host manually into inventory.
+       - `DELETE /api/v1/hosts/{id}`: Removes/deregisters an endpoint.
+       - `POST /api/v1/hosts/clear`: Resets endpoint database to clean slate.
+  3. **High-Density UI/UX Overhaul (`ui-styling` & `ui-ux-pro-max`):**
+     - Header Toolbar: Responsive 4-button action bar (`[↻ Refresh]`, `[🗑️ Clear Demo Data]`, `[+ Register Host]`, `[+ Deploy / Enroll Agent]`).
+     - Dynamic KPI Cards: Real counts for Total Enrolled Agents, Active & Synced (with live green pulse), and Disconnected.
+     - Search & Status Filter Bar: Instant search and pills (`All`, `Online`, `Offline`) with live manager connection indicator.
+     - Museum-Quality Empty State: When 0 hosts are enrolled, displays an onboarding illustration with inline copyable 1-liner install script box and direct CTAs.
+     - Manual Host Registration Modal (`[+ Register Host]`): Allows analysts to manually register hosts with Hostname, IP, OS, Status, FIM integrity, and Notes.
+     - Comprehensive Enrollment Modal (`[+ Deploy / Enroll Agent]`): Detailed OS-specific tabs and troubleshooting instructions.
+
 ### Session 12 — HIDS (Wazuh) Agent Deployment & 1-Liner Enrollment System
 - **Date / Time:** 2026-10-17 00:40 – 00:45 UTC+6
 - **Context:** Endpoint Fleet Onboarding & HIDS Operations

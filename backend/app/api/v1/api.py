@@ -1171,4 +1171,63 @@ def trigger_system_git_update():
     return results
 
 
+# ===================== ENDPOINT HOSTS & FLEET =====================
+@api_router.get("/hosts")
+def get_endpoint_hosts(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    include_demo: bool = False,
+):
+    """Retrieves registered endpoints and fleet metrics."""
+    from backend.app.services.host_storage import list_hosts, get_fleet_stats
+    hosts = list_hosts(status_filter=status, search=search, include_demo=include_demo)
+    stats = get_fleet_stats(include_demo=include_demo)
+    return {
+        "total": stats["total"],
+        "active": stats["active"],
+        "disconnected": stats["disconnected"],
+        "hosts": hosts
+    }
+
+
+@api_router.post("/hosts")
+def create_endpoint_host(payload: Dict[str, Any]):
+    """Registers a new endpoint host manually into inventory."""
+    from backend.app.services.host_storage import add_host
+    hostname = payload.get("hostname", "").strip()
+    ip_address = payload.get("ip_address", "").strip()
+    if not hostname or not ip_address:
+        raise HTTPException(status_code=400, detail="Hostname and IP address are required.")
+    
+    return add_host(
+        hostname=hostname,
+        ip_address=ip_address,
+        os_name=payload.get("os_name", "Linux (Ubuntu/Debian)"),
+        agent_version=payload.get("agent_version", "4.8.2"),
+        fim_status=payload.get("fim_status", "Clean"),
+        status=payload.get("status", "ONLINE"),
+        notes=payload.get("notes", ""),
+        host_id=payload.get("id"),
+        is_demo=payload.get("is_demo", False),
+    )
+
+
+@api_router.delete("/hosts/{host_id}")
+def remove_endpoint_host(host_id: str):
+    """Deletes or deregisters an endpoint host."""
+    from backend.app.services.host_storage import delete_host
+    success = delete_host(host_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Host ID {host_id} not found.")
+    return {"status": "SUCCESS", "id": host_id}
+
+
+@api_router.post("/hosts/clear")
+def clear_endpoint_hosts():
+    """Clears demo and temporary endpoint hosts to start with a clean slate."""
+    from backend.app.services.host_storage import clear_all_hosts
+    return clear_all_hosts()
+
+
+
 

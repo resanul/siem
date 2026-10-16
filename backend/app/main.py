@@ -70,6 +70,12 @@ def on_startup():
         print(f"Failed to init IOC database: {e}")
 
     try:
+        from backend.app.services.host_storage import init_host_database
+        init_host_database()
+    except Exception as e:
+        print(f"Failed to init Host database: {e}")
+
+    try:
         from backend.app.services.github_sync import start_github_sync_scheduler
         start_github_sync_scheduler()
     except Exception as e:

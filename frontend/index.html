@@ -153,6 +153,22 @@ function App() {
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [enrollOS, setEnrollOS] = useState("linux-deb");
   const [enrollCopied, setEnrollCopied] = useState(false);
+  const [hostsFleet, setHostsFleet] = useState([]);
+  const [hostsStats, setHostsStats] = useState({ total: 0, active: 0, disconnected: 0 });
+  const [hostsLoading, setHostsLoading] = useState(false);
+  const [hostsSearch, setHostsSearch] = useState("");
+  const [hostsFilterStatus, setHostsFilterStatus] = useState("ALL");
+  const [addHostModalOpen, setAddHostModalOpen] = useState(false);
+  const [newHostForm, setNewHostForm] = useState({
+    hostname: "",
+    ip_address: "",
+    os_name: "Linux (Ubuntu/Debian)",
+    agent_version: "4.8.2",
+    fim_status: "Clean",
+    status: "ONLINE",
+    notes: ""
+  });
+  const [hostsAlertMsg, setHostsAlertMsg] = useState(null);
 
   // Enterprise Simulation & Range State
   const [basTests, setBasTests] = useState([{
@@ -662,7 +678,7 @@ function App() {
     if (window.lucide) {
       window.lucide.createIcons();
     }
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, addHostModalOpen, hostsFleet, hostsLoading]);
 
   useEffect(() => {
     if (currentScreen === "threat_intel") {
@@ -671,6 +687,9 @@ function App() {
       }
       loadThreatConfig();
       loadDbStats();
+    }
+    if (currentScreen === "hosts") {
+      fetchHostsFleet();
     }
   }, [currentScreen]);
 
@@ -842,6 +861,88 @@ function App() {
         message: `Git Update completed or reloading. (Tip: You can also double-click update.bat or run ./update.sh)`
       });
       setTimeout(() => setGitUpdateStatus(null), 6000);
+    }
+  };
+
+  const fetchHostsFleet = async () => {
+    setHostsLoading(true);
+    try {
+      const res = await fetch("/api/v1/hosts");
+      if (res.ok) {
+        const data = await res.json();
+        setHostsFleet(data.hosts || []);
+        setHostsStats({
+          total: data.total || 0,
+          active: data.active || 0,
+          disconnected: data.disconnected || 0
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch hosts:", err);
+    } finally {
+      setHostsLoading(false);
+    }
+  };
+
+  const handleClearDemoHosts = async () => {
+    if (!confirm("Are you sure you want to clear demo endpoints and reset fleet to a clean state?")) return;
+    try {
+      const res = await fetch("/api/v1/hosts/clear", { method: "POST" });
+      if (res.ok) {
+        setHostsFleet([]);
+        setHostsStats({ total: 0, active: 0, disconnected: 0 });
+        setHostsAlertMsg("All demo data cleared. Endpoint fleet is now in clean state ready for your real hosts!");
+        setTimeout(() => setHostsAlertMsg(null), 5000);
+      }
+    } catch (err) {
+      setHostsFleet([]);
+      setHostsStats({ total: 0, active: 0, disconnected: 0 });
+    }
+  };
+
+  const handleAddHostManual = async (e) => {
+    if (e) e.preventDefault();
+    if (!newHostForm.hostname || !newHostForm.ip_address) {
+      alert("Please enter both Hostname and IP Address");
+      return;
+    }
+    try {
+      const res = await fetch("/api/v1/hosts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newHostForm)
+      });
+      if (res.ok) {
+        const added = await res.json();
+        setAddHostModalOpen(false);
+        setNewHostForm({
+          hostname: "",
+          ip_address: "",
+          os_name: "Linux (Ubuntu/Debian)",
+          agent_version: "4.8.2",
+          fim_status: "Clean",
+          status: "ONLINE",
+          notes: ""
+        });
+        setHostsAlertMsg(`Host ${added.host} (${added.ip}) registered successfully!`);
+        setTimeout(() => setHostsAlertMsg(null), 5000);
+        fetchHostsFleet();
+      }
+    } catch (err) {
+      alert("Failed to register host: " + err.message);
+    }
+  };
+
+  const handleDeleteHost = async (hostId) => {
+    if (!confirm(`Are you sure you want to remove host ${hostId} from fleet?`)) return;
+    try {
+      const res = await fetch(`/api/v1/hosts/${hostId}`, { method: "DELETE" });
+      if (res.ok) {
+        setHostsFleet(prev => prev.filter(h => h.id !== hostId));
+        fetchHostsFleet();
+      }
+    } catch (err) {
+      alert("Delete failed: " + err.message);
     }
   };
 
@@ -1923,41 +2024,135 @@ function App() {
   }, "wazuh.syscheck")), /*#__PURE__*/React.createElement("div", {
     className: "text-slate-200 mt-1"
   }, "FIM file integrity altered: /usr/bin/sudo size changed from 182400 to 194012 bytes"))))), currentScreen === "hosts" && /*#__PURE__*/React.createElement("div", {
-    className: "space-y-4"
+    className: "space-y-5"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between items-center"
+    className: "flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#1f293d] pb-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
-    className: "text-xl font-bold text-slate-100"
-  }, "Hosts & Wazuh Endpoint Fleet"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400"
-  }, "Endpoint monitoring, File Integrity Monitoring (FIM), and Security Configuration Assessment (SCA).")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setEnrollModalOpen(true),
-    className: "px-3.5 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-medium flex items-center space-x-2 transition-all shadow-sm"
+    className: "text-xl font-bold text-slate-100 flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("span", null, "Hosts & Wazuh Endpoint Fleet"), /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 text-[10px] rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono"
+  }, "LIVE HIDS")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, "Endpoint monitoring, File Integrity Monitoring (FIM), and Security Configuration Assessment (SCA).")), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: fetchHostsFleet,
+    disabled: hostsLoading,
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a243d] border border-[#1f293d] text-slate-300 text-xs font-mono flex items-center space-x-1.5 transition-all"
   }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "plus-circle",
+    "data-lucide": "refresh-cw",
+    className: `w-3.5 h-3.5 ${hostsLoading ? "animate-spin" : ""}`
+  }), /*#__PURE__*/React.createElement("span", null, hostsLoading ? "Syncing..." : "Refresh")), /*#__PURE__*/React.createElement("button", {
+    onClick: handleClearDemoHosts,
+    className: "px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-mono flex items-center space-x-1.5 transition-all",
+    title: "Purge demo data to start with a 100% clean slate"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "trash-2",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Clear Demo Data")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddHostModalOpen(true),
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a243d] border border-[#1f293d] text-slate-200 text-xs font-mono flex items-center space-x-1.5 transition-all"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "plus",
+    className: "w-3.5 h-3.5 text-sky-400"
+  }), /*#__PURE__*/React.createElement("span", null, "+ Register Host")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEnrollModalOpen(true),
+    className: "px-3.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 text-xs font-mono font-semibold flex items-center space-x-2 transition-all shadow-sm"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "shield-check",
     className: "w-4 h-4 text-emerald-400"
-  }), /*#__PURE__*/React.createElement("span", null, "+ Deploy / Enroll New Agent"))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-3 gap-4"
+  }), /*#__PURE__*/React.createElement("span", null, "+ Deploy / Enroll Agent")))), hostsAlertMsg && /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "check-circle",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, hostsAlertMsg)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setHostsAlertMsg(null),
+    className: "text-slate-400 hover:text-slate-200"
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-3 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-400"
-  }, "TOTAL AGENTS"), /*#__PURE__*/React.createElement("div", {
-    className: "text-2xl font-bold font-mono text-slate-100"
-  }, "12")), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-400"
+    className: "text-xs text-slate-400 font-mono tracking-wider uppercase"
+  }, "TOTAL ENROLLED AGENTS"), /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl font-bold font-mono text-slate-100 mt-1"
+  }, hostsStats.total)), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-slate-400 font-mono tracking-wider uppercase"
   }, "ACTIVE & SYNCED"), /*#__PURE__*/React.createElement("div", {
-    className: "text-2xl font-bold font-mono text-emerald-400"
-  }, "11")), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
+    className: "text-2xl font-bold font-mono text-emerald-400 mt-1 flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("span", null, hostsStats.active), hostsStats.active > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-400"
+    className: "text-xs text-slate-400 font-mono tracking-wider uppercase"
   }, "DISCONNECTED / STALE"), /*#__PURE__*/React.createElement("div", {
-    className: "text-2xl font-bold font-mono text-amber-400"
-  }, "1"))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
+    className: "text-2xl font-bold font-mono text-amber-400 mt-1"
+  }, hostsStats.disconnected))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#0e1422] p-3 rounded-lg border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative flex-1 max-w-md"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: hostsSearch,
+    onChange: e => setHostsSearch(e.target.value),
+    placeholder: "Search by hostname, IP address, OS, or ID...",
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-emerald-500"
+  }), hostsSearch && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setHostsSearch(""),
+    className: "absolute right-2.5 top-2 text-slate-400 hover:text-slate-200 text-xs"
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, ["ALL", "ONLINE", "DISCONNECTED"].map(st => /*#__PURE__*/React.createElement("button", {
+    key: st,
+    onClick: () => setHostsFilterStatus(st),
+    className: `px-2.5 py-1 rounded text-xs font-mono transition-all ${hostsFilterStatus === st ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-semibold" : "text-slate-400 hover:bg-[#131b2e] border border-transparent"}`
+  }, st === "ALL" ? `All (${hostsStats.total})` : (st === "ONLINE" ? `Online (${hostsStats.active})` : `Offline (${hostsStats.disconnected})`))), /*#__PURE__*/React.createElement("span", {
+    className: "hidden lg:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-emerald-400"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0b101c] border border-dashed border-[#1f293d] rounded-xl p-8 text-center space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "shield-alert",
+    className: "w-7 h-7"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-1"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-base font-bold text-slate-100"
+  }, "No Real Endpoints Enrolled Yet (Clean Slate)"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 max-w-lg mx-auto"
+  }, "Demo endpoints have been cleared. To add your real workstations or production servers, execute the 1-liner command below on each target machine.")), /*#__PURE__*/React.createElement("div", {
+    className: "max-w-xl mx-auto bg-[#080c14] border border-[#1f293d] rounded-lg p-3 text-left space-y-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between text-xs text-slate-400 font-mono"
+  }, /*#__PURE__*/React.createElement("span", null, "Quick 1-Liner (Ubuntu / Debian / Kali):"), /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400"
+  }, "Port 1514 Active")), /*#__PURE__*/React.createElement("pre", {
+    className: "text-[11px] font-mono text-emerald-400 p-2 bg-[#0e1422] rounded border border-[#1f293d] break-all select-all whitespace-pre-wrap"
+  }, `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' apt-get install -y wazuh-agent && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent`)), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-center space-x-3 pt-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEnrollModalOpen(true),
+    className: "px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold font-mono text-xs flex items-center space-x-2 transition-all shadow"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "terminal",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, "View All OS Instructions (RHEL / Windows / Mac)")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddHostModalOpen(true),
+    className: "px-4 py-2 rounded-lg bg-[#131b2e] hover:bg-[#1a243d] border border-[#1f293d] text-slate-300 font-mono text-xs flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "plus",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, "+ Register Host Manually")))) : /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] overflow-hidden"
   }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs"
   }, /*#__PURE__*/React.createElement("thead", {
@@ -1976,76 +2171,122 @@ function App() {
     className: "p-3"
   }, "FIM STATUS"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "STATE"))), /*#__PURE__*/React.createElement("tbody", {
+  }, "STATE"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 text-right"
+  }, "ACTIONS"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d]"
-  }, [{
-    id: "001",
-    host: "web-app-dmz-01",
-    ip: "10.0.1.15",
-    os: "Ubuntu 22.04 LTS",
-    ver: "4.5.4",
-    fim: "3 Alerts",
-    status: "ONLINE"
-  }, {
-    id: "002",
-    host: "db-cluster-node-01",
-    ip: "10.0.2.21",
-    os: "Ubuntu 22.04 LTS",
-    ver: "4.5.4",
-    fim: "Clean",
-    status: "ONLINE"
-  }, {
-    id: "003",
-    host: "db-cluster-node-02",
-    ip: "10.0.2.22",
-    os: "Ubuntu 22.04 LTS",
-    ver: "4.5.4",
-    fim: "1 Alert",
-    status: "ONLINE"
-  }, {
-    id: "004",
-    host: "workstation-corp-88",
-    ip: "10.0.10.88",
-    os: "Windows 11 Pro",
-    ver: "4.5.4",
-    fim: "Clean",
-    status: "ONLINE"
-  }, {
-    id: "005",
-    host: "bastion-gw-01",
-    ip: "10.0.0.1",
-    os: "Ubuntu 22.04 LTS",
-    ver: "4.5.4",
-    fim: "Clean",
-    status: "ONLINE"
-  }, {
-    id: "006",
-    host: "backup-srv-offsite",
-    ip: "10.0.99.5",
-    os: "Debian 12",
-    ver: "4.5.4",
-    fim: "Unknown",
-    status: "DISCONNECTED"
-  }].map((h, i) => /*#__PURE__*/React.createElement("tr", {
-    key: i,
-    className: "hover:bg-[#131b2e]/60"
+  }, hostsFleet.filter(h => {
+    const term = hostsSearch.toLowerCase();
+    const match = !term || (h.host || "").toLowerCase().includes(term) || (h.ip || "").toLowerCase().includes(term) || (h.os || "").toLowerCase().includes(term) || (h.id || "").toLowerCase().includes(term);
+    const matchSt = hostsFilterStatus === "ALL" || h.status === hostsFilterStatus;
+    return match && matchSt;
+  }).map((h, i) => /*#__PURE__*/React.createElement("tr", {
+    key: h.id || i,
+    className: "hover:bg-[#131b2e]/60 transition-colors"
   }, /*#__PURE__*/React.createElement("td", {
     className: "p-3 font-mono text-slate-400"
   }, h.id), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-semibold text-slate-200"
-  }, h.host), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 font-semibold text-slate-200 flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": (h.os || "").toLowerCase().includes("windows") ? "laptop" : "server",
+    className: "w-3.5 h-3.5 text-slate-400"
+  }), /*#__PURE__*/React.createElement("span", null, h.host)), /*#__PURE__*/React.createElement("td", {
     className: "p-3 font-mono text-slate-300"
   }, h.ip), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-slate-400"
+    className: "p-3 text-slate-400 font-mono text-[11px]"
   }, h.os), /*#__PURE__*/React.createElement("td", {
     className: "p-3 font-mono text-slate-400"
   }, h.ver), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-amber-400"
-  }, h.fim), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 font-mono"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `px-2 py-0.5 rounded text-[10px] ${h.fim === "Clean" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`
+  }, h.fim)), /*#__PURE__*/React.createElement("td", {
     className: "p-3"
   }, /*#__PURE__*/React.createElement("span", {
-    className: `px-2 py-0.5 rounded text-[10px] font-mono ${h.status === "ONLINE" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`
-  }, h.status))))))), enrollModalOpen && /*#__PURE__*/React.createElement("div", {
+    className: `inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-mono ${h.status === "ONLINE" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `w-1.5 h-1.5 rounded-full ${h.status === "ONLINE" ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`
+  }), /*#__PURE__*/React.createElement("span", null, h.status))), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 text-right"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => handleDeleteHost(h.id),
+    className: "px-2 py-1 rounded hover:bg-rose-500/20 text-rose-400 border border-transparent hover:border-rose-500/30 text-xs font-mono transition-all",
+    title: "Deregister host"
+  }, "🗑️"))))))), addHostModalOpen && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-start border-b border-[#1f293d] pb-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-slate-100 text-sm flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "plus-circle",
+    className: "w-4 h-4 text-emerald-400"
+  }), /*#__PURE__*/React.createElement("span", null, "Register Real Host Manually")), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-slate-400 mt-0.5"
+  }, "Add an existing server or workstation to the fleet inventory.")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddHostModalOpen(false),
+    className: "text-slate-400 hover:text-slate-200 text-sm font-mono"
+  }, "\u2715")), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleAddHostManual,
+    className: "space-y-3 text-xs"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 mb-1 font-mono"
+  }, "Hostname *"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    required: true,
+    placeholder: "e.g. web-prod-01, dc-primary",
+    value: newHostForm.hostname,
+    onChange: e => setNewHostForm({ ...newHostForm, hostname: e.target.value }),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 mb-1 font-mono"
+  }, "IP Address *"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    required: true,
+    placeholder: "e.g. 192.168.10.55",
+    value: newHostForm.ip_address,
+    onChange: e => setNewHostForm({ ...newHostForm, ip_address: e.target.value }),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 mb-1 font-mono"
+  }, "Operating System"), /*#__PURE__*/React.createElement("select", {
+    value: newHostForm.os_name,
+    onChange: e => setNewHostForm({ ...newHostForm, os_name: e.target.value }),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+  }, /*#__PURE__*/React.createElement("option", { value: "Linux (Ubuntu/Debian/Kali)" }, "Linux (Ubuntu / Debian / Kali)"), /*#__PURE__*/React.createElement("option", { value: "Linux (RHEL 9 / Rocky / CentOS)" }, "Linux (RHEL 9 / Rocky / CentOS)"), /*#__PURE__*/React.createElement("option", { value: "Windows 11 / 10 Pro" }, "Windows 11 / 10 Pro"), /*#__PURE__*/React.createElement("option", { value: "Windows Server 2022" }, "Windows Server 2022"), /*#__PURE__*/React.createElement("option", { value: "macOS Sonoma / Sequoia" }, "macOS Sonoma / Sequoia"))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-2"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 mb-1 font-mono"
+  }, "Status"), /*#__PURE__*/React.createElement("select", {
+    value: newHostForm.status,
+    onChange: e => setNewHostForm({ ...newHostForm, status: e.target.value }),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+  }, /*#__PURE__*/React.createElement("option", { value: "ONLINE" }, "ONLINE"), /*#__PURE__*/React.createElement("option", { value: "DISCONNECTED" }, "DISCONNECTED"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 mb-1 font-mono"
+  }, "FIM Integrity"), /*#__PURE__*/React.createElement("select", {
+    value: newHostForm.fim_status,
+    onChange: e => setNewHostForm({ ...newHostForm, fim_status: e.target.value }),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+  }, /*#__PURE__*/React.createElement("option", { value: "Clean" }, "Clean"), /*#__PURE__*/React.createElement("option", { value: "1 Alert" }, "1 Alert"), /*#__PURE__*/React.createElement("option", { value: "3 Alerts" }, "3 Alerts")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 mb-1 font-mono"
+  }, "Notes / Role"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "e.g. DMZ Reverse Proxy, Core Database",
+    value: newHostForm.notes,
+    onChange: e => setNewHostForm({ ...newHostForm, notes: e.target.value }),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end space-x-2 pt-2 border-t border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setAddHostModalOpen(false),
+    className: "px-3 py-1.5 rounded text-xs text-slate-400 hover:text-slate-200 font-mono"
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    className: "px-4 py-1.5 rounded text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold font-mono transition-all"
+  }, "Save Host"))))), enrollModalOpen && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-2xl w-full p-6 space-y-5 shadow-2xl"
