@@ -110,7 +110,13 @@ const initialComponents = [{
 }];
 const initialJobs = [];
 function App() {
-  const [currentScreen, setCurrentScreen] = useState("overview");
+  const [currentScreen, setCurrentScreen] = useState(() => {
+    try {
+      return localStorage.getItem("opensoc_current_screen") || "overview";
+    } catch (e) {
+      return "overview";
+    }
+  });
   const [userRole, setUserRole] = useState("Platform Admin");
   const [alerts, setAlerts] = useState(initialAlerts);
   const [overview, setOverview] = useState(initialOverview);
@@ -153,8 +159,22 @@ function App() {
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [enrollOS, setEnrollOS] = useState("linux-deb");
   const [enrollCopied, setEnrollCopied] = useState(false);
-  const [hostsFleet, setHostsFleet] = useState([]);
-  const [hostsStats, setHostsStats] = useState({ total: 0, active: 0, disconnected: 0 });
+  const [hostsFleet, setHostsFleet] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_hosts_fleet");
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [hostsStats, setHostsStats] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_hosts_stats");
+      return cached ? JSON.parse(cached) : { total: 0, active: 0, disconnected: 0 };
+    } catch (e) {
+      return { total: 0, active: 0, disconnected: 0 };
+    }
+  });
   const [hostsLoading, setHostsLoading] = useState(false);
   const [hostsSearch, setHostsSearch] = useState("");
   const [hostsFilterStatus, setHostsFilterStatus] = useState("ALL");
@@ -681,6 +701,9 @@ function App() {
   }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, addHostModalOpen, hostsFleet, hostsLoading]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem("opensoc_current_screen", currentScreen);
+    } catch (e) {}
     if (currentScreen === "threat_intel") {
       if (threatFeeds.length === 0 && !threatFeedsLoading) {
         fetchThreatFeeds();
@@ -870,12 +893,18 @@ function App() {
       const res = await fetch("/api/v1/hosts");
       if (res.ok) {
         const data = await res.json();
-        setHostsFleet(data.hosts || []);
-        setHostsStats({
+        const incomingHosts = data.hosts || [];
+        const incomingStats = {
           total: data.total || 0,
           active: data.active || 0,
           disconnected: data.disconnected || 0
-        });
+        };
+        setHostsFleet(incomingHosts);
+        setHostsStats(incomingStats);
+        try {
+          localStorage.setItem("opensoc_hosts_fleet", JSON.stringify(incomingHosts));
+          localStorage.setItem("opensoc_hosts_stats", JSON.stringify(incomingStats));
+        } catch (e) {}
       }
     } catch (err) {
       console.error("Failed to fetch hosts:", err);
@@ -891,12 +920,20 @@ function App() {
       if (res.ok) {
         setHostsFleet([]);
         setHostsStats({ total: 0, active: 0, disconnected: 0 });
+        try {
+          localStorage.removeItem("opensoc_hosts_fleet");
+          localStorage.removeItem("opensoc_hosts_stats");
+        } catch (e) {}
         setHostsAlertMsg("All demo data cleared. Endpoint fleet is now in clean state ready for your real hosts!");
         setTimeout(() => setHostsAlertMsg(null), 5000);
       }
     } catch (err) {
       setHostsFleet([]);
       setHostsStats({ total: 0, active: 0, disconnected: 0 });
+      try {
+        localStorage.removeItem("opensoc_hosts_fleet");
+        localStorage.removeItem("opensoc_hosts_stats");
+      } catch (e) {}
     }
   };
 
@@ -2116,7 +2153,15 @@ function App() {
     className: "hidden lg:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-emerald-400"
   }, /*#__PURE__*/React.createElement("span", {
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), (hostsFleet.length === 0 && hostsLoading) ? /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] p-12 text-center space-y-3 animate-pulse"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-mono text-emerald-400 tracking-wider uppercase"
+  }, "Synchronizing Wazuh Endpoint Inventory..."), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-slate-500 font-mono"
+  }, "Querying active Wazuh daemon on port 1514 / 1515...")) : hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0b101c] border border-dashed border-[#1f293d] rounded-xl p-8 text-center space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400"
@@ -2137,7 +2182,7 @@ function App() {
     className: "text-emerald-400"
   }, "Port 1514 Active")), /*#__PURE__*/React.createElement("pre", {
     className: "text-[11px] font-mono text-emerald-400 p-2 bg-[#0e1422] rounded border border-[#1f293d] break-all select-all whitespace-pre-wrap"
-  }, `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' apt-get install -y wazuh-agent && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent`)), /*#__PURE__*/React.createElement("div", {
+  }, `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' apt-get install -y wazuh-agent && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "192.168.10.177"} && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent`)), /*#__PURE__*/React.createElement("div", {
     className: "flex justify-center space-x-3 pt-2"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setEnrollModalOpen(true),
@@ -2151,7 +2196,7 @@ function App() {
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "plus",
     className: "w-4 h-4"
-  }), /*#__PURE__*/React.createElement("span", null, "+ Register Host Manually")))) : /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, "Register Host Manually")))) : /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] rounded-xl border border-[#1f293d] overflow-hidden"
   }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs"
@@ -2325,7 +2370,7 @@ function App() {
     className: "font-mono text-emerald-400 text-[11px]"
   }, `Manager: ${window.location.hostname || "192.168.10.177"}:1514`)), /*#__PURE__*/React.createElement("div", {
     className: "relative bg-[#080c14] border border-[#1f293d] rounded-lg p-3 font-mono text-xs text-emerald-400 break-all select-all leading-relaxed"
-  }, enrollOS === "linux-deb" ? `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' apt-get install -y wazuh-agent && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
+  }, enrollOS === "linux-deb" ? `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' apt-get install -y wazuh-agent && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "192.168.10.177"} && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
     (enrollOS === "linux-rpm" ? `sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH && sudo tee /etc/yum.repos.d/wazuh.repo > /dev/null << 'EOF'
 [wazuh]
 name=Wazuh repository
@@ -2334,7 +2379,7 @@ gpgcheck=1
 gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
 enabled=1
 EOF
-sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install -y wazuh-agent && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
+sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install -y wazuh-agent && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "192.168.10.177"} && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
     (enrollOS === "windows" ? `Invoke-WebRequest -Uri https://packages.wazuh.com/4.x/windows/wazuh-agent-4.8.2-1.msi -OutFile $env:tmp\\wazuh-agent.msi; Start-Process msiexec.exe -Wait -ArgumentList '/i', "$env:tmp\\wazuh-agent.msi", '/q', "WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}'", "WAZUH_REGISTRATION_SERVER='${window.location.hostname || "192.168.10.177"}'"; NET START WazuhSvc` :
     `curl -so wazuh-agent.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-4.8.2-1.pkg && echo "WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}'" > /tmp/wazuh_envs && sudo installer -pkg ./wazuh-agent.pkg -target / && sudo /Library/Ossec/bin/wazuh-control start`))), /*#__PURE__*/React.createElement("div", {
     className: "p-3 bg-[#131b2e]/60 rounded-lg border border-[#1f293d] text-xs text-slate-300 space-y-1.5"
@@ -2347,8 +2392,8 @@ sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       const hName = window.location.hostname || "192.168.10.177";
-      const cmd = enrollOS === "linux-deb" ? `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${hName}' apt-get install -y wazuh-agent && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
-        (enrollOS === "linux-rpm" ? `sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH && sudo tee /etc/yum.repos.d/wazuh.repo > /dev/null << 'EOF'\n[wazuh]\nname=Wazuh repository\nbaseurl=https://packages.wazuh.com/4.x/yum/\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nEOF\nsudo WAZUH_MANAGER='${hName}' dnf install -y wazuh-agent && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
+      const cmd = enrollOS === "linux-deb" ? `wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo gpg --dearmor -o /usr/share/keyrings/wazuh.gpg && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list && sudo apt-get update && sudo WAZUH_MANAGER='${hName}' apt-get install -y wazuh-agent && sudo /var/ossec/bin/agent-auth -m ${hName} && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
+        (enrollOS === "linux-rpm" ? `sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH && sudo tee /etc/yum.repos.d/wazuh.repo > /dev/null << 'EOF'\n[wazuh]\nname=Wazuh repository\nbaseurl=https://packages.wazuh.com/4.x/yum/\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nEOF\nsudo WAZUH_MANAGER='${hName}' dnf install -y wazuh-agent && sudo /var/ossec/bin/agent-auth -m ${hName} && sudo systemctl daemon-reload && sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent` :
         (enrollOS === "windows" ? `Invoke-WebRequest -Uri https://packages.wazuh.com/4.x/windows/wazuh-agent-4.8.2-1.msi -OutFile $env:tmp\\wazuh-agent.msi; Start-Process msiexec.exe -Wait -ArgumentList '/i', "$env:tmp\\wazuh-agent.msi", '/q', "WAZUH_MANAGER='${hName}'", "WAZUH_REGISTRATION_SERVER='${hName}'"; NET START WazuhSvc` :
         `curl -so wazuh-agent.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-4.8.2-1.pkg && echo "WAZUH_MANAGER='${hName}'" > /tmp/wazuh_envs && sudo installer -pkg ./wazuh-agent.pkg -target / && sudo /Library/Ossec/bin/wazuh-control start`));
       navigator.clipboard.writeText(cmd);

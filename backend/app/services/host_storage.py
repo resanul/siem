@@ -239,11 +239,21 @@ def get_fleet_stats(include_demo: bool = False) -> Dict[str, int]:
     }
 
 
-def try_sync_wazuh_agents():
+_last_wazuh_sync_time: float = 0.0
+
+
+def try_sync_wazuh_agents(force: bool = False):
     """
     Attempts to query local Wazuh Manager API or local database
     to auto-register newly joined HIDS agents.
+    Throttled to run at most once every 10 seconds unless force=True.
     """
+    global _last_wazuh_sync_time
+    now = time.time()
+    if not force and (now - _last_wazuh_sync_time < 10.0):
+        return
+
+    _last_wazuh_sync_time = now
     wazuh_api_url = os.getenv("WAZUH_API_URL", "https://wazuh-manager:55000")
     wazuh_user = os.getenv("WAZUH_API_USER", "wazuh")
     wazuh_pass = os.getenv("WAZUH_API_PASSWORD", "OpenSocForge2026!")
@@ -284,16 +294,29 @@ def try_sync_wazuh_agents():
                     else:
                         os_str = str(os_info or "")
                     if not os_str:
-                        os_str = "Windows" if "win" in ag.get("name", "").lower() or "desktop" in ag.get("name", "").lower() else "Linux"
-                    
+                        h_lower = ag.get("name", "").lower()
+                        if "kali" in h_lower:
+                            os_str = "Kali Linux"
+                        elif "win" in h_lower or "desktop" in h_lower:
+                            os_str = "Windows"
+                        else:
+                            os_str = "Linux"
+
                     # Agent status: active or pending or disconnected
                     ag_status = ag.get("status", "").lower()
                     status_display = "ONLINE" if ag_status in ["active", "pending"] else "ONLINE"
                     
+                    # Resolved IP
+                    ag_ip = ag.get("ip", "")
+                    if not ag_ip or ag_ip == "any":
+                        ag_ip = ag.get("registerIP", "")
+                    if not ag_ip or ag_ip == "any":
+                        ag_ip = "DHCP / Dynamic"
+
                     add_host(
                         hostname=ag.get("name", "agent"),
-                        ip_address=ag.get("ip", "unknown") if ag.get("ip") != "any" else "192.168.10.127",
-                        os_name=os_str or "Windows 11 Enterprise",
+                        ip_address=ag_ip,
+                        os_name=os_str,
                         agent_version=ag.get("version", "4.8.2"),
                         status=status_display,
                         host_id=ag.get("id"),
