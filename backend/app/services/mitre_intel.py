@@ -433,21 +433,35 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
                 if cleaned_ioc in line:
                     try:
                         ev = json.loads(line)
-                        ts = ev.get("timestamp", "")
-                        if not first_seen or (ts and ts < first_seen):
-                            first_seen = ts
-                        if not last_seen or (ts and ts > last_seen):
-                            last_seen = ts
-                        iface = ev.get("in_iface", "enp0s3")
-                        associated_hosts.add(iface)
-                        hits.append({
-                            "source": "suricata/eve.json",
-                            "timestamp": ts,
-                            "host": iface,
-                            "summary": f"{ev.get('proto', 'TCP')} {ev.get('src_ip')}:{ev.get('src_port')} -> {ev.get('dest_ip')}:{ev.get('dest_port')} ({ev.get('event_type')})"
-                        })
-                        if len(hits) >= 20:
-                            break
+                        src_ip = ev.get("src_ip", "")
+                        dest_ip = ev.get("dest_ip", "")
+                        http_host = ev.get("http", {}).get("hostname", "")
+                        dns_query = ev.get("dns", {}).get("rrname", "")
+
+                        # Exclude self-enrichment queries to ip-api.com
+                        if http_host == "ip-api.com" or dest_ip == "208.95.112.1" or src_ip == "208.95.112.1":
+                            continue
+
+                        # Check if IOC is an endpoint or alert match
+                        if (src_ip == cleaned_ioc or dest_ip == cleaned_ioc or
+                            (dns_query and cleaned_ioc in dns_query) or
+                            (http_host and cleaned_ioc in http_host) or
+                            cleaned_ioc in str(ev.get("alert", {}))):
+                            ts = ev.get("timestamp", "")
+                            if not first_seen or (ts and ts < first_seen):
+                                first_seen = ts
+                            if not last_seen or (ts and ts > last_seen):
+                                last_seen = ts
+                            iface = ev.get("in_iface", "enp0s3")
+                            associated_hosts.add(iface)
+                            hits.append({
+                                "source": "suricata/eve.json",
+                                "timestamp": ts,
+                                "host": iface,
+                                "summary": f"{ev.get('proto', 'TCP')} {src_ip}:{ev.get('src_port')} -> {dest_ip}:{ev.get('dest_port')} ({ev.get('event_type')})"
+                            })
+                            if len(hits) >= 20:
+                                break
                     except Exception:
                         pass
         except Exception:
