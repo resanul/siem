@@ -270,7 +270,7 @@ def try_sync_wazuh_agents():
             token = data.get("data", {}).get("token")
 
         if token:
-            agents_url = f"{wazuh_api_url}/agents?select=id,name,ip,os,version,status,lastKeepAlive"
+            agents_url = f"{wazuh_api_url}/agents"
             req2 = urllib.request.Request(agents_url, headers={"Authorization": f"Bearer {token}"})
             with urllib.request.urlopen(req2, context=ctx, timeout=4) as resp2:
                 agents_data = json.loads(resp2.read().decode()).get("data", {}).get("affected_items", [])
