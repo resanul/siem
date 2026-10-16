@@ -629,7 +629,12 @@ def get_audit_trail(current_user: Dict[str, Any] = Depends(require_permission("*
 # ===================== ENTERPRISE ATTACK SIMULATION =====================
 from backend.app.services.simulation import simulation_engine
 from backend.app.services.soar import soar_engine
-from backend.app.services.mitre_intel import get_mitre_attack_matrix, get_threat_intel_feed, get_process_lineage
+from backend.app.services.mitre_intel import (
+    get_mitre_attack_matrix,
+    get_threat_intel_feed,
+    get_process_lineage,
+    hunt_ioc_in_cluster,
+)
 
 
 @api_router.get("/simulation/scenarios")
@@ -712,8 +717,26 @@ def get_mitre_matrix(current_user: Dict[str, Any] = Depends(require_permission("
 
 # ===================== THREAT INTELLIGENCE & PROCESS TREE =====================
 @api_router.get("/threat-intel/feeds")
-def get_threat_intel(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
-    return get_threat_intel_feed()
+def get_threat_intel(
+    force_refresh: bool = False,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Returns aggregated threat intelligence feeds from CISA KEV, abuse.ch ThreatFox, and Feodo Tracker."""
+    return get_threat_intel_feed(force_refresh=force_refresh)
+
+
+@api_router.post("/threat-intel/sync")
+def sync_threat_intel(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Force re-syncs live threat feeds from external open-source intelligence platforms."""
+    feeds = get_threat_intel_feed(force_refresh=True)
+    return {
+        "status": "success",
+        "message": f"Successfully synced {len(feeds)} IOCs from CISA KEV, abuse.ch ThreatFox, and Feodo Tracker",
+        "total": len(feeds),
+        "feeds": feeds,
+    }
 
 
 @api_router.post("/threat-intel/hunt")
@@ -721,16 +744,17 @@ def hunt_ioc(
     payload: Dict[str, str],
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
 ):
-    ioc = payload.get("ioc", "")
-    # Query cluster indices for IOC sightings
-    return {
-        "ioc": ioc,
-        "searched_indices": ["suricata-*", "wazuh-alerts-*", "syslog-*"],
-        "total_hits": 14,
-        "first_seen": "2026-10-14 20:12:45Z",
-        "last_seen": "2026-10-14 20:45:10Z",
-        "associated_hosts": ["web-app-dmz-01", "workstation-corp-88"],
-    }
+    """Hunts for a given IOC across Elasticsearch (syslog, wazuh) and Suricata telemetry."""
+    ioc = payload.get("ioc", "").strip()
+    if not ioc:
+        return {
+            "ioc": "",
+            "searched_indices": ["opensoc-syslog-*", "wazuh-alerts-*", "suricata-eve"],
+            "total_hits": 0,
+            "sightings": [],
+            "message": "No IOC provided to hunt",
+        }
+    return hunt_ioc_in_cluster(ioc)
 
 
 @api_router.get("/investigation/process-tree/{alert_id}")

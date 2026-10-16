@@ -600,11 +600,28 @@ function App() {
   }]);
   const [soarRunningId, setSoarRunningId] = useState(null);
   const [soarLogOutput, setSoarLogOutput] = useState([]);
+
+  // Live Threat Intelligence & IOC Hunter State
+  const [threatFeeds, setThreatFeeds] = useState([]);
+  const [threatFeedsLoading, setThreatFeedsLoading] = useState(false);
+  const [threatFilter, setThreatFilter] = useState("ALL");
+  const [threatSearchQuery, setThreatSearchQuery] = useState("");
+  const [huntInput, setHuntInput] = useState("192.168.10.127");
+  const [huntResult, setHuntResult] = useState(null);
+  const [huntLoading, setHuntLoading] = useState(false);
+  const [syncingFeeds, setSyncingFeeds] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
   useEffect(() => {
     if (window.lucide) {
       window.lucide.createIcons();
     }
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, syncingFeeds]);
+
+  useEffect(() => {
+    if (currentScreen === "threat_intel" && threatFeeds.length === 0 && !threatFeedsLoading) {
+      fetchThreatFeeds();
+    }
+  }, [currentScreen]);
 
   // Live polling for real alerts, overview metrics, and system components
   useEffect(() => {
@@ -872,6 +889,88 @@ function App() {
       }, (idx + 1) * 600);
     });
   };
+  const fetchThreatFeeds = async (forceRefresh = false) => {
+    setThreatFeedsLoading(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const url = forceRefresh ? "/api/v1/threat-intel/feeds?force_refresh=true" : "/api/v1/threat-intel/feeds";
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setThreatFeeds(data);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch threat feeds", e);
+    } finally {
+      setThreatFeedsLoading(false);
+    }
+  };
+
+  const syncThreatFeeds = async () => {
+    setSyncingFeeds(true);
+    setSyncMessage("Syncing live feeds from CISA KEV, abuse.ch ThreatFox & Feodo...");
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/v1/threat-intel/sync", { method: "POST", headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feeds && Array.isArray(data.feeds)) {
+          setThreatFeeds(data.feeds);
+        }
+        setSyncMessage(data.message || "Feeds synced successfully!");
+      } else {
+        setSyncMessage("Sync returned HTTP " + res.status);
+      }
+    } catch (e) {
+      setSyncMessage("Sync failed: " + e.message);
+    } finally {
+      setSyncingFeeds(false);
+      setTimeout(() => setSyncMessage(""), 5000);
+    }
+  };
+
+  const executeHunt = async (overrideIoc) => {
+    const target = (overrideIoc !== undefined ? overrideIoc : huntInput).trim();
+    if (!target) return;
+    setHuntInput(target);
+    setHuntLoading(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/v1/threat-intel/hunt", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ioc: target })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHuntResult(data);
+      }
+    } catch (e) {
+      console.error("Hunt failed", e);
+    } finally {
+      setHuntLoading(false);
+    }
+  };
+
+  const filteredThreatFeeds = threatFeeds.filter(f => {
+    if (threatFilter !== "ALL" && f.source !== threatFilter) return false;
+    if (threatSearchQuery) {
+      const q = threatSearchQuery.toLowerCase();
+      const ind = (f.indicator || f.cve || "").toLowerCase();
+      const mal = (f.malware_family || f.threat_actor || "").toLowerCase();
+      const desc = (f.description || "").toLowerCase();
+      if (!ind.includes(q) && !mal.includes(q) && !desc.includes(q)) return false;
+    }
+    return true;
+  });
+
   const navSections = [{
     title: "OPERATIONS",
     items: [{
@@ -2764,97 +2863,162 @@ function App() {
   }, t))))))), currentScreen === "threat_intel" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
+    className: "flex flex-col md:flex-row md:items-center justify-between gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
     className: "text-xl font-bold text-slate-100 flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("span", null, "Threat Intelligence & Multi-Source IOC Hunter"), /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 text-[10px] font-mono rounded bg-sky-500/10 border border-sky-500/30 text-sky-400"
-  }, "LIVE FEEDS")), /*#__PURE__*/React.createElement("p", {
+    className: "px-2 py-0.5 text-[10px] font-mono rounded bg-sky-500/10 border border-sky-500/30 text-sky-400 font-bold"
+  }, "LIVE OPEN-SOURCE FEEDS")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-1"
-  }, "Aggregated CISA KEV and AlienVault OTX feeds with instant cluster telemetry search."))), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 rounded-lg bg-[#0e1422] border border-[#1f293d] space-y-3"
-  }, /*#__PURE__*/React.createElement("span", {
+  }, "Live indicators from CISA KEV (Active CVEs), abuse.ch ThreatFox (Community IOCs), and Feodo Tracker (Botnets).")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, syncMessage && /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20"
+  }, syncMessage), /*#__PURE__*/React.createElement("button", {
+    onClick: syncThreatFeeds,
+    disabled: syncingFeeds,
+    className: "px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-300 rounded text-xs font-mono font-bold flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "refresh-cw",
+    className: `w-3.5 h-3.5 ${syncingFeeds ? "animate-spin" : ""}`
+  }), /*#__PURE__*/React.createElement("span", null, syncingFeeds ? "Syncing..." : "Sync Feeds")))), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-lg bg-[#0e1422] border border-[#1f293d] space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "target",
+    className: "w-4 h-4 text-emerald-400"
+  }), /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-bold text-slate-200"
-  }, "Instant Telemetry IOC Sightings Search"), /*#__PURE__*/React.createElement("div", {
+  }, "Instant Telemetry IOC Sightings Search")), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] font-mono text-slate-400"
+  }, "Searches: opensoc-syslog-*, wazuh-alerts-*, /var/log/suricata/eve.json")), /*#__PURE__*/React.createElement("div", {
     className: "flex space-x-2"
   }, /*#__PURE__*/React.createElement("input", {
     type: "text",
-    defaultValue: "198.51.100.84",
-    placeholder: "Search IP, domain, or SHA-256 hash...",
+    value: huntInput,
+    onChange: e => setHuntInput(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") executeHunt();
+    },
+    placeholder: "Search IP, domain, or SHA-256 hash across all cluster telemetry...",
     className: "flex-1 bg-[#131b2e] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
   }), /*#__PURE__*/React.createElement("button", {
-    className: "px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-xs font-bold font-mono"
-  }, "Hunt IOC")), /*#__PURE__*/React.createElement("div", {
-    className: "p-3 rounded bg-[#080c14] border border-[#1f293d] font-mono text-xs text-slate-300 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
-    className: "text-emerald-400 font-bold"
-  }, "14 Sightings Found"), " in suricata-* and wazuh-alerts-*", /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] text-slate-400 mt-0.5"
-  }, "First Seen: 2026-10-14 20:12:45Z | Last Seen: 2026-10-14 20:45:10Z")), /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-1 rounded bg-red-500/20 text-red-400 text-[10px] font-bold"
-  }, "KNOWN MALICIOUS C2"))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => executeHunt(),
+    disabled: huntLoading || !huntInput.trim(),
+    className: "px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-xs font-bold font-mono flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+  }, huntLoading ? /*#__PURE__*/React.createElement("span", null, "Hunting...") : /*#__PURE__*/React.createElement("span", null, "Hunt IOC"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2 text-[10px] font-mono text-slate-400 flex-wrap gap-y-1"
+  }, /*#__PURE__*/React.createElement("span", null, "Quick Hunt Suggestions:"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => executeHunt("192.168.10.127"),
+    className: "px-2 py-0.5 rounded bg-[#131b2e] hover:bg-[#1a243d] text-emerald-400 border border-emerald-500/20"
+  }, "192.168.10.127 (Host VM)"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => executeHunt("198.51.100.84"),
+    className: "px-2 py-0.5 rounded bg-[#131b2e] hover:bg-[#1a243d] text-amber-400 border border-amber-500/20"
+  }, "198.51.100.84 (Simulated C2)"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => executeHunt("CVE-2021-44228"),
+    className: "px-2 py-0.5 rounded bg-[#131b2e] hover:bg-[#1a243d] text-sky-400 border border-sky-500/20"
+  }, "CVE-2021-44228 (Log4Shell)")), huntResult && /*#__PURE__*/React.createElement("div", {
+    className: `p-3 rounded border font-mono text-xs ${huntResult.total_hits > 0 ? "bg-red-500/10 border-red-500/30 text-slate-200" : "bg-emerald-500/10 border-emerald-500/30 text-slate-200"}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, huntResult.total_hits > 0 ? /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-bold text-[11px]"
+  }, `⚠️ ${huntResult.total_hits} SIGHTING(S) FOUND`) : /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[11px]"
+  }, "✓ NO SIGHTINGS DETECTED"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-slate-100"
+  }, huntResult.ioc), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400"
+  }, `in ${(huntResult.searched_indices || []).join(", ")}`)), huntResult.last_seen && /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400"
+  }, `Last Seen: ${huntResult.last_seen}`)), huntResult.sightings && huntResult.sightings.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pt-2 border-t border-red-500/20 space-y-1.5"
+  }, huntResult.sightings.slice(0, 5).map((s, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    className: "flex items-start space-x-2 text-[11px] text-slate-300 bg-[#080c14]/50 p-1.5 rounded"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 text-[10px] uppercase font-bold shrink-0"
+  }, s.source || s.index || "telemetry"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 shrink-0 text-[10px]"
+  }, s.timestamp || "-"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-200 truncate"
+  }, s.message || s.rule_description || JSON.stringify(s))))))), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] border border-[#1f293d] rounded-lg overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "p-3 bg-[#131b2e] border-b border-[#1f293d] text-xs font-bold text-slate-200"
-  }, "CISA KEV / AlienVault Threat Intelligence Feeds"), /*#__PURE__*/React.createElement("table", {
+    className: "p-3 bg-[#131b2e] border-b border-[#1f293d] flex flex-col md:flex-row md:items-center justify-between gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1 overflow-x-auto"
+  }, ["ALL", "CISA KEV", "abuse.ch ThreatFox", "abuse.ch Feodo Tracker"].map(fTab => /*#__PURE__*/React.createElement("button", {
+    key: fTab,
+    onClick: () => setThreatFilter(fTab),
+    className: `px-2.5 py-1 rounded text-[11px] font-mono transition-all ${threatFilter === fTab ? "bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30" : "text-slate-400 hover:text-slate-200 hover:bg-[#1f293d]"}`
+  }, fTab === "ALL" ? `All Feeds (${threatFeeds.length})` : fTab))), /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: threatSearchQuery,
+    onChange: e => setThreatSearchQuery(e.target.value),
+    placeholder: "Filter IOC, CVE, or malware...",
+    className: "bg-[#080c14] border border-[#1f293d] rounded px-2.5 py-1 text-[11px] font-mono text-slate-200 w-56 focus:outline-none focus:border-emerald-500"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "overflow-x-auto max-h-[500px]"
+  }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs font-mono"
   }, /*#__PURE__*/React.createElement("thead", {
-    className: "bg-[#080c14] text-slate-400 text-[11px] border-b border-[#1f293d]"
+    className: "bg-[#080c14] text-slate-400 text-[11px] border-b border-[#1f293d] sticky top-0 z-10"
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "CVE / THREAT ACTOR"), /*#__PURE__*/React.createElement("th", {
+  }, "SOURCE / TYPE"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "NAME & DESCRIPTION"), /*#__PURE__*/React.createElement("th", {
+  }, "INDICATOR / CVE"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "CVSS SCORE"), /*#__PURE__*/React.createElement("th", {
+  }, "MALWARE FAMILY / DETAILS"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "RANSOMWARE USE"), /*#__PURE__*/React.createElement("th", {
+  }, "CONFIDENCE / SCORE"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "STATUS"))), /*#__PURE__*/React.createElement("tbody", {
+  }, "DATE ADDED"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 text-right"
+  }, "ACTION"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d] text-slate-300"
-  }, /*#__PURE__*/React.createElement("tr", {
-    className: "hover:bg-[#131b2e]"
+  }, threatFeedsLoading ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: 6,
+    className: "p-8 text-center text-slate-400"
+  }, "Loading real threat feeds from CISA & abuse.ch...")) : filteredThreatFeeds.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: 6,
+    className: "p-8 text-center text-slate-400"
+  }, "No indicators match the selected filter. Click 'Sync Feeds' to refresh.")) : filteredThreatFeeds.map((feed, idx) => /*#__PURE__*/React.createElement("tr", {
+    key: idx,
+    className: "hover:bg-[#131b2e] transition-colors"
   }, /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-bold text-emerald-400"
-  }, "CVE-2021-44228"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-sans"
-  }, "Apache Log4j2 JNDI Remote Code Execution"), /*#__PURE__*/React.createElement("td", {
+    className: "p-3"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `px-1.5 py-0.5 rounded text-[10px] font-bold ${feed.source === "CISA KEV" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : feed.source === "abuse.ch Feodo Tracker" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-sky-500/10 text-sky-400 border border-sky-500/20"}`
+  }, feed.source || "Feed"), /*#__PURE__*/React.createElement("span", {
+    className: "ml-1.5 text-[10px] text-slate-400 uppercase"
+  }, feed.type || "ioc")), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 font-bold text-emerald-400 select-all"
+  }, feed.indicator || feed.cve || "-"), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 font-sans max-w-xs truncate",
+    title: feed.description || feed.malware_family || ""
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "font-bold text-slate-200"
+  }, feed.malware_family || feed.threat_actor || "Unknown"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-slate-400 truncate"
+  }, feed.description || feed.ransomware_use || "-")), /*#__PURE__*/React.createElement("td", {
     className: "p-3 font-bold text-red-400"
-  }, "10.0 CRITICAL"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-red-400 font-bold"
-  }, "KNOWN"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px]"
-  }, "RULE ACTIVE"))), /*#__PURE__*/React.createElement("tr", {
-    className: "hover:bg-[#131b2e]"
-  }, /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-bold text-emerald-400"
-  }, "CVE-2024-21413"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-sans"
-  }, "Microsoft Outlook NTLM Credential Leaking #MonikerLink"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-bold text-red-400"
-  }, "9.8 CRITICAL"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-amber-400"
-  }, "SUSPECTED"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px]"
-  }, "RULE ACTIVE"))), /*#__PURE__*/React.createElement("tr", {
-    className: "hover:bg-[#131b2e]"
-  }, /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-bold text-emerald-400"
-  }, "CVE-2023-4966"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-sans"
-  }, "Citrix Bleed Sensitive Session Memory Disclosure"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-bold text-amber-400"
-  }, "9.4 HIGH"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-red-400 font-bold"
-  }, "KNOWN (LockBit)"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px]"
-  }, "RULE ACTIVE"))))))), currentScreen === "sigma_studio" && /*#__PURE__*/React.createElement("div", {
+  }, feed.cvss_score || `${feed.confidence || 100}%`), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 text-slate-400 text-[11px]"
+  }, feed.last_seen || feed.date_added || "-"), /*#__PURE__*/React.createElement("td", {
+    className: "p-3 text-right"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => executeHunt(feed.indicator || feed.cve),
+    className: "px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold font-mono transition-all"
+  }, "Hunt in Cluster →"))))))))), currentScreen === "sigma_studio" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
