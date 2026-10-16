@@ -311,9 +311,11 @@ if [ -n "${ACTIVE_IFACE:-}" ]; then
     log_ok "Suricata monitoring interface bound to host interface: ${ACTIVE_IFACE}"
 fi
 
-# Ensure executable permissions on scripts and CLI
-chmod +x "${INSTALL_DIR}/bin/opensoc-ctl" 2>/dev/null || true
-chmod +x "${INSTALL_DIR}/scripts/"*.sh 2>/dev/null || true
+# Ensure executable permissions and SELinux contexts on scripts and CLI
+chmod -R 755 "${INSTALL_DIR}/bin" "${INSTALL_DIR}/scripts" 2>/dev/null || true
+if command -v chcon >/dev/null 2>&1; then
+    chcon -R -t bin_t "${INSTALL_DIR}/bin" 2>/dev/null || true
+fi
 
 # ------------------------------------------------------------------------------
 # 7. TLS Certificate Generation
