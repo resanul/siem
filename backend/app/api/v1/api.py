@@ -635,6 +635,9 @@ from backend.app.services.mitre_intel import (
     get_process_lineage,
     hunt_ioc_in_cluster,
     update_cisco_talos_from_github,
+    get_masked_threat_intel_config,
+    save_threat_intel_config,
+    test_provider_key,
 )
 
 
@@ -752,6 +755,34 @@ def update_talos_intel(
     """Fetches latest IOCs live from https://github.com/Cisco-Talos/IOCs,
     updates persistent storage, and refreshes in-memory threat hunter indexes."""
     return update_cisco_talos_from_github()
+
+
+@api_router.get("/threat-intel/config")
+def get_threat_config(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Returns active threat intel providers and masked API key settings."""
+    return get_masked_threat_intel_config()
+
+
+@api_router.post("/threat-intel/config")
+def update_threat_config(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Updates API keys for abuse.ch, AlienVault OTX, VirusTotal, and toggles providers."""
+    return save_threat_intel_config(payload)
+
+
+@api_router.post("/threat-intel/test-key")
+def test_threat_api_key(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Verifies live validity of an API key against the provider service."""
+    provider = payload.get("provider", "").strip()
+    api_key = payload.get("api_key", "").strip()
+    return test_provider_key(provider, api_key)
 
 
 @api_router.post("/threat-intel/hunt")

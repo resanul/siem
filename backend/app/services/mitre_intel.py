@@ -177,14 +177,175 @@ def fetch_cisa_kev(limit: int = 50) -> List[Dict[str, Any]]:
         return []
 
 
+CONFIG_PERSISTENT_FILE = "/var/lib/opensoc/threat_intel_config.json"
+CONFIG_DEFAULT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "threat_intel_config.json")
+CONFIG_TEMP_FILE = "/tmp/threat_intel_config.json"
+
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "abuse_ch_api_key": "",
+    "otx_api_key": "",
+    "virustotal_api_key": "",
+    "providers": {
+        "cisa_kev": True,
+        "cisco_talos": True,
+        "threatfox": True,
+        "urlhaus": True,
+        "feodo": True,
+        "malwarebazaar": True,
+        "emerging_threats": True,
+        "alienvault_otx": True,
+    }
+}
+_THREAT_CONFIG_CACHE: Optional[Dict[str, Any]] = None
+
+
+def load_threat_intel_config(reload: bool = False) -> Dict[str, Any]:
+    global _THREAT_CONFIG_CACHE
+    if _THREAT_CONFIG_CACHE and not reload:
+        return _THREAT_CONFIG_CACHE
+
+    for path in [CONFIG_PERSISTENT_FILE, CONFIG_DEFAULT_FILE, CONFIG_TEMP_FILE]:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    cfg = json.loads(json.dumps(DEFAULT_CONFIG))
+                    cfg.update(data)
+                    if "providers" in data and isinstance(data["providers"], dict):
+                        cfg["providers"] = json.loads(json.dumps(DEFAULT_CONFIG["providers"]))
+                        cfg["providers"].update(data["providers"])
+                    _THREAT_CONFIG_CACHE = cfg
+                    return cfg
+            except Exception:
+                pass
+
+    _THREAT_CONFIG_CACHE = json.loads(json.dumps(DEFAULT_CONFIG))
+    return _THREAT_CONFIG_CACHE
+
+
+def _mask_key(key: str) -> str:
+    if not key or not key.strip():
+        return ""
+    k = key.strip()
+    if len(k) <= 8:
+        return "********"
+    return k[:4] + "*" * (len(k) - 8) + k[-4:]
+
+
+def get_masked_threat_intel_config() -> Dict[str, Any]:
+    cfg = load_threat_intel_config()
+    return {
+        "abuse_ch_api_key": _mask_key(cfg.get("abuse_ch_api_key", "")),
+        "has_abuse_ch_key": bool(cfg.get("abuse_ch_api_key", "").strip()),
+        "otx_api_key": _mask_key(cfg.get("otx_api_key", "")),
+        "has_otx_key": bool(cfg.get("otx_api_key", "").strip()),
+        "virustotal_api_key": _mask_key(cfg.get("virustotal_api_key", "")),
+        "has_virustotal_key": bool(cfg.get("virustotal_api_key", "").strip()),
+        "providers": cfg.get("providers", DEFAULT_CONFIG["providers"]),
+    }
+
+
+def save_threat_intel_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    global _THREAT_CONFIG_CACHE
+    current = load_threat_intel_config().copy()
+    if "abuse_ch_api_key" in cfg:
+        val = str(cfg["abuse_ch_api_key"]).strip()
+        if not "*" in val:
+            current["abuse_ch_api_key"] = val
+    if "otx_api_key" in cfg:
+        val = str(cfg["otx_api_key"]).strip()
+        if not "*" in val:
+            current["otx_api_key"] = val
+    if "virustotal_api_key" in cfg:
+        val = str(cfg["virustotal_api_key"]).strip()
+        if not "*" in val:
+            current["virustotal_api_key"] = val
+    if "providers" in cfg and isinstance(cfg["providers"], dict):
+        if "providers" not in current:
+            current["providers"] = DEFAULT_CONFIG["providers"].copy()
+        current["providers"].update(cfg["providers"])
+
+    for path in [CONFIG_PERSISTENT_FILE, CONFIG_DEFAULT_FILE, CONFIG_TEMP_FILE]:
+        parent = os.path.dirname(path)
+        try:
+            os.makedirs(parent, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(current, f, indent=2)
+            break
+        except Exception:
+            continue
+
+    _THREAT_CONFIG_CACHE = current
+    if os.path.exists(CACHE_FILE):
+        try:
+            os.remove(CACHE_FILE)
+        except Exception:
+            pass
+    return get_masked_threat_intel_config()
+
+
+def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
+    key = api_key.strip()
+    if not key:
+        return {"status": "error", "message": "API key cannot be blank"}
+
+    try:
+        if provider == "abuse_ch":
+            req = urllib.request.Request(
+                "https://mb-api.abuse.ch/api/v1/",
+                data=b"query=get_recent&selector=time",
+                headers={"User-Agent": "OpenSOC-Forge/1.0", "Auth-Key": key}
+            )
+            with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+                res = json.loads(r.read())
+                if res.get("query_status") in ["ok", "no_results"]:
+                    return {"status": "success", "message": "abuse.ch Auth-Key verified and active!"}
+                return {"status": "error", "message": f"abuse.ch returned: {res.get('query_status')}"}
+
+        elif provider == "alienvault_otx":
+            req = urllib.request.Request(
+                "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=1",
+                headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
+            )
+            with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+                if r.status == 200:
+                    return {"status": "success", "message": "AlienVault OTX API Key verified and active!"}
+                return {"status": "error", "message": f"OTX returned HTTP status {r.status}"}
+
+        elif provider == "virustotal":
+            req = urllib.request.Request(
+                "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8",
+                headers={"User-Agent": "OpenSOC-Forge/1.0", "x-apikey": key}
+            )
+            with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+                if r.status == 200:
+                    return {"status": "success", "message": "VirusTotal API Key verified and active!"}
+                return {"status": "error", "message": f"VirusTotal returned HTTP status {r.status}"}
+
+        else:
+            return {"status": "error", "message": f"Unknown provider: {provider}"}
+    except urllib.error.HTTPError as e:
+        if e.code in [401, 403]:
+            return {"status": "error", "message": f"Authentication failed: Invalid API key (HTTP {e.code})"}
+        return {"status": "error", "message": f"HTTP {e.code}: {e.reason}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Connection error: {str(e)}"}
+
+
 def fetch_threatfox(limit: int = 40) -> List[Dict[str, Any]]:
     """Fetches real-time community-vetted C2 and malware IOCs from abuse.ch ThreatFox."""
+    cfg = load_threat_intel_config()
+    headers = {"User-Agent": "OpenSOC-Forge/1.0"}
+    key = cfg.get("abuse_ch_api_key", "").strip()
+    if key:
+        headers["Auth-Key"] = key
+
     try:
         req = urllib.request.Request(
             "https://threatfox.abuse.ch/export/json/recent/",
-            headers={"User-Agent": "OpenSOC-Forge/1.0"}
+            headers=headers
         )
-        with urllib.request.urlopen(req, timeout=6, context=_ssl_ctx) as r:
+        with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
             data = json.loads(r.read())
             items = []
             count = 0
@@ -217,14 +378,14 @@ def fetch_threatfox(limit: int = 40) -> List[Dict[str, Any]]:
         return []
 
 
-def fetch_feodo(limit: int = 20) -> List[Dict[str, Any]]:
+def fetch_feodo(limit: int = 25) -> List[Dict[str, Any]]:
     """Fetches active botnet C2 IP addresses from abuse.ch Feodo Tracker."""
     try:
         req = urllib.request.Request(
             "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json",
             headers={"User-Agent": "OpenSOC-Forge/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=6, context=_ssl_ctx) as r:
+        with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
             data = json.loads(r.read())
             items = []
             for entry in data[:limit]:
@@ -242,6 +403,173 @@ def fetch_feodo(limit: int = 20) -> List[Dict[str, Any]]:
                     "status": "FEED ACTIVE",
                     "description": f"Port: {entry.get('port')}, Country: {entry.get('country')}"
                 })
+            return items
+    except Exception:
+        return []
+
+
+def fetch_urlhaus(limit: int = 40) -> List[Dict[str, Any]]:
+    """Fetches active malware distribution URLs from abuse.ch URLhaus."""
+    try:
+        req = urllib.request.Request(
+            "https://urlhaus.abuse.ch/downloads/json_recent/",
+            headers={"User-Agent": "OpenSOC-Forge/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+            data = json.loads(r.read())
+            items = []
+            count = 0
+            for k, val_list in data.items():
+                if count >= limit:
+                    break
+                for entry in val_list:
+                    if count >= limit:
+                        break
+                    url_val = entry.get("url")
+                    if not url_val:
+                        continue
+                    items.append({
+                        "indicator": url_val,
+                        "type": "URL",
+                        "reputation": "MALICIOUS",
+                        "confidence": 100,
+                        "threat_actor": entry.get("reporter") or "abuse.ch Hunter",
+                        "malware_family": entry.get("threat") or "Malware Download",
+                        "source": "abuse.ch URLhaus",
+                        "last_seen": entry.get("dateadded") or "Recent",
+                        "ransomware_use": "Malware Payload",
+                        "cvss_score": "MALICIOUS URL",
+                        "status": (entry.get("url_status") or "ONLINE").upper(),
+                        "description": f"Tags: {entry.get('tags') or 'payload'}, Link: {entry.get('urlhaus_link')}"
+                    })
+                    count += 1
+            return items
+    except Exception:
+        return []
+
+
+def fetch_malwarebazaar(limit: int = 30) -> List[Dict[str, Any]]:
+    """Fetches verified malware sample hashes from abuse.ch MalwareBazaar using API Key."""
+    cfg = load_threat_intel_config()
+    key = cfg.get("abuse_ch_api_key", "").strip()
+    if not key:
+        return []
+
+    try:
+        req = urllib.request.Request(
+            "https://mb-api.abuse.ch/api/v1/",
+            data=b"query=get_recent&selector=time",
+            headers={"User-Agent": "OpenSOC-Forge/1.0", "Auth-Key": key}
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+            data = json.loads(r.read())
+            samples = data.get("data", [])
+            items = []
+            for s in samples[:limit]:
+                sha = s.get("sha256_hash")
+                if not sha:
+                    continue
+                items.append({
+                    "indicator": sha,
+                    "type": "SHA-256",
+                    "reputation": "MALICIOUS",
+                    "confidence": 100,
+                    "threat_actor": s.get("reporter") or "abuse.ch Community",
+                    "malware_family": s.get("signature") or s.get("file_type") or "Malware Sample",
+                    "source": "abuse.ch MalwareBazaar",
+                    "last_seen": s.get("first_seen") or "Recent",
+                    "ransomware_use": "Malware Binary",
+                    "cvss_score": "MALICIOUS HASH",
+                    "status": "FEED ACTIVE",
+                    "description": f"File: {s.get('file_name')}, Type: {s.get('file_type')}, Tags: {s.get('tags')}"
+                })
+            return items
+    except Exception:
+        return []
+
+
+def fetch_emerging_threats(limit: int = 40) -> List[Dict[str, Any]]:
+    """Fetches Proofpoint Emerging Threats Open (ET Open) firewall IP blocklist."""
+    try:
+        req = urllib.request.Request(
+            "https://rules.emergingthreats.net/fwrules/emerging-Block-IPs.txt",
+            headers={"User-Agent": "OpenSOC-Forge/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
+            lines = [l.strip() for l in r.read().decode("utf-8", errors="ignore").splitlines() if l.strip() and not l.startswith("#")]
+            items = []
+            for ip in lines[:limit]:
+                items.append({
+                    "indicator": ip,
+                    "type": "IPv4",
+                    "reputation": "MALICIOUS",
+                    "confidence": 95,
+                    "threat_actor": "Proofpoint ET Labs",
+                    "malware_family": "Emerging Threats Attacker / Compromised IP",
+                    "source": "Emerging Threats",
+                    "last_seen": datetime.utcnow().strftime("%Y-%m-%d"),
+                    "ransomware_use": "Network Exploitation / Scanner",
+                    "cvss_score": "BLOCKLISTED IP",
+                    "status": "ACTIVE C2/SCAN",
+                    "description": "Proofpoint Emerging Threats (ET Open) firewall drop list"
+                })
+            return items
+    except Exception:
+        return []
+
+
+def fetch_alienvault_otx(limit: int = 30) -> List[Dict[str, Any]]:
+    """Fetches community threat pulses from AlienVault Open Threat Exchange (OTX)."""
+    cfg = load_threat_intel_config()
+    key = cfg.get("otx_api_key", "").strip()
+    if not key:
+        return []
+
+    try:
+        req = urllib.request.Request(
+            "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=15",
+            headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+            data = json.loads(r.read())
+            pulses = data.get("results", [])
+            items = []
+            for pulse in pulses:
+                if len(items) >= limit:
+                    break
+                p_name = pulse.get("name", "OTX Threat Pulse")
+                p_author = pulse.get("author_name", "AlienVault Community")
+                p_date = (pulse.get("created") or "")[:10]
+                for ind in pulse.get("indicators", []):
+                    val = ind.get("indicator")
+                    if not val:
+                        continue
+                    itype = ind.get("type", "IOC")
+                    if "IPv4" in itype:
+                        itype = "IPv4"
+                    elif "domain" in itype.lower() or "hostname" in itype.lower():
+                        itype = "Domain"
+                    elif "url" in itype.lower():
+                        itype = "URL"
+                    elif "sha256" in itype.lower() or len(val) == 64:
+                        itype = "SHA-256"
+
+                    items.append({
+                        "indicator": val,
+                        "type": itype,
+                        "reputation": "COMMUNITY FLAGGED",
+                        "confidence": 90,
+                        "threat_actor": p_author,
+                        "malware_family": p_name,
+                        "source": "AlienVault OTX",
+                        "last_seen": p_date or "Recent",
+                        "ransomware_use": "Targeted Campaign",
+                        "cvss_score": "COMMUNITY THREAT",
+                        "status": "PULSE ACTIVE",
+                        "description": ind.get("description") or pulse.get("description") or f"OTX Pulse by {p_author}"
+                    })
+                    if len(items) >= limit:
+                        break
             return items
     except Exception:
         return []
@@ -475,19 +803,47 @@ def get_threat_intel_feed(
     search: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Aggregates multi-source threat intelligence with local persistent caching and search."""
+    cfg = load_threat_intel_config()
+    providers = cfg.get("providers", DEFAULT_CONFIG["providers"])
+
     # If source is specifically Cisco Talos, query across all 17,214 IOCs
     if source == "Cisco Talos":
         all_talos = load_all_talos_iocs()
         if search:
             q = search.lower().strip()
-            return [x for x in all_talos if q in x.get("indicator", "").lower() or q in x.get("malware_family", "").lower()][:300]
+            return [x for x in all_talos if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower()][:300]
         return all_talos[:250]
+
+    # Specific source filter
+    if source and source != "ALL":
+        src_lower = source.lower()
+        if "cisa" in src_lower:
+            items = fetch_cisa_kev(60)
+        elif "threatfox" in src_lower:
+            items = fetch_threatfox(60)
+        elif "urlhaus" in src_lower:
+            items = fetch_urlhaus(60)
+        elif "feodo" in src_lower:
+            items = fetch_feodo(50)
+        elif "malwarebazaar" in src_lower or "bazaar" in src_lower:
+            items = fetch_malwarebazaar(50)
+        elif "emerging" in src_lower or "threats" in src_lower:
+            items = fetch_emerging_threats(60)
+        elif "alienvault" in src_lower or "otx" in src_lower:
+            items = fetch_alienvault_otx(50)
+        else:
+            items = []
+
+        if search:
+            q = search.lower().strip()
+            return [x for x in items if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower() or q in str(x.get("description", "")).lower()]
+        return items
 
     # Check cache if not forcing refresh and not searching
     if not force_refresh and not search and not source and os.path.exists(CACHE_FILE):
         try:
             mtime = os.path.getmtime(CACHE_FILE)
-            if (time.time() - mtime) < 7200:  # 2 hours valid
+            if (time.time() - mtime) < 3600:  # 1 hour valid
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
                     cached = json.load(f)
                     if isinstance(cached, list) and len(cached) > 0:
@@ -495,12 +851,28 @@ def get_threat_intel_feed(
         except Exception:
             pass
 
-    cisa = fetch_cisa_kev(30)
-    talos = fetch_cisco_talos(60)
-    tf = fetch_threatfox(30)
-    feodo = fetch_feodo(15)
+    combined = []
+    if providers.get("cisa_kev", True):
+        combined.extend(fetch_cisa_kev(25))
+    if providers.get("cisco_talos", True):
+        combined.extend(fetch_cisco_talos(35))
+    if providers.get("threatfox", True):
+        combined.extend(fetch_threatfox(25))
+    if providers.get("urlhaus", True):
+        combined.extend(fetch_urlhaus(25))
+    if providers.get("feodo", True):
+        combined.extend(fetch_feodo(20))
+    if providers.get("malwarebazaar", True):
+        mb = fetch_malwarebazaar(20)
+        if mb:
+            combined.extend(mb)
+    if providers.get("emerging_threats", True):
+        combined.extend(fetch_emerging_threats(25))
+    if providers.get("alienvault_otx", True):
+        otx = fetch_alienvault_otx(20)
+        if otx:
+            combined.extend(otx)
 
-    combined = cisa + talos + tf + feodo
     if not combined:
         combined = [
             {
@@ -516,20 +888,6 @@ def get_threat_intel_feed(
                 "cvss_score": "10.0 CRITICAL",
                 "status": "EXPLOITED IN WILD",
                 "description": "Apache Log4j2 JNDI features do not protect against attacker controlled LDAP."
-            },
-            {
-                "indicator": "198.51.100.84",
-                "type": "IPv4",
-                "reputation": "MALICIOUS",
-                "confidence": 98,
-                "threat_actor": "Log4j Automated Scanner",
-                "malware_family": "Mirai / JNDI Botnet",
-                "source": "abuse.ch ThreatFox",
-                "last_seen": "Recent",
-                "ransomware_use": "Botnet C2",
-                "cvss_score": "MALICIOUS C2",
-                "status": "FEED ACTIVE",
-                "description": "Mirai botnet scanning node and LDAP exploit delivery."
             }
         ]
 
@@ -538,6 +896,10 @@ def get_threat_intel_feed(
             json.dump(combined, f)
     except Exception:
         pass
+
+    if search:
+        q = search.lower().strip()
+        return [x for x in combined if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower() or q in str(x.get("description", "")).lower()]
 
     return combined
 
@@ -748,6 +1110,37 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
             reputation = "EXTERNAL (Clean / No Cluster Compromise)"
             classification = f"External IP ({ioc_intel.get('org') or ioc_intel.get('country')}) - Clean in Local Telemetry"
 
+    # 4. Optional VirusTotal API Enrichment if key configured
+    vt_enrichment = None
+    cfg = load_threat_intel_config()
+    vt_key = cfg.get("virustotal_api_key", "").strip()
+    if vt_key:
+        try:
+            target_endpoint = "ip_addresses"
+            if len(cleaned_ioc) in [32, 40, 64] and all(c in "0123456789abcdefABCDEF" for c in cleaned_ioc):
+                target_endpoint = "files"
+            elif any(c.isalpha() for c in cleaned_ioc) and "." in cleaned_ioc:
+                target_endpoint = "domains"
+            vt_url = f"https://www.virustotal.com/api/v3/{target_endpoint}/{cleaned_ioc}"
+            vt_req = urllib.request.Request(vt_url, headers={"User-Agent": "OpenSOC-Forge/1.0", "x-apikey": vt_key})
+            with urllib.request.urlopen(vt_req, timeout=5, context=_ssl_ctx) as vt_resp:
+                vt_json = json.loads(vt_resp.read().decode())
+                stats = vt_json.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+                mal = stats.get("malicious", 0)
+                vt_enrichment = {
+                    "malicious": mal,
+                    "suspicious": stats.get("suspicious", 0),
+                    "harmless": stats.get("harmless", 0),
+                    "undetected": stats.get("undetected", 0),
+                    "reputation": vt_json.get("data", {}).get("attributes", {}).get("reputation", 0),
+                    "verdict": "MALICIOUS" if mal > 0 else "CLEAN"
+                }
+                if mal > 0 and not matched_feed:
+                    reputation = f"VIRUSTOTAL MALICIOUS ({mal} engines)"
+                    classification = f"MALICIOUS: Flagged by {mal} vendors on VirusTotal"
+        except Exception:
+            pass
+
     return {
         "ioc": cleaned_ioc,
         "searched_indices": ["opensoc-syslog-*", "wazuh-alerts-*", "suricata/eve.json"],
@@ -759,6 +1152,7 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
         "classification": classification,
         "threat_info": matched_feed,
         "ioc_intel": ioc_intel,
+        "virustotal": vt_enrichment,
         "sample_events": hits[:6],
         "sightings": hits[:6],
     }
