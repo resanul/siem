@@ -44,6 +44,7 @@ def main():
 
     steps = [
         ("Fixing repository ownership", f"echo {args.password} | sudo -S chown -R {args.user}:{args.user} /home/{args.user}/siem"),
+        ("Resetting local repository state to match remote", f"git -C /home/{args.user}/siem fetch origin && git -C /home/{args.user}/siem reset --hard origin/master"),
         ("Pulling latest code from GitHub (master branch)", f"git -C /home/{args.user}/siem pull origin master"),
         ("Retrieving latest commit details", f"git -C /home/{args.user}/siem log -1 --pretty=format:'%h - %s (%cr)'"),
         ("Synchronizing backend assets to /opt/opensoc-forge", f"echo {args.password} | sudo -S cp -rf /home/{args.user}/siem/backend /opt/opensoc-forge/"),
