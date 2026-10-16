@@ -4,6 +4,9 @@ import time
 import base64
 import urllib.request
 import ssl
+import re
+import zipfile
+import io
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -275,6 +278,183 @@ def fetch_cisco_talos(limit: int = 60) -> List[Dict[str, Any]]:
     if all_iocs:
         return all_iocs[:limit]
     return []
+
+
+def update_cisco_talos_from_github() -> Dict[str, Any]:
+    """Downloads the latest repository archive from https://github.com/Cisco-Talos/IOCs,
+    extracts all indicators across text and STIX json bundles, updates the local dataset,
+    and refreshes the in-memory indexes.
+    """
+    global _TALOS_CACHE, _TALOS_MAP, _TALOS_IP_MAP
+
+    url = "https://codeload.github.com/Cisco-Talos/IOCs/zip/refs/heads/main"
+    req = urllib.request.Request(url, headers={"User-Agent": "OpenSOC-ThreatHunter/1.0"})
+
+    zip_bytes = None
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            zip_bytes = resp.read()
+    except Exception as e:
+        try:
+            url_fallback = "https://codeload.github.com/Cisco-Talos/IOCs/zip/refs/heads/master"
+            req2 = urllib.request.Request(url_fallback, headers={"User-Agent": "OpenSOC-ThreatHunter/1.0"})
+            with urllib.request.urlopen(req2, timeout=45) as resp:
+                zip_bytes = resp.read()
+        except Exception as e2:
+            return {
+                "status": "error",
+                "message": f"Failed to download repository from GitHub: {e} / {e2}",
+                "total": len(_TALOS_CACHE) if _TALOS_CACHE else 0,
+            }
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
+        namelist = zf.namelist()
+
+        all_iocs = []
+        seen = set()
+
+        txt_files = [n for n in namelist if n.endswith(".txt")]
+        json_files = [n for n in namelist if n.endswith(".json")]
+
+        # 1. Parse text files
+        for tf in txt_files:
+            parts = tf.split("/")
+            date_parts = [p for p in parts if p.isdigit()]
+            year = date_parts[0] if len(date_parts) > 0 else "2026"
+            month = date_parts[1] if len(date_parts) > 1 else "01"
+            filename = parts[-1].replace(".txt", "").replace("-", " ").title()
+            campaign = filename
+
+            try:
+                content = zf.read(tf).decode("utf-8", errors="replace")
+                for line in content.splitlines():
+                    cleaned = line.strip().replace("[.]", ".").replace("[:]", ":").strip()
+                    if not cleaned or cleaned.startswith("#"):
+                        continue
+
+                    # Section header check
+                    if (("." not in cleaned and "/" not in cleaned and ":" not in cleaned and len(cleaned) < 32) or " " in cleaned):
+                        campaign = f"{filename} ({cleaned})"
+                        continue
+
+                    if cleaned.lower() in seen:
+                        continue
+                    seen.add(cleaned.lower())
+
+                    ioc_type = "Domain"
+                    if cleaned.startswith("http://") or cleaned.startswith("https://"):
+                        ioc_type = "URL"
+                    elif len(cleaned) == 64 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+                        ioc_type = "SHA-256"
+                    elif len(cleaned) == 32 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+                        ioc_type = "MD5"
+                    elif len(cleaned) == 40 and all(c in "0123456789abcdefABCDEF" for c in cleaned):
+                        ioc_type = "SHA-1"
+                    elif any(c.isdigit() for c in cleaned) and all(p.isdigit() for p in cleaned.split(":")[0].split(".") if p):
+                        ioc_type = "IPv4"
+                    elif "@" in cleaned:
+                        ioc_type = "Email"
+
+                    all_iocs.append({
+                        "indicator": cleaned,
+                        "type": ioc_type,
+                        "reputation": "MALICIOUS THREAT ACTOR",
+                        "confidence": 100,
+                        "threat_actor": "Cisco Talos Intelligence",
+                        "malware_family": campaign,
+                        "source": "Cisco Talos",
+                        "last_seen": f"{year}-{month}",
+                        "ransomware_use": "Targeted Campaign",
+                        "cvss_score": "100% CONFIRMED",
+                        "status": "ACTIVE IOC",
+                        "description": f"Cisco Talos Intelligence campaign indicator ({campaign})"
+                    })
+            except Exception:
+                pass
+
+        # 2. Parse STIX json bundles
+        for jf in json_files:
+            parts = jf.split("/")
+            date_parts = [p for p in parts if p.isdigit()]
+            year = date_parts[0] if len(date_parts) > 0 else "2026"
+            month = date_parts[1] if len(date_parts) > 1 else "01"
+            filename = parts[-1].replace(".json", "").replace("-", " ").title()
+
+            try:
+                jdata = json.loads(zf.read(jf).decode("utf-8", errors="replace"))
+                objects = jdata.get("objects", []) if isinstance(jdata, dict) else []
+                for obj in objects:
+                    pattern = obj.get("pattern", "")
+                    match = re.search(r"=\s*'([^']+)'", pattern)
+                    if match:
+                        ind = match.group(1).strip()
+                        if ind.lower() in seen:
+                            continue
+                        seen.add(ind.lower())
+
+                        ioc_type = "Domain"
+                        if "domain-name" in pattern:
+                            ioc_type = "Domain"
+                        elif "ipv4-addr" in pattern:
+                            ioc_type = "IPv4"
+                        elif "file:hashes" in pattern or len(ind) == 64:
+                            ioc_type = "SHA-256"
+                        elif "url:value" in pattern:
+                            ioc_type = "URL"
+
+                        all_iocs.append({
+                            "indicator": ind,
+                            "type": ioc_type,
+                            "reputation": "MALICIOUS THREAT ACTOR",
+                            "confidence": 100,
+                            "threat_actor": "Cisco Talos Intelligence",
+                            "malware_family": obj.get("name") or filename,
+                            "source": "Cisco Talos",
+                            "last_seen": f"{year}-{month}",
+                            "ransomware_use": "Targeted Campaign",
+                            "cvss_score": "100% CONFIRMED",
+                            "status": "ACTIVE IOC",
+                            "description": f"Cisco Talos STIX Intelligence indicator ({filename})"
+                        })
+            except Exception:
+                pass
+
+        if len(all_iocs) > 0:
+            os.makedirs(os.path.dirname(TALOS_DATA_FILE), exist_ok=True)
+            with open(TALOS_DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump(all_iocs, f, indent=2)
+
+            # Invalidate and update memory indexes
+            _TALOS_CACHE = all_iocs
+            _TALOS_MAP = {x["indicator"].lower(): x for x in _TALOS_CACHE if "indicator" in x}
+            _TALOS_IP_MAP = {x["indicator"].split(":")[0]: x for x in _TALOS_CACHE if x.get("type") == "IPv4"}
+
+            # Clear general cache file if exists
+            if os.path.exists(CACHE_FILE):
+                try:
+                    os.remove(CACHE_FILE)
+                except Exception:
+                    pass
+
+            return {
+                "status": "success",
+                "message": f"Successfully updated {len(all_iocs):,} verified IOCs from Cisco-Talos/IOCs GitHub repository",
+                "total": len(all_iocs),
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            }
+        else:
+            return {
+                "status": "warning",
+                "message": "Downloaded repository but no valid indicators were found.",
+                "total": len(_TALOS_CACHE),
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error extracting repository contents: {str(e)}",
+            "total": len(_TALOS_CACHE) if _TALOS_CACHE else 0,
+        }
 
 
 def get_threat_intel_feed(

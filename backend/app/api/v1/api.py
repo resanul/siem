@@ -634,6 +634,7 @@ from backend.app.services.mitre_intel import (
     get_threat_intel_feed,
     get_process_lineage,
     hunt_ioc_in_cluster,
+    update_cisco_talos_from_github,
 )
 
 
@@ -729,9 +730,12 @@ def get_threat_intel(
 
 @api_router.post("/threat-intel/sync")
 def sync_threat_intel(
+    source: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
 ):
     """Force re-syncs live threat feeds from external open-source intelligence platforms."""
+    if source == "Cisco Talos" or source == "talos":
+        return update_cisco_talos_from_github()
     feeds = get_threat_intel_feed(force_refresh=True)
     return {
         "status": "success",
@@ -739,6 +743,15 @@ def sync_threat_intel(
         "total": len(feeds),
         "feeds": feeds,
     }
+
+
+@api_router.post("/threat-intel/talos/update")
+def update_talos_intel(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Fetches latest IOCs live from https://github.com/Cisco-Talos/IOCs,
+    updates persistent storage, and refreshes in-memory threat hunter indexes."""
+    return update_cisco_talos_from_github()
 
 
 @api_router.post("/threat-intel/hunt")
