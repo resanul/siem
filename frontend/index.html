@@ -201,7 +201,8 @@ function App() {
   const [hostsFleet, setHostsFleet] = useState(() => {
     try {
       const cached = localStorage.getItem("opensoc_hosts_fleet");
-      return cached ? JSON.parse(cached) : [];
+      const parsed = cached ? JSON.parse(cached) : [];
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       return [];
     }
@@ -209,7 +210,15 @@ function App() {
   const [hostsStats, setHostsStats] = useState(() => {
     try {
       const cached = localStorage.getItem("opensoc_hosts_stats");
-      return cached ? JSON.parse(cached) : { total: 0, active: 0, disconnected: 0 };
+      const parsed = cached ? JSON.parse(cached) : null;
+      if (parsed && typeof parsed === "object") {
+        return {
+          total: Number(parsed.total) || 0,
+          active: Number(parsed.active) || 0,
+          disconnected: Number(parsed.disconnected) || 0
+        };
+      }
+      return { total: 0, active: 0, disconnected: 0 };
     } catch (e) {
       return { total: 0, active: 0, disconnected: 0 };
     }
@@ -734,8 +743,15 @@ function App() {
   });
 
   useEffect(() => {
-    if (window.lucide) {
-      window.lucide.createIcons();
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      const raf = requestAnimationFrame(() => {
+        try {
+          window.lucide.createIcons();
+        } catch (e) {
+          console.warn("Lucide render safely intercepted:", e);
+        }
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, addHostModalOpen, hostsFleet, hostsLoading]);
 
@@ -4565,16 +4581,26 @@ sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
   componentDidCatch(error, errorInfo) {
     console.error("OpenSOC UI ErrorBoundary caught error:", error, errorInfo);
+    this.setState({ errorInfo });
   }
   render() {
     if (this.state.hasError) {
+      const errHeader = (this.state.error?.name ? this.state.error.name + ": " : "") + (this.state.error?.message || "Unknown rendering exception");
+      const errTrace = [
+        errHeader,
+        "",
+        this.state.errorInfo?.componentStack ? "Component Trace:" + this.state.errorInfo.componentStack : "",
+        "",
+        this.state.error?.stack ? "Call Stack:\n" + this.state.error.stack : ""
+      ].filter(Boolean).join("\n");
+
       return React.createElement("div", {
         className: "min-h-screen bg-[#080c14] text-slate-200 flex flex-col items-center justify-center p-6 text-center font-sans"
       }, React.createElement("div", {
@@ -4590,7 +4616,7 @@ class ErrorBoundary extends React.Component {
         React.createElement("pre", {
           key: "err",
           className: "p-3 bg-[#080c14] border border-[#1f293d] rounded text-[11px] font-mono text-red-300 overflow-x-auto whitespace-pre-wrap max-h-48"
-        }, String(this.state.error?.stack || this.state.error?.message || this.state.error)),
+        }, errTrace),
         React.createElement("div", { key: "actions", className: "flex space-x-3 pt-2" }, [
           React.createElement("button", {
             key: "reset",
