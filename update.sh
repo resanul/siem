@@ -19,9 +19,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${SCRIPT_DIR}"
 
 # 1. Pull latest commits from GitHub
-echo -e "\n${YELLOW}[1/4] Pulling latest commits from GitHub (origin/master)...${NC}"
 if [ -d "${REPO_DIR}/.git" ]; then
-    git -C "${REPO_DIR}" pull origin master
+    CURRENT_BRANCH=$(git -C "${REPO_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+    echo -e "\n${YELLOW}[1/4] Pulling latest commits from GitHub (origin/${CURRENT_BRANCH})...${NC}"
+    git -C "${REPO_DIR}" pull origin "${CURRENT_BRANCH}" || git -C "${REPO_DIR}" pull origin main || git -C "${REPO_DIR}" pull origin master
     LATEST_COMMIT=$(git -C "${REPO_DIR}" log -1 --pretty=format:'%h - %s (%cr)')
     echo -e "${GREEN}[OK] Latest Commit: ${LATEST_COMMIT}${NC}"
 else
@@ -65,27 +66,35 @@ fi
 echo -e "${GREEN}[OK] Management service restarted!${NC}"
 
 # 4. Verify Health
+# 4. Verify Health
 echo -e "\n${YELLOW}[4/4] Verifying platform health check...${NC}"
 sleep 3
 HEALTH_OK=false
-for i in {1..10}; do
-    if curl -s -f http://127.0.0.1:7070/ >/dev/null 2>&1; then
+DETECTED_PORT=8000
+
+for i in {1..12}; do
+    if curl -s -f http://127.0.0.1:8000/ >/dev/null 2>&1; then
         HEALTH_OK=true
+        DETECTED_PORT=8000
+        break
+    elif curl -s -f http://127.0.0.1:7070/ >/dev/null 2>&1; then
+        HEALTH_OK=true
+        DETECTED_PORT=7070
         break
     fi
     echo -n "."
     sleep 1
 done
 
-HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
+HOST_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
 
 if [ "$HEALTH_OK" = true ]; then
     echo -e "\n${GREEN}================================================================================${NC}"
     echo -e "${GREEN}  SUCCESS: OpenSOC Forge is LIVE and updated!${NC}"
-    echo -e "  Web Console   : ${BLUE}http://${HOST_IP}:7070/console/${NC}"
+    echo -e "  Web Console   : ${BLUE}http://${HOST_IP}:${DETECTED_PORT}/console/${NC}"
     echo -e "  Latest Commit : ${LATEST_COMMIT}"
     echo -e "${GREEN}================================================================================${NC}"
 else
-    echo -e "\n${YELLOW}[WARN] Containers are starting up. Please allow a few moments and verify:${NC}"
-    echo -e "  Web Console: http://${HOST_IP}:7070/console/"
+    echo -e "\n${YELLOW}[WARN] Services are still initializing. Please verify:${NC}"
+    echo -e "  Web Console: http://${HOST_IP}:${DETECTED_PORT}/console/"
 fi
