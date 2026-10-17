@@ -727,6 +727,17 @@ function App() {
   const [testingKeyProvider, setTestingKeyProvider] = useState("");
   const [keyTestResults, setKeyTestResults] = useState({});
   const [savingThreatConfig, setSavingThreatConfig] = useState(false);
+  const [proxyConfig, setProxyConfig] = useState({
+    enabled: false,
+    http_proxy: "",
+    https_proxy: "",
+    no_proxy: "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+    status: "NOT_CONFIGURED"
+  });
+  const [proxyTesting, setProxyTesting] = useState(false);
+  const [proxyTestResult, setProxyTestResult] = useState(null);
+  const [proxySaving, setProxySaving] = useState(false);
+  const [proxySaveMsg, setProxySaveMsg] = useState("");
   const [autoSyncInterval, setAutoSyncInterval] = useState(300); // 300s = 5m
   const [lastSyncTime, setLastSyncTime] = useState("");
   const [showAddIocModal, setShowAddIocModal] = useState(false);
@@ -753,7 +764,7 @@ function App() {
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, addHostModalOpen, hostsFleet, hostsLoading]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg]);
 
   useEffect(() => {
     try {
@@ -793,6 +804,7 @@ function App() {
         }
       }).catch(() => {});
     }
+    fetchProxyConfig();
   }, []);
 
   // Live polling for real alerts, overview metrics, and system components
@@ -1384,7 +1396,73 @@ function App() {
     }
   };
 
+  const fetchProxyConfig = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/system/proxy", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setProxyConfig(data);
+      }
+    } catch (e) {
+      console.error("Failed to load proxy config", e);
+    }
+  };
+
+  const handleSaveProxy = async () => {
+    setProxySaving(true);
+    setProxySaveMsg("");
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/v1/system/proxy", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(proxyConfig)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProxyConfig(data);
+        setProxySaveMsg("✅ Proxy configuration saved and applied globally across Python environment & .env!");
+      } else {
+        setProxySaveMsg("❌ Failed to save proxy: " + (data.detail || ("HTTP " + res.status)));
+      }
+    } catch (e) {
+      setProxySaveMsg("❌ Error saving proxy: " + e.message);
+    } finally {
+      setProxySaving(false);
+      setTimeout(() => setProxySaveMsg(""), 6000);
+    }
+  };
+
+  const handleTestProxy = async () => {
+    setProxyTesting(true);
+    setProxyTestResult(null);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/v1/system/proxy/test", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          proxy_url: proxyConfig.http_proxy || proxyConfig.https_proxy || "",
+          test_target: "https://otx.alienvault.com"
+        })
+      });
+      const data = await res.json();
+      setProxyTestResult(data);
+    } catch (e) {
+      setProxyTestResult({ success: false, message: e.message });
+    } finally {
+      setProxyTesting(false);
+    }
+  };
+
   const loadThreatConfig = async () => {
+    fetchProxyConfig();
     try {
       const token = localStorage.getItem("token") || "";
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
@@ -1720,6 +1798,16 @@ function App() {
   }), /*#__PURE__*/React.createElement("span", null, `PIPELINE HEALTHY (${overview.latency || 3.8}ms)`))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      fetchProxyConfig();
+      setShowThreatConfigModal(true);
+    },
+    className: `px-3 py-1.5 rounded border text-xs font-mono flex items-center space-x-1.5 transition-colors ${proxyConfig.enabled ? "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/30" : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-600"}`,
+    title: "Configure Corporate Proxy & Threat Intel API Keys"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "globe",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, proxyConfig.enabled ? "🌐 Proxy Active" : "🌐 Proxy Settings")), /*#__PURE__*/React.createElement("button", {
     onClick: triggerGitUpdate,
     disabled: gitUpdateStatus?.loading || userRole === "SecOps Viewer",
     className: "px-3 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50",
@@ -4063,6 +4151,83 @@ sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install
   }))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-4 font-mono text-xs"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-xl bg-gradient-to-br from-[#0c192c] via-[#101b30] to-[#0e1626] border border-cyan-500/40 shadow-xl space-y-3.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "globe",
+    className: "w-4 h-4"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-slate-100 text-xs font-sans block"
+  }, "Corporate / Enterprise Outbound Proxy"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 font-mono"
+  }, proxyConfig.enabled ? "STATUS: ACTIVE (EGRESS VIA PROXY)" : "STATUS: DIRECT EGRESS (PROXY DISABLED)"))), /*#__PURE__*/React.createElement("label", {
+    className: "flex items-center space-x-2 cursor-pointer text-xs font-sans text-slate-200 select-none bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-700/80 hover:border-cyan-500/50 transition-colors"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!proxyConfig.enabled,
+    onChange: e => setProxyConfig({ ...proxyConfig, enabled: e.target.checked }),
+    className: "rounded border-slate-700 text-cyan-500 focus:ring-cyan-500 bg-slate-950 w-4 h-4 cursor-pointer"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold text-cyan-300 text-xs"
+  }, "Enable Corporate Proxy"))), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-sans text-slate-300 leading-relaxed"
+  }, "Enables outbound internet routing for threat intelligence sync, AlienVault OTX verification, VirusTotal queries, and GitHub updates in strict enterprise proxy environments."), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "space-y-1"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-[10px] text-slate-400 font-sans font-semibold flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("span", null, "HTTP / HTTPS Proxy URL"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[9px] text-slate-500 font-mono"
+  }, "e.g. http://172.31.105.10:3128")), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: proxyConfig.http_proxy || "",
+    onChange: e => {
+      const val = e.target.value;
+      setProxyConfig({ ...proxyConfig, http_proxy: val, https_proxy: val });
+    },
+    placeholder: "http://172.31.105.10:3128",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500 placeholder:text-slate-600"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-1"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-[10px] text-slate-400 font-sans font-semibold"
+  }, "No-Proxy Bypass (Direct Subnets)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: proxyConfig.no_proxy || "",
+    onChange: e => setProxyConfig({ ...proxyConfig, no_proxy: e.target.value }),
+    placeholder: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+    className: "w-full bg-[#080c14] border border-[#1f293d] rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500 placeholder:text-slate-600"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: handleTestProxy,
+    disabled: proxyTesting || (!proxyConfig.http_proxy && !proxyConfig.https_proxy),
+    className: "px-3 py-1.5 rounded bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "zap",
+    className: "w-3 h-3"
+  }), /*#__PURE__*/React.createElement("span", null, proxyTesting ? "Testing Proxy..." : "⚡ Test Proxy Egress")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: handleSaveProxy,
+    disabled: proxySaving,
+    className: "px-3.5 py-1.5 rounded bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 font-bold text-xs flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "save",
+    className: "w-3 h-3"
+  }), /*#__PURE__*/React.createElement("span", null, proxySaving ? "Saving..." : "💾 Save & Apply Globally"))), proxyTestResult && /*#__PURE__*/React.createElement("div", {
+    className: `text-[11px] font-mono px-2.5 py-1 rounded border ${proxyTestResult.success ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"}`
+  }, proxyTestResult.message + (proxyTestResult.latency_ms ? ` (${proxyTestResult.latency_ms}ms)` : ""))), proxySaveMsg && /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] font-mono px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+  }, proxySaveMsg)), /*#__PURE__*/React.createElement("div", {
     className: "p-3.5 rounded-lg bg-[#131b2e] border border-[#1f293d] space-y-2"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"

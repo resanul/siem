@@ -871,6 +871,51 @@ def test_threat_api_key(
     return test_provider_key(provider, api_key)
 
 
+# ===================== ENTERPRISE PLATFORM PROXY =====================
+from backend.app.services.proxy_manager import (
+    load_proxy_config,
+    save_proxy_config,
+    test_proxy_connection,
+)
+
+
+@api_router.get("/system/proxy")
+def get_system_proxy(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    """Returns current system proxy configuration."""
+    return load_proxy_config()
+
+
+@api_router.post("/system/proxy")
+def update_system_proxy(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Saves and applies platform proxy configuration globally."""
+    res = save_proxy_config(payload)
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="UPDATE_SYSTEM_PROXY",
+        resource_type="system",
+        resource_id="proxy",
+        status="SUCCESS",
+        details={"enabled": res.get("enabled"), "http_proxy": res.get("http_proxy")},
+    )
+    return res
+
+
+@api_router.post("/system/proxy/test")
+def test_system_proxy(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Tests internet connectivity through a specified proxy server."""
+    proxy_url = payload.get("proxy_url", "").strip()
+    target_url = payload.get("target_url", "https://otx.alienvault.com").strip()
+    return test_proxy_connection(proxy_url, target_url)
+
+
 @api_router.post("/threat-intel/hunt")
 def hunt_ioc(
     payload: Dict[str, str],

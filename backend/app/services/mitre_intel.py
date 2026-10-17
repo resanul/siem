@@ -1,3 +1,4 @@
+from backend.app.services.proxy_manager import safe_urlopen
 import os
 import json
 import time
@@ -154,7 +155,7 @@ def fetch_cisa_kev(limit: int = 50) -> List[Dict[str, Any]]:
             "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
             headers={"User-Agent": "OpenSOC-Forge/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=6, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=6) as r:
             data = json.loads(r.read())
             vulns = data.get("vulnerabilities", [])
             items = []
@@ -316,7 +317,7 @@ def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
                 data=b"query=get_recent&selector=time",
                 headers={"User-Agent": "OpenSOC-Forge/1.0", "Auth-Key": key}
             )
-            with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+            with safe_urlopen(req, timeout=10) as r:
                 res = json.loads(r.read())
                 if res.get("query_status") in ["ok", "no_results"]:
                     return {"status": "success", "message": "abuse.ch Auth-Key verified and active!"}
@@ -327,7 +328,7 @@ def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
                 "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=1",
                 headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
             )
-            with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+            with safe_urlopen(req, timeout=10) as r:
                 if r.status == 200:
                     return {"status": "success", "message": "AlienVault OTX API Key verified and active!"}
                 return {"status": "error", "message": f"OTX returned HTTP status {r.status}"}
@@ -337,7 +338,7 @@ def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
                 "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8",
                 headers={"User-Agent": "OpenSOC-Forge/1.0", "x-apikey": key}
             )
-            with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+            with safe_urlopen(req, timeout=10) as r:
                 if r.status == 200:
                     return {"status": "success", "message": "VirusTotal API Key verified and active!"}
                 return {"status": "error", "message": f"VirusTotal returned HTTP status {r.status}"}
@@ -371,7 +372,7 @@ def fetch_threatfox(limit: int = 40) -> List[Dict[str, Any]]:
             "https://threatfox.abuse.ch/export/json/recent/",
             headers=headers
         )
-        with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=8) as r:
             data = json.loads(r.read())
             items = []
             count = 0
@@ -411,7 +412,7 @@ def fetch_feodo(limit: int = 25) -> List[Dict[str, Any]]:
             "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json",
             headers={"User-Agent": "OpenSOC-Forge/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=8) as r:
             data = json.loads(r.read())
             items = []
             for entry in data[:limit]:
@@ -441,7 +442,7 @@ def fetch_urlhaus(limit: int = 40) -> List[Dict[str, Any]]:
             "https://urlhaus.abuse.ch/downloads/json_recent/",
             headers={"User-Agent": "OpenSOC-Forge/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=10) as r:
             data = json.loads(r.read())
             items = []
             count = 0
@@ -487,7 +488,7 @@ def fetch_malwarebazaar(limit: int = 30) -> List[Dict[str, Any]]:
             data=b"query=get_recent&selector=time",
             headers={"User-Agent": "OpenSOC-Forge/1.0", "Auth-Key": key}
         )
-        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=10) as r:
             data = json.loads(r.read())
             samples = data.get("data", [])
             items = []
@@ -521,7 +522,7 @@ def fetch_emerging_threats(limit: int = 40) -> List[Dict[str, Any]]:
             "https://rules.emergingthreats.net/fwrules/emerging-Block-IPs.txt",
             headers={"User-Agent": "OpenSOC-Forge/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=8) as r:
             lines = [l.strip() for l in r.read().decode("utf-8", errors="ignore").splitlines() if l.strip() and not l.startswith("#")]
             items = []
             for ip in lines[:limit]:
@@ -559,7 +560,7 @@ def fetch_alienvault_otx(limit: int = 40) -> List[Dict[str, Any]]:
                 "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=15",
                 headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
             )
-            with urllib.request.urlopen(req, timeout=8, context=_ssl_ctx) as r:
+            with safe_urlopen(req, timeout=8) as r:
                 data = json.loads(r.read())
                 pulses = data.get("results", [])
         except Exception:
@@ -572,7 +573,7 @@ def fetch_alienvault_otx(limit: int = 40) -> List[Dict[str, Any]]:
                     "https://otx.alienvault.com/api/v1/pulses/activity?limit=15",
                     headers={"User-Agent": "OpenSOC-Forge/1.0", "X-OTX-API-KEY": key}
                 )
-                with urllib.request.urlopen(act_req, timeout=8, context=_ssl_ctx) as r:
+                with safe_urlopen(act_req, timeout=8) as r:
                     data = json.loads(r.read())
                     pulses = data.get("results", [])
             except Exception:
@@ -1218,7 +1219,7 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
                 target_endpoint = "domains"
             vt_url = f"https://www.virustotal.com/api/v3/{target_endpoint}/{cleaned_ioc}"
             vt_req = urllib.request.Request(vt_url, headers={"User-Agent": "OpenSOC-Forge/1.0", "x-apikey": vt_key})
-            with urllib.request.urlopen(vt_req, timeout=5, context=_ssl_ctx) as vt_resp:
+            with safe_urlopen(vt_req, timeout=5) as vt_resp:
                 vt_json = json.loads(vt_resp.read().decode())
                 stats = vt_json.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
                 mal = stats.get("malicious", 0)

@@ -1,3 +1,4 @@
+from backend.app.services.proxy_manager import safe_urlopen
 """
 OpenSOC Forge - GitHub IOC Backup & Synchronization Engine.
 Handles automated verification, pull comparison, and twice-daily push of
@@ -118,7 +119,7 @@ def sync_iocs_to_github(force_push: bool = False) -> Dict[str, Any]:
     try:
         check_url = f"https://api.github.com/repos/{repo}/contents/{file_path}?ref={branch}"
         req = urllib.request.Request(check_url, headers=headers)
-        with urllib.request.urlopen(req, timeout=12, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=12) as r:
             remote_meta = json.loads(r.read())
             remote_sha = remote_meta.get("sha")
             raw_b64 = remote_meta.get("content", "")
@@ -196,7 +197,7 @@ def sync_iocs_to_github(force_push: bool = False) -> Dict[str, Any]:
             headers=headers,
             method="PUT"
         )
-        with urllib.request.urlopen(req, timeout=20, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=20) as r:
             resp_data = json.loads(r.read())
             new_sha = resp_data.get("commit", {}).get("sha", "") or resp_data.get("content", {}).get("sha", "")
             msg = f"Successfully pushed {total_iocs:,} offline indicators to GitHub ({repo}:{branch})"
@@ -252,7 +253,7 @@ def test_github_connection(token: str, repo: str = "resanul/siem") -> Dict[str, 
 
     try:
         req = urllib.request.Request(f"https://api.github.com/repos/{repo.strip()}", headers=headers)
-        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as r:
+        with safe_urlopen(req, timeout=10) as r:
             data = json.loads(r.read())
             permissions = data.get("permissions", {})
             can_push = permissions.get("push", False)

@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "http_proxy": "http://172.31.105.10:3128",
+  "https_proxy": "http://172.31.105.10:3128",
+  "no_proxy": "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+  "status": "ACTIVE",
+  "last_tested": null,
+  "latency_ms": null
+}

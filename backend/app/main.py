@@ -64,6 +64,12 @@ def root():
 @app.on_event("startup")
 def on_startup():
     try:
+        from backend.app.services.proxy_manager import init_proxy_on_startup
+        init_proxy_on_startup()
+    except Exception as e:
+        print(f"Failed to init proxy: {e}")
+
+    try:
         from backend.app.services.ioc_storage import init_ioc_database
         init_ioc_database()
     except Exception as e:
