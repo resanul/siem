@@ -2566,7 +2566,20 @@ sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install
     className: "p-3"
   }, "Payload / Flow Details"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d] text-slate-300"
-  }, (networkTelemetry.recent_flows && networkTelemetry.recent_flows.length > 0 ? networkTelemetry.recent_flows : []).map((fl, idx) => /*#__PURE__*/React.createElement("tr", {
+  }, (!networkTelemetry.recent_flows || networkTelemetry.recent_flows.length === 0) ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: 7,
+    className: "p-8 text-center"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-md mx-auto space-y-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-amber-400 font-semibold flex items-center justify-center space-x-2 text-sm"
+  }, /*#__PURE__*/React.createElement("span", null, "⚠️ No Live Network Packets Ingested Yet")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 leading-relaxed"
+  }, "Suricata EVE log stream is currently awaiting packet activity on interface ", /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400 font-bold font-mono"
+  }, networkTelemetry.interface || "eno1"), ". To install and start live packet capture on this host, run:"), /*#__PURE__*/React.createElement("div", {
+    className: "p-2.5 bg-[#080c14] border border-emerald-500/30 rounded text-emerald-400 font-mono text-xs select-all text-center font-bold"
+  }, "sudo ./scripts/setup_suricata.sh")))) : networkTelemetry.recent_flows.map((fl, idx) => /*#__PURE__*/React.createElement("tr", {
     key: idx,
     className: "hover:bg-[#131b2e]/40 transition"
   }, /*#__PURE__*/React.createElement("td", {

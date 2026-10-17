@@ -12,7 +12,56 @@ from backend.app.models.schemas import AlertItem, AlertSeverity, AlertSource, Al
 ES_URL = os.environ.get("ELASTICSEARCH_URL", "http://elasticsearch:9200")
 ES_USER = os.environ.get("ELASTIC_USER", "elastic")
 ES_PASSWORD = os.environ.get("ELASTIC_PASSWORD", "OpenSocForge2026!")
-SURICATA_LOG_PATH = os.environ.get("SURICATA_EVE_PATH", "/var/log/suricata/eve.json")
+def detect_monitored_interface() -> str:
+    """Automatically detects active host NIC (e.g. eno1) or honors MONITORED_INTERFACE env."""
+    env_iface = os.environ.get("MONITORED_INTERFACE")
+    if env_iface and env_iface != "enp0s3":
+        return env_iface
+
+    # 1. Inspect Linux default route from /proc/net/route
+    try:
+        with open("/proc/net/route", "r") as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 2 and parts[1] == "00000000":
+                    return parts[0]
+    except Exception:
+        pass
+
+    # 2. Inspect /sys/class/net active interfaces
+    try:
+        if os.path.exists("/sys/class/net"):
+            candidates = [
+                d for d in os.listdir("/sys/class/net")
+                if d != "lo" and not d.startswith(("docker", "veth", "br-", "virbr"))
+            ]
+            if candidates:
+                for c in candidates:
+                    if c.startswith(("en", "eth", "em")):
+                        return c
+                return candidates[0]
+    except Exception:
+        pass
+
+    return env_iface or "eno1"
+
+
+def find_suricata_eve_log() -> str:
+    """Finds active eve.json log across standard Linux and local installation paths."""
+    candidates = [
+        os.environ.get("SURICATA_EVE_PATH"),
+        "/var/log/suricata/eve.json",
+        "/var/log/suricata/eve-alerts.json",
+        "/opt/opensoc-forge/logs/eve.json",
+        "/var/log/suricata.log"
+    ]
+    for c in candidates:
+        if c and os.path.exists(c) and os.path.getsize(c) > 0:
+            return c
+    return os.environ.get("SURICATA_EVE_PATH", "/var/log/suricata/eve.json")
+
+
+SURICATA_LOG_PATH = find_suricata_eve_log()
 
 # In-memory storage for active live simulation and synthetic alerts
 LIVE_SIMULATION_ALERTS: List[AlertItem] = []
@@ -282,11 +331,11 @@ def get_live_overview_data() -> Dict[str, Any]:
         {
             "name": "suricata",
             "version": "7.0.5",
-            "status": "HEALTHY",
-            "ports": "AF_PACKET (enp0s3)",
+            "status": "HEALTHY" if os.path.exists(find_suricata_eve_log()) and os.path.getsize(find_suricata_eve_log()) > 0 else "DEGRADED",
+            "ports": f"AF_PACKET ({detect_monitored_interface()})",
             "type": "NIDS Engine",
-            "uptime": "Active",
-            "details": "Promiscuous packet capture live"
+            "uptime": "Active" if os.path.exists(find_suricata_eve_log()) and os.path.getsize(find_suricata_eve_log()) > 0 else "Pending",
+            "details": f"Promiscuous packet capture on {detect_monitored_interface()}"
         },
         {
             "name": "syslog",
@@ -488,7 +537,8 @@ def get_live_health_diagnostics() -> Dict[str, Any]:
 
 def get_live_network_telemetry() -> Dict[str, Any]:
     """Extracts live network interface metrics, drop rates, and packet flows from Suricata EVE telemetry."""
-    interface = os.environ.get("MONITORED_INTERFACE", "enp0s3")
+    interface = detect_monitored_interface()
+    eve_log_file = find_suricata_eve_log()
     kernel_pkts = 0
     kernel_drops = 0
     drop_rate_str = "0.00% (Healthy)"
@@ -496,10 +546,10 @@ def get_live_network_telemetry() -> Dict[str, Any]:
     flows: List[Dict[str, Any]] = []
     proto_counts = {"http": 0, "tls": 0, "dns": 0, "ssh": 0, "other": 0}
 
-    if os.path.exists(SURICATA_LOG_PATH):
+    if os.path.exists(eve_log_file):
         try:
             lines: List[str] = []
-            with open(SURICATA_LOG_PATH, "r", encoding="utf-8", errors="replace") as f:
+            with open(eve_log_file, "r", encoding="utf-8", errors="replace") as f:
                 for line in f:
                     lines.append(line)
                     if len(lines) > 500:
