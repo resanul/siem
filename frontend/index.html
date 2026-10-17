@@ -4,11 +4,50 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OpenSOC Forge — Enterprise Security Operations & Simulation Platform</title>
-  <!-- Tailwind CSS & Lucide Icons -->
+  <!-- Global Error Diagnostics (Prevents blank screens) -->
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      console.error("Global UI Error:", msg, url, line, col, error);
+      var root = document.getElementById("root");
+      if (root && (!root.children || root.children.length === 0)) {
+        root.innerHTML = '<div style="min-height:100vh;background:#080c14;color:#f1f5f9;display:flex;align-items:center;justify-content:center;padding:20px;font-family:sans-serif;">' +
+          '<div style="max-width:550px;width:100%;background:#0e1422;border:1px solid #ef4444;border-radius:10px;padding:24px;box-shadow:0 20px 40px rgba(0,0,0,0.8);">' +
+            '<div style="display:flex;align-items:center;gap:10px;color:#f87171;font-weight:700;font-size:16px;margin-bottom:12px;">' +
+              '<span style="font-size:22px;">⚠️</span> OpenSOC Forge — UI Diagnostics' +
+            '</div>' +
+            '<p style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:14px;">A JavaScript dependency or startup exception occurred:</p>' +
+            '<pre style="padding:12px;background:#080c14;border:1px solid #1f293d;border-radius:6px;font-size:11px;color:#fca5a5;white-space:pre-wrap;font-family:monospace;max-height:160px;overflow-y:auto;margin-bottom:16px;">' +
+              (msg || "Initialization failure") + (line ? "\nLine: " + line + ":" + col : "") +
+            '</pre>' +
+            '<div style="display:flex;gap:10px;">' +
+              '<button onclick="localStorage.clear();location.reload();" style="background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;">🔄 Clear Cache & Reload</button>' +
+              '<button onclick="location.reload();" style="background:#334155;color:#e2e8f0;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;">Reload</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+    };
+  </script>
+  <!-- Local Vendor with CDN Fallback for 100% Offline / Air-Gapped Operation -->
+  <script src="/console/vendor/react.production.min.js"></script>
+  <script>
+    if (!window.React) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"><\\/script>');
+    }
+  </script>
+  <script src="/console/vendor/react-dom.production.min.js"></script>
+  <script>
+    if (!window.ReactDOM) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"><\\/script>');
+    }
+  </script>
+  <script src="/console/vendor/lucide.min.js"></script>
+  <script>
+    if (!window.lucide) {
+      document.write('<script src="https://unpkg.com/lucide@latest"><\\/script>');
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <!-- Pre-compiled for instant zero-latency loading without runtime Babel overhead -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4523,13 +4562,67 @@ sudo WAZUH_MANAGER='${window.location.hostname || "192.168.10.177"}' dnf install
   }, "Close Lineage View"))))));
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("OpenSOC UI ErrorBoundary caught error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement("div", {
+        className: "min-h-screen bg-[#080c14] text-slate-200 flex flex-col items-center justify-center p-6 text-center font-sans"
+      }, React.createElement("div", {
+        className: "max-w-xl w-full bg-[#0e1422] border border-red-500/40 rounded-xl p-8 shadow-2xl space-y-5 text-left"
+      }, [
+        React.createElement("div", { key: "header", className: "flex items-center space-x-3 text-red-400 font-bold text-lg" }, [
+          React.createElement("span", { key: "icon", className: "text-2xl" }, "⚠️"),
+          React.createElement("span", { key: "title" }, "OpenSOC Forge — UI Recovery Mode")
+        ]),
+        React.createElement("p", { key: "desc", className: "text-xs text-slate-400 leading-relaxed" }, 
+          "The dashboard encountered a rendering error. You can clear cached local state or reset to the Overview dashboard:"
+        ),
+        React.createElement("pre", {
+          key: "err",
+          className: "p-3 bg-[#080c14] border border-[#1f293d] rounded text-[11px] font-mono text-red-300 overflow-x-auto whitespace-pre-wrap max-h-48"
+        }, String(this.state.error?.stack || this.state.error?.message || this.state.error)),
+        React.createElement("div", { key: "actions", className: "flex space-x-3 pt-2" }, [
+          React.createElement("button", {
+            key: "reset",
+            onClick: () => {
+              try { localStorage.clear(); } catch(e) {}
+              window.location.reload();
+            },
+            className: "px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-mono text-xs font-bold transition shadow"
+          }, "🔄 Clear Cache & Reload"),
+          React.createElement("button", {
+            key: "overview",
+            onClick: () => {
+              try { localStorage.setItem("opensoc_current_screen", "overview"); } catch(e) {}
+              this.setState({ hasError: false, error: null });
+            },
+            className: "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded font-mono text-xs font-bold transition"
+          }, "📊 Back to Overview")
+        ])
+      ]));
+    }
+    return this.props.children;
+  }
+}
+
 (function() {
   const container = document.getElementById("root");
+  const appElement = React.createElement(ErrorBoundary, null, React.createElement(App, null));
   if (ReactDOM.createRoot) {
     const root = ReactDOM.createRoot(container);
-    root.render(React.createElement(App, null));
+    root.render(appElement);
   } else {
-    ReactDOM.render(React.createElement(App, null), container);
+    ReactDOM.render(appElement, container);
   }
 })();
 
