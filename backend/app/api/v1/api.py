@@ -1282,11 +1282,7 @@ def get_endpoint_hosts(
     include_demo: bool = False,
 ):
     """Retrieves registered endpoints and fleet metrics."""
-    from backend.app.services.host_storage import list_hosts, get_fleet_stats, try_sync_wazuh_agents
-    try:
-        try_sync_wazuh_agents()
-    except Exception:
-        pass
+    from backend.app.services.host_storage import list_hosts, get_fleet_stats
     hosts = list_hosts(status_filter=status, search=search, include_demo=include_demo)
     stats = get_fleet_stats(include_demo=include_demo)
     return {

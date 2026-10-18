@@ -244,7 +244,7 @@ _last_wazuh_sync_time: float = 0.0
 
 def try_sync_wazuh_agents(force: bool = False):
     """
-    Attempts to query local Wazuh Manager API or local database
+    Attempts to query local Wazuh Manager database or API
     to auto-register newly joined HIDS agents.
     Throttled to run at most once every 10 seconds unless force=True.
     """
@@ -254,17 +254,80 @@ def try_sync_wazuh_agents(force: bool = False):
         return
 
     _last_wazuh_sync_time = now
-    wazuh_api_url = os.getenv("WAZUH_API_URL", "https://wazuh-manager:55000")
+
+    # 1. Fast local SQLite query directly against /var/ossec/queue/db/global.db
+    wazuh_db = "/var/ossec/queue/db/global.db"
+    if os.path.exists(wazuh_db):
+        try:
+            wconn = sqlite3.connect(wazuh_db, timeout=1)
+            wconn.row_factory = sqlite3.Row
+            wc = wconn.cursor()
+            wc.execute("SELECT id, name, ip, register_ip, os_name, os_version, version, connection_status FROM agent WHERE id > 0")
+            rows = wc.fetchall()
+            found_agents = False
+            for r in rows:
+                found_agents = True
+                ag_id = str(r["id"]).zfill(3)
+                h_name = r["name"] or f"agent-{ag_id}"
+                ip_addr = r["ip"] or r["register_ip"] or "DHCP / Dynamic"
+                if ip_addr in ["any", "127.0.0.1", ""]:
+                    ip_addr = r["register_ip"] or "DHCP / Dynamic"
+                os_str = f"{r['os_name'] or ''} {r['os_version'] or ''}".strip() or "Linux"
+                conn_stat = (r["connection_status"] or "").lower()
+                status_display = "ONLINE" if conn_stat in ["active", "pending", "synced"] else ("OFFLINE" if conn_stat == "disconnected" else "ONLINE")
+                add_host(
+                    hostname=h_name,
+                    ip_address=ip_addr,
+                    os_name=os_str,
+                    agent_version=r["version"] or "4.9.2",
+                    status=status_display,
+                    host_id=ag_id,
+                    is_demo=False
+                )
+            wconn.close()
+            if found_agents:
+                return
+        except Exception as e:
+            pass
+
+    # 2. Check /var/ossec/etc/client.keys directly (instant 0ms)
+    client_keys_file = "/var/ossec/etc/client.keys"
+    if os.path.exists(client_keys_file):
+        try:
+            with open(client_keys_file, "r") as f:
+                lines = [line.strip() for line in f if line.strip()]
+                for line in lines:
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        ag_id = parts[0].zfill(3)
+                        h_name = parts[1]
+                        ip_addr = parts[2]
+                        if ip_addr in ["any", "127.0.0.1"]:
+                            ip_addr = "DHCP / Dynamic"
+                        add_host(
+                            hostname=h_name,
+                            ip_address=ip_addr,
+                            os_name="Linux / Windows",
+                            agent_version="4.9.2",
+                            status="ONLINE",
+                            host_id=ag_id,
+                            is_demo=False
+                        )
+                if lines:
+                    return
+        except Exception:
+            pass
+
+    # 3. Optional fallback to Wazuh API via local 127.0.0.1 (not unresolvable domain)
+    wazuh_api_url = os.getenv("WAZUH_API_URL", "https://127.0.0.1:55000")
     wazuh_user = os.getenv("WAZUH_API_USER", "wazuh")
     wazuh_pass = os.getenv("WAZUH_API_PASSWORD", "OpenSocForge2026!")
 
-    # Non-blocking best-effort check
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
-        # 1. Login to Wazuh API via POST
         auth_url = f"{wazuh_api_url}/security/user/authenticate"
         creds = base64.b64encode(f"{wazuh_user}:{wazuh_pass}".encode()).decode()
         req = urllib.request.Request(
@@ -275,18 +338,17 @@ def try_sync_wazuh_agents(force: bool = False):
             },
             method="POST"
         )
-        with urllib.request.urlopen(req, context=ctx, timeout=3) as resp:
+        with urllib.request.urlopen(req, context=ctx, timeout=1.5) as resp:
             data = json.loads(resp.read().decode())
             token = data.get("data", {}).get("token")
 
         if token:
             agents_url = f"{wazuh_api_url}/agents"
             req2 = urllib.request.Request(agents_url, headers={"Authorization": f"Bearer {token}"})
-            with urllib.request.urlopen(req2, context=ctx, timeout=4) as resp2:
+            with urllib.request.urlopen(req2, context=ctx, timeout=2.0) as resp2:
                 agents_data = json.loads(resp2.read().decode()).get("data", {}).get("affected_items", [])
                 for ag in agents_data:
-                    # Skip manager agent 000
-                    if ag.get("id") == "000":
+                    if ag.get("id") in ["000", 0]:
                         continue
                     os_info = ag.get("os", {})
                     if isinstance(os_info, dict):
@@ -295,32 +357,24 @@ def try_sync_wazuh_agents(force: bool = False):
                         os_str = str(os_info or "")
                     if not os_str:
                         h_lower = ag.get("name", "").lower()
-                        if "kali" in h_lower:
-                            os_str = "Kali Linux"
-                        elif "win" in h_lower or "desktop" in h_lower:
-                            os_str = "Windows"
-                        else:
-                            os_str = "Linux"
+                        os_str = "Kali Linux" if "kali" in h_lower else ("Windows" if "win" in h_lower else "Linux")
 
-                    # Agent status: active or pending or disconnected
                     ag_status = ag.get("status", "").lower()
                     status_display = "ONLINE" if ag_status in ["active", "pending"] else "ONLINE"
                     
-                    # Resolved IP
                     ag_ip = ag.get("ip", "")
                     if not ag_ip or ag_ip == "any":
-                        ag_ip = ag.get("registerIP", "")
-                    if not ag_ip or ag_ip == "any":
-                        ag_ip = "DHCP / Dynamic"
+                        ag_ip = ag.get("registerIP", "") or "DHCP / Dynamic"
 
                     add_host(
                         hostname=ag.get("name", "agent"),
                         ip_address=ag_ip,
                         os_name=os_str,
-                        agent_version=ag.get("version", "4.8.2"),
+                        agent_version=ag.get("version", "4.9.2"),
                         status=status_display,
                         host_id=ag.get("id"),
                         is_demo=False
                     )
-    except Exception as e:
-        print(f"Failed to sync Wazuh agents: {e}")
+    except Exception:
+        pass
+

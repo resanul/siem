@@ -47,11 +47,20 @@
       document.write('<script src="https://unpkg.com/lucide@latest"><\\/script>');
     }
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Pre-compiled for instant zero-latency loading without runtime Babel overhead -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="/console/vendor/tailwind.min.js"></script>
+  <script>
+    if (!window.tailwind) {
+      document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+    }
+  </script>
+  <style>
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    }
+  </style>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -2342,15 +2351,7 @@ function App() {
     className: "hidden lg:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-emerald-400"
   }, /*#__PURE__*/React.createElement("span", {
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), (hostsFleet.length === 0 && hostsLoading) ? /*#__PURE__*/React.createElement("div", {
-    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] p-12 text-center space-y-3 animate-pulse"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs font-mono text-emerald-400 tracking-wider uppercase"
-  }, "Synchronizing Wazuh Endpoint Inventory..."), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] text-slate-500 font-mono"
-  }, "Querying active Wazuh daemon on port 1514 / 1515...")) : hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0b101c] border border-dashed border-[#1f293d] rounded-xl p-8 text-center space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400"
@@ -2421,7 +2422,7 @@ function App() {
     ? (enrollOS === "linux-deb"
         ? `curl -sSL http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.deb -o /tmp/wazuh-agent.deb && sudo WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}' dpkg -i /tmp/wazuh-agent.deb && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "172.31.105.11"} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent`
         : (enrollOS === "linux-rpm"
-            ? `curl -sSL http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.rpm -o /tmp/wazuh-agent.rpm && sudo WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}' rpm -ivh /tmp/wazuh-agent.rpm && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "172.31.105.11"} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent`
+            ? `curl -sSL http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.rpm -o /tmp/wazuh-agent.rpm && (sudo WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}' rpm -Uvh --replacepkgs /tmp/wazuh-agent.rpm 2>/dev/null || sudo rpm -ivh /tmp/wazuh-agent.rpm 2>/dev/null || true) && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "172.31.105.11"} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent && sudo systemctl restart wazuh-agent`
             : `Invoke-WebRequest -Uri "http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.msi" -OutFile "$env:TEMP\\wazuh-agent.msi"; Start-Process msiexec.exe -Wait -ArgumentList '/i', "$env:TEMP\\wazuh-agent.msi", '/q', "WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}'", "WAZUH_REGISTRATION_SERVER='${window.location.hostname || "172.31.105.11"}'"; Start-Service WazuhSvc`
           )
       )
@@ -2683,7 +2684,7 @@ function App() {
     className: "relative bg-[#080c14] border border-[#1f293d] rounded-lg p-3 font-mono text-xs text-emerald-400 break-all select-all leading-relaxed max-h-36 overflow-y-auto"
   }, enrollMode === "offline" ? (
     enrollOS === "linux-deb" ? `curl -sSL http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.deb -o /tmp/wazuh-agent.deb && sudo WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}' dpkg -i /tmp/wazuh-agent.deb && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "172.31.105.11"} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent` :
-    (enrollOS === "linux-rpm" ? `curl -sSL http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.rpm -o /tmp/wazuh-agent.rpm && sudo WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}' rpm -ivh /tmp/wazuh-agent.rpm && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "172.31.105.11"} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent` :
+    (enrollOS === "linux-rpm" ? `curl -sSL http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.rpm -o /tmp/wazuh-agent.rpm && (sudo WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}' rpm -Uvh --replacepkgs /tmp/wazuh-agent.rpm 2>/dev/null || sudo rpm -ivh /tmp/wazuh-agent.rpm 2>/dev/null || true) && sudo /var/ossec/bin/agent-auth -m ${window.location.hostname || "172.31.105.11"} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent && sudo systemctl restart wazuh-agent` :
     (enrollOS === "windows" ? `Invoke-WebRequest -Uri "http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.msi" -OutFile "$env:TEMP\\wazuh-agent.msi"; Start-Process msiexec.exe -Wait -ArgumentList '/i', "$env:TEMP\\wazuh-agent.msi", '/q', "WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}'", "WAZUH_REGISTRATION_SERVER='${window.location.hostname || "172.31.105.11"}'"; Start-Service WazuhSvc` :
     `curl -so /tmp/wazuh-agent.pkg http://${window.location.hostname || "172.31.105.11"}:${window.location.port || "7070"}/downloads/agents/wazuh-agent.pkg && echo "WAZUH_MANAGER='${window.location.hostname || "172.31.105.11"}'" > /tmp/wazuh_envs && sudo installer -pkg /tmp/wazuh-agent.pkg -target / && sudo /Library/Ossec/bin/wazuh-control start`))
   ) : (
@@ -2712,7 +2713,7 @@ function App() {
         cmd = `echo "*.* @${hName}:514" | sudo tee /etc/rsyslog.d/siem.conf && sudo systemctl restart rsyslog`;
       } else if (enrollMode === "offline") {
         cmd = enrollOS === "linux-deb" ? `curl -sSL http://${hName}:${hPort}/downloads/agents/wazuh-agent.deb -o /tmp/wazuh-agent.deb && sudo WAZUH_MANAGER='${hName}' dpkg -i /tmp/wazuh-agent.deb && sudo /var/ossec/bin/agent-auth -m ${hName} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent` :
-          (enrollOS === "linux-rpm" ? `curl -sSL http://${hName}:${hPort}/downloads/agents/wazuh-agent.rpm -o /tmp/wazuh-agent.rpm && sudo WAZUH_MANAGER='${hName}' rpm -ivh /tmp/wazuh-agent.rpm && sudo /var/ossec/bin/agent-auth -m ${hName} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent` :
+          (enrollOS === "linux-rpm" ? `curl -sSL http://${hName}:${hPort}/downloads/agents/wazuh-agent.rpm -o /tmp/wazuh-agent.rpm && (sudo WAZUH_MANAGER='${hName}' rpm -Uvh --replacepkgs /tmp/wazuh-agent.rpm 2>/dev/null || sudo rpm -ivh /tmp/wazuh-agent.rpm 2>/dev/null || true) && sudo /var/ossec/bin/agent-auth -m ${hName} && sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent && sudo systemctl restart wazuh-agent` :
           (enrollOS === "windows" ? `Invoke-WebRequest -Uri "http://${hName}:${hPort}/downloads/agents/wazuh-agent.msi" -OutFile "$env:TEMP\\wazuh-agent.msi"; Start-Process msiexec.exe -Wait -ArgumentList '/i', "$env:TEMP\\wazuh-agent.msi", '/q', "WAZUH_MANAGER='${hName}'", "WAZUH_REGISTRATION_SERVER='${hName}'"; Start-Service WazuhSvc` :
           `curl -so /tmp/wazuh-agent.pkg http://${hName}:${hPort}/downloads/agents/wazuh-agent.pkg && echo "WAZUH_MANAGER='${hName}'" > /tmp/wazuh_envs && sudo installer -pkg /tmp/wazuh-agent.pkg -target / && sudo /Library/Ossec/bin/wazuh-control start`));
       } else {
