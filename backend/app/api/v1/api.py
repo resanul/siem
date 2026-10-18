@@ -955,6 +955,7 @@ def cache_agent_package(
     return res
 
 
+import os
 from fastapi.responses import FileResponse
 from backend.app.services.agent_packages import DOWNLOADS_DIR, ensure_downloads_dir
 
