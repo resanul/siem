@@ -425,14 +425,53 @@ class TestTier5BoundaryValuesAndErrorHandling:
         assert res_get.status_code == 422
 
     def test_limit_zero_rejection(self):
-        """Limit = 0 is rejected with HTTP 422 Unprocessable Entity on GET."""
-        res = client.get("/api/v1/events/search?query=*&limit=0")
-        assert res.status_code == 422
+        """Limit = 0 is rejected with HTTP 422 Unprocessable Entity on both GET and POST."""
+        res_get = client.get("/api/v1/events/search?query=*&limit=0")
+        assert res_get.status_code == 422
+
+        res_post = client.post("/api/v1/events/search", json={"query": "*", "limit": 0})
+        assert res_post.status_code == 422
+
+    def test_limit_negative_rejection(self):
+        """Negative limit is rejected with HTTP 422 on both GET and POST."""
+        res_get = client.get("/api/v1/events/search?query=*&limit=-5")
+        assert res_get.status_code == 422
+
+        res_post = client.post("/api/v1/events/search", json={"query": "*", "limit": -5})
+        assert res_post.status_code == 422
 
     def test_limit_invalid_string_rejection(self):
         """Non-integer limit value is rejected with HTTP 422."""
         res = client.post("/api/v1/events/search", json={"query": "*", "limit": "invalid_number"})
         assert res.status_code == 422
+
+    @pytest.mark.parametrize("invalid_limit", [
+        "invalid_number",
+        "abc",
+        [10],
+        {"limit": 10},
+        3.14,
+        True,
+    ])
+    def test_limit_non_integer_type_rejection(self, invalid_limit):
+        """Non-integer and non-scalar limit values are rejected with HTTP 422 (never HTTP 500)."""
+        res = client.post("/api/v1/events/search", json={"query": "*", "limit": invalid_limit})
+        assert res.status_code == 422
+
+    @pytest.mark.parametrize("extreme_tr", [
+        "100000000d",
+        "9999999999999999999999999999999999999999999999999999d",
+        "100000000h",
+    ])
+    def test_extreme_time_range_overflow_resilience(self, extreme_tr):
+        """Extreme time_range values do not crash server with HTTP 500, falling back safely."""
+        res_post = client.post("/api/v1/events/search", json={"query": "*", "time_range": extreme_tr})
+        assert res_post.status_code == 200
+        assert "events" in res_post.json()
+
+        res_get = client.get(f"/api/v1/events/search?query=*&time_range={extreme_tr}")
+        assert res_get.status_code == 200
+        assert "events" in res_get.json()
 
     def test_time_range_window_filtering(self):
         """Time range filtering excludes events outside the specified window."""

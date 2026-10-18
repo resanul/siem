@@ -181,15 +181,17 @@ class EventSearchRequest(BaseModel):
     def validate_limit(cls, v: Any) -> int:
         if v is None:
             return 50
+        if isinstance(v, (bool, list, dict, tuple, set, float)):
+            raise ValueError("limit must be an integer between 1 and 200")
         try:
             val = int(v)
-            if val < 1:
-                return 1
-            if val > 200:
-                raise ValueError("limit must not exceed 200")
-            return val
-        except ValueError:
-            raise
+        except (ValueError, TypeError):
+            raise ValueError("limit must be an integer between 1 and 200")
+        if val < 1:
+            raise ValueError("limit must be at least 1")
+        if val > 200:
+            raise ValueError("limit must not exceed 200")
+        return val
 
 
 class EventItem(BaseModel):

@@ -73,27 +73,30 @@ def _find_suricata_eve_log() -> str:
 
 def _parse_time_cutoff(time_range: str) -> Optional[datetime]:
     """Computes UTC cutoff datetime from time range token (e.g. 15m, 1h, 24h, 7d)."""
-    tr = (time_range or "24h").strip().lower()
-    if tr in ("all", "*"):
-        return None
+    try:
+        tr = (time_range or "24h").strip().lower()
+        if tr in ("all", "*"):
+            return None
 
-    m = re.match(r"^(\d+)([smhd])$", tr)
-    if m:
-        val, unit = int(m.group(1)), m.group(2)
-        if unit == "s":
-            delta = timedelta(seconds=val)
-        elif unit == "m":
-            delta = timedelta(minutes=val)
-        elif unit == "h":
-            delta = timedelta(hours=val)
-        elif unit == "d":
-            delta = timedelta(days=val)
+        m = re.match(r"^(\d+)([smhd])$", tr)
+        if m:
+            val, unit = int(m.group(1)), m.group(2)
+            if unit == "s":
+                delta = timedelta(seconds=val)
+            elif unit == "m":
+                delta = timedelta(minutes=val)
+            elif unit == "h":
+                delta = timedelta(hours=val)
+            elif unit == "d":
+                delta = timedelta(days=val)
+            else:
+                delta = timedelta(hours=24)
         else:
             delta = timedelta(hours=24)
-    else:
-        delta = timedelta(hours=24)
 
-    return datetime.now(timezone.utc) - delta
+        return datetime.now(timezone.utc) - delta
+    except (OverflowError, ValueError):
+        return None
 
 
 def _matches_time_range(timestamp_str: str, time_range: str, is_demo: bool = False) -> bool:
@@ -456,7 +459,7 @@ class EventSearchService:
                 }
 
             filter_clauses = []
-            if time_range and time_range.lower() != "all":
+            if time_range and time_range.lower() not in ("all", "*"):
                 filter_clauses.append({
                     "range": {
                         "@timestamp": {
