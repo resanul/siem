@@ -955,6 +955,24 @@ def cache_agent_package(
     return res
 
 
+from fastapi.responses import FileResponse
+from backend.app.services.agent_packages import DOWNLOADS_DIR, ensure_downloads_dir
+
+@api_router.get("/system/agents/download/{filename}")
+def download_agent_package_file(filename: str):
+    """Directly serves an agent installer binary with explicit Content-Disposition for browser download."""
+    ensure_downloads_dir()
+    filepath = os.path.join(DOWNLOADS_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail=f"Package '{filename}' not found in local cache.")
+    return FileResponse(
+        path=filepath,
+        filename=filename,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
 @api_router.post("/threat-intel/hunt")
 def hunt_ioc(
     payload: Dict[str, str],
