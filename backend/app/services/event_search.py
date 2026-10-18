@@ -696,6 +696,58 @@ class EventSearchService:
         except Exception:
             pass
 
+        # 6. Syslog files (/var/log/opensoc/syslog/syslog.log, etc.)
+        syslog_candidates = [
+            os.environ.get("SYSLOG_LOG_PATH"),
+            "/var/log/opensoc/syslog/syslog.log",
+            "/var/log/syslog",
+            "/var/log/messages",
+        ]
+        for sp in syslog_candidates:
+            if sp and os.path.exists(sp):
+                try:
+                    lines = _tail_lines(sp, max_lines=200)
+                    for line in lines:
+                        lstr = line.strip()
+                        if not lstr:
+                            continue
+                        sid = f"sys-{hashlib.md5(lstr.encode('utf-8')).hexdigest()[:10]}"
+                        if sid in seen_ids:
+                            continue
+                        seen_ids.add(sid)
+
+                        try:
+                            sdata = json.loads(lstr)
+                            ts = sdata.get("timestamp") or sdata.get("@timestamp") or datetime.now(timezone.utc).isoformat()
+                            host = sdata.get("host") or sdata.get("hostname") or "syslog-host"
+                            if isinstance(host, dict):
+                                host = host.get("name") or host.get("hostname") or "syslog-host"
+                            msg = sdata.get("message") or lstr
+                            sev = str(sdata.get("log", {}).get("syslog", {}).get("severity") or sdata.get("severity") or "INFORMATIONAL").upper()
+                            raw_val = sdata
+                        except Exception:
+                            ts = datetime.now(timezone.utc).isoformat()
+                            host = "syslog-host"
+                            parts = lstr.split()
+                            if len(parts) >= 4:
+                                host = parts[3]
+                            msg = lstr
+                            sev = "INFORMATIONAL"
+                            raw_val = {"raw": lstr}
+
+                        events.append(EventItem(
+                            id=sid,
+                            timestamp=ts,
+                            index="opensoc-syslog",
+                            source_type="syslog.system",
+                            host=host,
+                            severity=sev,
+                            summary=f"Syslog ({host}): {msg}" if not msg.startswith("Syslog") else msg,
+                            raw=raw_val,
+                        ))
+                except Exception:
+                    pass
+
         return events
 
     def _alert_to_event(self, alert: Any) -> EventItem:
