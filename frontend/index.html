@@ -805,6 +805,15 @@ function App() {
     return () => clearInterval(timer);
   }, [currentScreen, autoSyncInterval, threatFilter, threatSearchQuery]);
 
+  // Periodic Auto-Sync for Live Wazuh Hosts Fleet (every 4 seconds)
+  useEffect(() => {
+    if (currentScreen !== "hosts") return;
+    const timer = setInterval(() => {
+      fetchHostsFleet(true);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [currentScreen]);
+
   // Auto-init token for lab session
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -968,10 +977,13 @@ function App() {
     }
   };
 
-  const fetchHostsFleet = async () => {
-    setHostsLoading(true);
+  const fetchHostsFleet = async (isBackground = false) => {
+    if (!isBackground) setHostsLoading(true);
     try {
-      const res = await fetch("/api/v1/hosts");
+      const res = await fetch("/api/v1/hosts?_t=" + Date.now(), {
+        cache: "no-store",
+        headers: { "Pragma": "no-cache", "Cache-Control": "no-cache" }
+      });
       if (res.ok) {
         const data = await res.json();
         const incomingHosts = data.hosts || [];
@@ -990,7 +1002,7 @@ function App() {
     } catch (err) {
       console.error("Failed to fetch hosts:", err);
     } finally {
-      setHostsLoading(false);
+      if (!isBackground) setHostsLoading(false);
     }
   };
 

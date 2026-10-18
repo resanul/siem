@@ -6,7 +6,7 @@ Enforces authentication, RBAC, audit logging, and interaction with orchestration
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from backend.app.core.audit import audit_service
 from backend.app.core.security import (
@@ -1277,11 +1277,14 @@ def trigger_system_git_update():
 # ===================== ENDPOINT HOSTS & FLEET =====================
 @api_router.get("/hosts")
 def get_endpoint_hosts(
+    response: Response,
     status: Optional[str] = None,
     search: Optional[str] = None,
     include_demo: bool = False,
 ):
     """Retrieves registered endpoints and fleet metrics."""
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
     from backend.app.services.host_storage import list_hosts, get_fleet_stats
     hosts = list_hosts(status_filter=status, search=search, include_demo=include_demo)
     stats = get_fleet_stats(include_demo=include_demo)

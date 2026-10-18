@@ -250,12 +250,12 @@ def try_sync_wazuh_agents(force: bool = False):
     """
     global _last_wazuh_sync_time
     now = time.time()
-    if not force and (now - _last_wazuh_sync_time < 10.0):
+    if not force and (now - _last_wazuh_sync_time < 3.0):
         return
 
     _last_wazuh_sync_time = now
 
-    # 1. Fast local SQLite query directly against /var/ossec/queue/db/global.db
+    # 1. Fast local SQLite query directly against /var/ossec/queue/db/global.db (0ms)
     wazuh_db = "/var/ossec/queue/db/global.db"
     if os.path.exists(wazuh_db):
         try:
@@ -287,7 +287,7 @@ def try_sync_wazuh_agents(force: bool = False):
             wconn.close()
             if found_agents:
                 return
-        except Exception as e:
+        except Exception:
             pass
 
     # 2. Check /var/ossec/etc/client.keys directly (instant 0ms)
@@ -313,68 +313,7 @@ def try_sync_wazuh_agents(force: bool = False):
                             host_id=ag_id,
                             is_demo=False
                         )
-                if lines:
-                    return
         except Exception:
             pass
 
-    # 3. Optional fallback to Wazuh API via local 127.0.0.1 (not unresolvable domain)
-    wazuh_api_url = os.getenv("WAZUH_API_URL", "https://127.0.0.1:55000")
-    wazuh_user = os.getenv("WAZUH_API_USER", "wazuh")
-    wazuh_pass = os.getenv("WAZUH_API_PASSWORD", "OpenSocForge2026!")
-
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-
-        auth_url = f"{wazuh_api_url}/security/user/authenticate"
-        creds = base64.b64encode(f"{wazuh_user}:{wazuh_pass}".encode()).decode()
-        req = urllib.request.Request(
-            auth_url,
-            headers={
-                "Authorization": f"Basic {creds}",
-                "Content-Type": "application/json"
-            },
-            method="POST"
-        )
-        with urllib.request.urlopen(req, context=ctx, timeout=1.5) as resp:
-            data = json.loads(resp.read().decode())
-            token = data.get("data", {}).get("token")
-
-        if token:
-            agents_url = f"{wazuh_api_url}/agents"
-            req2 = urllib.request.Request(agents_url, headers={"Authorization": f"Bearer {token}"})
-            with urllib.request.urlopen(req2, context=ctx, timeout=2.0) as resp2:
-                agents_data = json.loads(resp2.read().decode()).get("data", {}).get("affected_items", [])
-                for ag in agents_data:
-                    if ag.get("id") in ["000", 0]:
-                        continue
-                    os_info = ag.get("os", {})
-                    if isinstance(os_info, dict):
-                        os_str = f"{os_info.get('name', '')} {os_info.get('version', '')}".strip()
-                    else:
-                        os_str = str(os_info or "")
-                    if not os_str:
-                        h_lower = ag.get("name", "").lower()
-                        os_str = "Kali Linux" if "kali" in h_lower else ("Windows" if "win" in h_lower else "Linux")
-
-                    ag_status = ag.get("status", "").lower()
-                    status_display = "ONLINE" if ag_status in ["active", "pending"] else "ONLINE"
-                    
-                    ag_ip = ag.get("ip", "")
-                    if not ag_ip or ag_ip == "any":
-                        ag_ip = ag.get("registerIP", "") or "DHCP / Dynamic"
-
-                    add_host(
-                        hostname=ag.get("name", "agent"),
-                        ip_address=ag_ip,
-                        os_name=os_str,
-                        agent_version=ag.get("version", "4.9.2"),
-                        status=status_display,
-                        host_id=ag.get("id"),
-                        is_demo=False
-                    )
-    except Exception:
-        pass
 
