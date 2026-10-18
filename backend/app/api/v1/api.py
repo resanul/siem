@@ -6,7 +6,7 @@ Enforces authentication, RBAC, audit logging, and interaction with orchestration
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from backend.app.core.audit import audit_service
 from backend.app.core.security import (
@@ -914,6 +914,45 @@ def test_system_proxy(
     proxy_url = payload.get("proxy_url", "").strip()
     target_url = payload.get("target_url", "https://otx.alienvault.com").strip()
     return test_proxy_connection(proxy_url, target_url)
+
+
+# ===================== AGENT PACKAGES & OFFLINE REPOSITORY =====================
+from backend.app.services.agent_packages import (
+    get_all_packages_catalog,
+    cache_package_from_remote,
+)
+
+
+@api_router.get("/system/agents/packages")
+def get_agent_packages(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Returns local cache status, download links, and install commands for all agent packages."""
+    client_host = request.headers.get("x-forwarded-host") or request.headers.get("host", "127.0.0.1:7070")
+    host_part = client_host.split(":")[0]
+    port_part = 7070
+    if ":" in client_host:
+        try:
+            port_part = int(client_host.split(":")[1])
+        except Exception:
+            pass
+    return get_all_packages_catalog(server_host=host_part, server_port=port_part)
+
+
+@api_router.post("/system/agents/cache")
+def cache_agent_package(
+    payload: Dict[str, str],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Downloads and caches an agent package locally on the OpenSOC Forge server."""
+    pkg_id = payload.get("pkg_id", "").strip()
+    if not pkg_id:
+        raise HTTPException(status_code=400, detail="Missing pkg_id parameter")
+    res = cache_package_from_remote(pkg_id)
+    if not res.get("success"):
+        raise HTTPException(status_code=500, detail=res.get("message", "Caching failed"))
+    return res
 
 
 @api_router.post("/threat-intel/hunt")

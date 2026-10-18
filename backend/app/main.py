@@ -45,9 +45,14 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # Mount Web Console at /console
 import os
 from starlette.staticfiles import StaticFiles
-frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend")
+base_repo_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+frontend_dir = os.path.join(base_repo_dir, "frontend")
 if os.path.exists(frontend_dir):
     app.mount("/console", StaticFiles(directory=frontend_dir, html=True), name="console")
+
+downloads_dir = os.path.join(base_repo_dir, "downloads")
+os.makedirs(downloads_dir, exist_ok=True)
+app.mount("/downloads", StaticFiles(directory=downloads_dir), name="downloads")
 
 
 @app.get("/")
