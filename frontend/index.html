@@ -905,6 +905,23 @@ function App() {
     return () => clearInterval(timer);
   }, [currentScreen]);
 
+  // Global Esc key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (showThreatConfigModal) setShowThreatConfigModal(false);
+        if (showAddIocModal) setShowAddIocModal(false);
+        if (addHostModalOpen) setAddHostModalOpen(false);
+        if (enrollModalOpen) setEnrollModalOpen(false);
+        if (warRoomOpen) setWarRoomOpen(false);
+        if (processTreeModalOpen) setProcessTreeModalOpen(false);
+        if (restoreModalOpen) setRestoreModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showThreatConfigModal, showAddIocModal, addHostModalOpen, enrollModalOpen, warRoomOpen, processTreeModalOpen, restoreModalOpen]);
+
   // Auto-init token for lab session
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -2775,8 +2792,10 @@ function App() {
     className: "px-2 py-1 rounded hover:bg-rose-500/20 text-rose-400 border border-transparent hover:border-rose-500/30 text-xs font-mono transition-all",
     title: "Deregister host"
   }, "🗑️"))))))), addHostModalOpen && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+    onClick: () => setAddHostModalOpen(false),
+    className: "fixed inset-0 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-start border-b border-[#1f293d] pb-3"
@@ -2849,8 +2868,10 @@ function App() {
     type: "submit",
     className: "px-4 py-1.5 rounded text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold font-mono transition-all"
   }, "Save Host"))))), enrollModalOpen && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+    onClick: () => setEnrollModalOpen(false),
+    className: "fixed inset-0 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-2xl w-full p-6 space-y-4 shadow-2xl text-slate-200 font-sans max-h-[92vh] overflow-y-auto"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-start border-b border-[#1f293d] pb-3"
@@ -3626,8 +3647,10 @@ function App() {
   }, "PASSED"), /*#__PURE__*/React.createElement("td", {
     className: "p-3 text-slate-400"
   }, b.time)))))), restoreModalOpen && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50"
+    onClick: () => setRestoreModalOpen(false),
+    className: "fixed inset-0 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-lg max-w-md w-full p-5 space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-start"
@@ -4692,8 +4715,10 @@ function App() {
     "data-lucide": "trash-2",
     className: "w-3.5 h-3.5"
   }))))))))))), showThreatConfigModal && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+    onClick: () => setShowThreatConfigModal(false),
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md p-4 animate-in fade-in"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl shadow-2xl max-w-2xl w-full p-6 space-y-6 text-slate-200 font-sans max-h-[90vh] overflow-y-auto"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between border-b border-[#1f293d] pb-4"
@@ -4998,8 +5023,10 @@ function App() {
     "data-lucide": "check",
     className: "w-4 h-4"
   }), /*#__PURE__*/React.createElement("span", null, savingThreatConfig ? "Saving..." : "💾 Save All Settings & Keys"))))), showAddIocModal && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+    onClick: () => setShowAddIocModal(false),
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md p-4 animate-in fade-in"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-5 text-slate-200 font-sans max-h-[90vh] overflow-y-auto"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between border-b border-[#1f293d] pb-4"
@@ -5150,8 +5177,10 @@ function App() {
   }, "Target 3: Suricata Signature"), /*#__PURE__*/React.createElement("pre", {
     className: "p-2.5 rounded bg-[#080c14] text-[11px] font-mono text-slate-300 overflow-x-auto max-h-[70px]"
   }, compiledTargets.suricata)))))), warRoomOpen && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+    onClick: () => setWarRoomOpen(false),
+    className: "fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-4 border-b border-[#1f293d] flex items-center justify-between bg-[#131b2e]"
@@ -5246,8 +5275,10 @@ function App() {
     onClick: () => setWarRoomOpen(false),
     className: "px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-slate-200"
   }, "Close War Room")))), processTreeModalOpen && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+    onClick: () => setProcessTreeModalOpen(false),
+    className: "fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-4 border-b border-[#1f293d] flex items-center justify-between bg-[#131b2e]"
