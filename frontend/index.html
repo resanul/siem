@@ -2876,7 +2876,7 @@ function App() {
     /* Event Detail Modal (Raw Formatted JSON with One-Click Copy) */
     selectedEvent && /*#__PURE__*/React.createElement("div", {
       onClick: () => setSelectedEvent(null),
-      className: "fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4 animate-in fade-in"
+      className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
     },
       /*#__PURE__*/React.createElement("div", {
         onClick: e => e.stopPropagation(),
@@ -3234,7 +3234,7 @@ function App() {
     title: "Deregister host"
   }, "🗑️"))))))), addHostModalOpen && /*#__PURE__*/React.createElement("div", {
     onClick: () => setAddHostModalOpen(false),
-    className: "fixed inset-0 bg-transparent flex items-center justify-center p-4 z-50 animate-fadeIn"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl"
@@ -3310,7 +3310,7 @@ function App() {
     className: "px-4 py-1.5 rounded text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold font-mono transition-all"
   }, "Save Host"))))), enrollModalOpen && /*#__PURE__*/React.createElement("div", {
     onClick: () => setEnrollModalOpen(false),
-    className: "fixed inset-0 bg-transparent flex items-center justify-center p-4 z-50 animate-fadeIn"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-2xl w-full p-6 space-y-4 shadow-2xl text-slate-200 font-sans max-h-[92vh] overflow-y-auto"
@@ -4089,7 +4089,7 @@ function App() {
     className: "p-3 text-slate-400"
   }, b.time)))))), restoreModalOpen && /*#__PURE__*/React.createElement("div", {
     onClick: () => setRestoreModalOpen(false),
-    className: "fixed inset-0 bg-transparent flex items-center justify-center p-4 z-50 animate-fadeIn"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-lg max-w-md w-full p-5 space-y-4"
@@ -5157,7 +5157,7 @@ function App() {
     className: "w-3.5 h-3.5"
   }))))))))))), showThreatConfigModal && /*#__PURE__*/React.createElement("div", {
     onClick: () => setShowThreatConfigModal(false),
-    className: "fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4 animate-in fade-in"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl shadow-2xl max-w-2xl w-full p-6 space-y-6 text-slate-200 font-sans max-h-[90vh] overflow-y-auto"
@@ -5465,7 +5465,7 @@ function App() {
     className: "w-4 h-4"
   }), /*#__PURE__*/React.createElement("span", null, savingThreatConfig ? "Saving..." : "💾 Save All Settings & Keys"))))), showAddIocModal && /*#__PURE__*/React.createElement("div", {
     onClick: () => setShowAddIocModal(false),
-    className: "fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4 animate-in fade-in"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-5 text-slate-200 font-sans max-h-[90vh] overflow-y-auto"
@@ -5619,7 +5619,7 @@ function App() {
     className: "p-2.5 rounded bg-[#080c14] text-[11px] font-mono text-slate-300 overflow-x-auto max-h-[70px]"
   }, compiledTargets.suricata)))))), warRoomOpen && /*#__PURE__*/React.createElement("div", {
     onClick: () => setWarRoomOpen(false),
-    className: "fixed inset-0 z-50 bg-transparent flex items-center justify-center p-4 animate-in fade-in"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
@@ -5717,7 +5717,7 @@ function App() {
     className: "px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-slate-200"
   }, "Close War Room")))), processTreeModalOpen && /*#__PURE__*/React.createElement("div", {
     onClick: () => setProcessTreeModalOpen(false),
-    className: "fixed inset-0 z-50 bg-transparent flex items-center justify-center p-4 animate-in fade-in"
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: e => e.stopPropagation(),
     className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
