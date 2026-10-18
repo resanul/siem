@@ -5,7 +5,7 @@ OpenSOC Forge - API Data Transfer Objects & Schemas.
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AlertSeverity(str, Enum):
@@ -168,3 +168,43 @@ class SyntheticEventRequest(BaseModel):
     event_type: str = "suricata_test_alert"
     target_component: str = "suricata"
     payload: Optional[Dict[str, Any]] = None
+
+
+class EventSearchRequest(BaseModel):
+    query: Optional[str] = "*"
+    indices: Optional[List[str]] = None
+    time_range: Optional[str] = "24h"
+    limit: Optional[int] = Field(default=50, ge=1, le=200)
+
+    @field_validator("limit", mode="before")
+    @classmethod
+    def validate_limit(cls, v: Any) -> int:
+        if v is None:
+            return 50
+        try:
+            val = int(v)
+            if val < 1:
+                return 1
+            if val > 200:
+                raise ValueError("limit must not exceed 200")
+            return val
+        except ValueError:
+            raise
+
+
+class EventItem(BaseModel):
+    id: str
+    timestamp: str
+    index: str
+    source_type: str
+    host: str
+    severity: str
+    summary: str
+    raw: Dict[str, Any] = Field(default_factory=dict)
+
+
+class EventSearchResponse(BaseModel):
+    total_hits: int
+    took_ms: int
+    indices_searched: List[str] = Field(default_factory=list)
+    events: List[EventItem] = Field(default_factory=list)

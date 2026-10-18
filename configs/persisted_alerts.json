@@ -1,0 +1,392 @@
+[
+  {
+    "id": "ALT-1792332601728",
+    "timestamp": "2026-10-18T14:10:01.728672Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332601728-bf5e3a)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332601728-bf5e3a",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792332583865",
+    "timestamp": "2026-10-18T14:09:43.865753Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332583865-6bf963)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332583865-6bf963",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792332398919",
+    "timestamp": "2026-10-18T14:06:38.919344Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332398919-db5b53)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332398919-db5b53",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792332294693",
+    "timestamp": "2026-10-18T14:04:54.693849Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332294693-bf9af6)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332294693-bf9af6",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792332093079",
+    "timestamp": "2026-10-18T14:01:33.079066Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332093079-dc196f)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332093079-dc196f",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792332083663",
+    "timestamp": "2026-10-18T14:01:23.663110Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332083663-882af2)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332083663-882af2",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792332071832",
+    "timestamp": "2026-10-18T14:01:11.832035Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792332071831-09c146)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792332071831-09c146",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792331891007",
+    "timestamp": "2026-10-18T13:58:11.007190Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792331891007-f15234)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792331891007-f15234",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792331838296",
+    "timestamp": "2026-10-18T13:57:18.296436Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792331838296-536edc)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792331838296-536edc",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792331357378",
+    "timestamp": "2026-10-18T13:49:17.378391Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792331357378-2bb13f)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792331357378-2bb13f",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792331046941",
+    "timestamp": "2026-10-18T13:44:06.941497Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792331046941-4e394e)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792331046941-4e394e",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792330964751",
+    "timestamp": "2026-10-18T13:42:44.751727Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792330964751-971444)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792330964751-971444",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792330868872",
+    "timestamp": "2026-10-18T13:41:08.872608Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792330868872-4e496e)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792330868872-4e496e",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792330831621",
+    "timestamp": "2026-10-18T13:40:31.621439Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792330831621-de9737)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792330831621-de9737",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1792330812908",
+    "timestamp": "2026-10-18T13:40:12.908225Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1792330812908-19de4b)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1792330812908-19de4b",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  }
+]

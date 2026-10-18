@@ -30,6 +30,9 @@ from backend.app.models.schemas import (
     CasePriority,
     CaseStatus,
     DeployRequest,
+    EventItem,
+    EventSearchRequest,
+    EventSearchResponse,
     PlanRequest,
     RollbackRequest,
     RuleCreate,
@@ -41,6 +44,7 @@ from backend.app.models.schemas import (
     TokenResponse,
 )
 from orchestration.engine import OrchestrationEngine
+from backend.app.services.event_search import event_search_service
 from backend.app.services.live_telemetry import (
     get_live_alerts_pool,
     get_live_overview_data,
@@ -290,6 +294,48 @@ def get_network_telemetry(current_user: Dict[str, Any] = Depends(require_permiss
 @api_router.get("/health/diagnostics")
 def get_health_diagnostics(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
     return get_live_health_diagnostics()
+
+
+# ===================== EVENT SEARCH =====================
+@api_router.post("/events/search", response_model=EventSearchResponse)
+def search_events_post(
+    request: EventSearchRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Executes Lucene/KQL search against Elasticsearch or local fallback data."""
+    return event_search_service.search(
+        query=request.query,
+        indices=request.indices,
+        time_range=request.time_range,
+        limit=request.limit,
+    )
+
+
+@api_router.get("/events/search", response_model=EventSearchResponse)
+def search_events_get(
+    query: Optional[str] = Query(default="*"),
+    indices: Optional[List[str]] = Query(default=None),
+    time_range: Optional[str] = Query(default="24h"),
+    limit: Optional[int] = Query(default=50, ge=1, le=200),
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """GET query endpoint with parameter normalization (handles comma-separated and repeated indices)."""
+    norm_indices = []
+    if indices:
+        for idx in indices:
+            for part in idx.split(","):
+                clean = part.strip()
+                if clean:
+                    norm_indices.append(clean)
+    if not norm_indices:
+        norm_indices = None
+
+    return event_search_service.search(
+        query=query or "*",
+        indices=norm_indices,
+        time_range=time_range or "24h",
+        limit=limit or 50,
+    )
 
 
 # ===================== ALERTS =====================
