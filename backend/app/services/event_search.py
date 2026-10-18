@@ -35,7 +35,7 @@ TOKEN_REGEX = re.compile(
 )
 
 
-def _tail_lines(file_path: str, max_lines: int = 200, chunk_size: int = 262144) -> List[str]:
+def _tail_lines(file_path: str, max_lines: int = 500, chunk_size: int = 1048576) -> List[str]:
     """Efficiently reads the last N lines of large telemetry logs without loading the full file."""
     if not os.path.exists(file_path):
         return []
@@ -69,6 +69,40 @@ def _find_suricata_eve_log() -> str:
         if c and os.path.exists(c) and os.path.getsize(c) > 0:
             return c
     return os.environ.get("SURICATA_EVE_PATH", "/var/log/suricata/eve.json")
+
+
+def _find_wazuh_alerts_log() -> str:
+    """Finds active Wazuh alerts.json log across standard Linux and local installation paths."""
+    candidates = [
+        os.environ.get("WAZUH_ALERTS_PATH"),
+        "/var/ossec/logs/alerts/alerts.json",
+        "/var/log/wazuh/alerts.json",
+        os.path.join(REPO_ROOT, "logs", "wazuh_alerts.json"),
+        os.path.join(REPO_ROOT, "alerts.json"),
+    ]
+    for c in candidates:
+        if c and os.path.exists(c) and os.path.getsize(c) > 0:
+            return c
+    return os.environ.get("WAZUH_ALERTS_PATH", "/var/ossec/logs/alerts/alerts.json")
+
+
+def _parse_iso_timestamp(ts: str) -> Optional[datetime]:
+    """Robustly parses ISO 8601 timestamps with various timezone offsets (e.g. +0600, +06:00, Z)."""
+    if not ts:
+        return None
+    try:
+        clean = ts.strip().replace("Z", "+00:00")
+        if len(clean) >= 5 and clean[-5] in ("+", "-") and clean[-3] != ":":
+            clean = clean[:-2] + ":" + clean[-2:]
+        dt = datetime.fromisoformat(clean)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        try:
+            return datetime.strptime(ts[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
 
 
 def _parse_time_cutoff(time_range: str) -> Optional[datetime]:
@@ -116,19 +150,10 @@ def _matches_time_range(timestamp_str: str, time_range: str, is_demo: bool = Fal
     if not timestamp_str:
         return True
 
-    try:
-        clean_ts = timestamp_str.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(clean_ts)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+    dt = _parse_iso_timestamp(timestamp_str)
+    if dt is not None:
         return dt >= cutoff
-    except Exception:
-        # Fallback parsing for alternative date string formats
-        try:
-            dt = datetime.strptime(timestamp_str[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-            return dt >= cutoff
-        except Exception:
-            return True
+    return True
 
 
 def _matches_indices(event_index: str, indices: Optional[List[str]]) -> bool:
@@ -421,14 +446,8 @@ class EventSearchService:
 
         # Sort newest first
         def _sort_key(ev: EventItem) -> float:
-            try:
-                clean = ev.timestamp.replace("Z", "+00:00")
-                return datetime.fromisoformat(clean).timestamp()
-            except Exception:
-                try:
-                    return datetime.strptime(ev.timestamp[:19], "%Y-%m-%d %H:%M:%S").timestamp()
-                except Exception:
-                    return 0.0
+            dt = _parse_iso_timestamp(ev.timestamp)
+            return dt.timestamp() if dt is not None else 0.0
 
         filtered_events.sort(key=_sort_key, reverse=True)
 
@@ -554,62 +573,15 @@ class EventSearchService:
             return None
 
     def _load_local_events(self) -> List[EventItem]:
-        """Loads and normalizes events across all local fallback stores."""
+        """Loads and normalizes events across live sensors and local fallback stores."""
         events: List[EventItem] = []
         seen_ids = set()
 
-        # 1. In-memory LIVE_SIMULATION_ALERTS from live_telemetry.py
-        try:
-            from backend.app.services.live_telemetry import LIVE_SIMULATION_ALERTS
-            for a in LIVE_SIMULATION_ALERTS:
-                if a.id in seen_ids:
-                    continue
-                seen_ids.add(a.id)
-                events.append(self._alert_to_event(a))
-        except Exception:
-            pass
-
-        # 2. Persisted alerts from configs/persisted_alerts.json
-        try:
-            from backend.app.services.retention_policy import load_persisted_alerts
-            persisted = load_persisted_alerts()
-            for pa in persisted:
-                aid = pa.get("id")
-                if not aid or aid in seen_ids:
-                    continue
-                seen_ids.add(aid)
-                events.append(self._persisted_dict_to_event(pa))
-        except Exception:
-            # Direct disk file read fallback
-            if os.path.exists(PERSISTENT_ALERTS_FILE):
-                try:
-                    with open(PERSISTENT_ALERTS_FILE, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, list):
-                            for pa in data:
-                                aid = pa.get("id")
-                                if aid and aid not in seen_ids:
-                                    seen_ids.add(aid)
-                                    events.append(self._persisted_dict_to_event(pa))
-                except Exception:
-                    pass
-
-        # 3. Curated in-memory DEMO_ALERTS from backend/app/api/v1/api.py
-        try:
-            from backend.app.api.v1.api import DEMO_ALERTS
-            for a in DEMO_ALERTS:
-                if a.id in seen_ids:
-                    continue
-                seen_ids.add(a.id)
-                events.append(self._alert_to_event(a))
-        except Exception:
-            pass
-
-        # 4. Suricata EVE logs (eve.json)
-        eve_path = _find_suricata_eve_log()
-        if os.path.exists(eve_path):
+        # 1. REAL LIVE WAZUH HIDS ALERTS (/var/ossec/logs/alerts/alerts.json)
+        wazuh_path = _find_wazuh_alerts_log()
+        if os.path.exists(wazuh_path):
             try:
-                lines = _tail_lines(eve_path, max_lines=250)
+                lines = _tail_lines(wazuh_path, max_lines=500, chunk_size=1048576)
                 for line in lines:
                     line_str = line.strip()
                     if not line_str:
@@ -619,9 +591,66 @@ class EventSearchService:
                     except Exception:
                         continue
 
+                    rule = ev.get("rule", {})
+                    rule_id = str(rule.get("id", "0"))
+                    rule_level = rule.get("level", 3)
+                    desc = rule.get("description", "Wazuh Security Detection")
+
+                    raw_id = str(ev.get("id", hashlib.md5(line_str.encode()).hexdigest()[:10]))
+                    evt_id = f"wazuh-{raw_id}"
+                    if evt_id in seen_ids:
+                        continue
+                    seen_ids.add(evt_id)
+
+                    ts = ev.get("timestamp", datetime.now(timezone.utc).isoformat())
+                    agent = ev.get("agent", {})
+                    host = agent.get("name") or "localhost"
+
+                    if rule_level >= 10:
+                        sev = "CRITICAL"
+                    elif rule_level >= 7:
+                        sev = "HIGH"
+                    elif rule_level >= 4:
+                        sev = "MEDIUM"
+                    else:
+                        sev = "LOW"
+
+                    groups = rule.get("groups", [])
+                    primary_group = groups[0] if groups else "endpoint"
+
+                    events.append(EventItem(
+                        id=evt_id,
+                        timestamp=ts,
+                        index="wazuh-alerts",
+                        source_type=f"wazuh.alert.{primary_group}",
+                        host=host,
+                        severity=sev,
+                        summary=f"Wazuh: {desc} (Rule {rule_id})",
+                        raw=ev,
+                    ))
+            except Exception:
+                pass
+
+        # 2. REAL LIVE SURICATA NIDS TELEMETRY & ALERTS (eve.json)
+        eve_path = _find_suricata_eve_log()
+        if os.path.exists(eve_path):
+            try:
+                lines = _tail_lines(eve_path, max_lines=500, chunk_size=1048576)
+                for idx_num, line in enumerate(lines):
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
+                    try:
+                        ev = json.loads(line_str)
+                    except Exception:
+                        continue
+
                     etype = ev.get("event_type", "event")
-                    flow_id = str(ev.get("flow_id", int(time.time() * 1000)))
-                    evt_id = f"suri-{flow_id[-10:]}"
+                    if etype == "stats":
+                        continue  # Skip internal engine stats counters to keep telemetry clean
+
+                    flow_id = str(ev.get("flow_id", hashlib.md5(line_str.encode()).hexdigest()[:10]))
+                    evt_id = f"suri-{flow_id[-10:]}-{etype}-{idx_num}"
                     if evt_id in seen_ids:
                         continue
                     seen_ids.add(evt_id)
@@ -631,23 +660,45 @@ class EventSearchService:
                     dest_ip = ev.get("dest_ip", "-")
                     src_port = ev.get("src_port", "")
                     dest_port = ev.get("dest_port", "")
-                    host = ev.get("in_iface") or "sensor-iface"
+                    host = ev.get("in_iface") or "ens34"
 
                     if etype == "alert":
                         alert_info = ev.get("alert", {})
                         sev_num = alert_info.get("severity", 3)
                         sev = "CRITICAL" if sev_num == 1 else ("HIGH" if sev_num == 2 else "MEDIUM")
-                        summary = f"Suricata NIDS: {alert_info.get('signature', 'Intrusion Alert')}"
+                        sig = alert_info.get("signature", "Network Intrusion Alert")
+                        summary = f"Suricata NIDS: {sig}"
                     elif etype == "anomaly":
                         sev = "MEDIUM"
                         summary = f"Suricata Anomaly: {ev.get('anomaly', {}).get('event', 'protocol_anomaly')}"
+                    elif etype == "http":
+                        sev = "LOW"
+                        http = ev.get("http", {})
+                        method = http.get("http_method", "GET")
+                        hostname = http.get("hostname", "")
+                        url = http.get("url", "")
+                        status = http.get("status", "")
+                        summary = f"Suricata HTTP: {method} {hostname}{url} [{status}]"
+                    elif etype == "dns":
+                        sev = "LOW"
+                        dns = ev.get("dns", {})
+                        summary = f"Suricata DNS: {dns.get('type', 'query')} {dns.get('rrname', '')}"
                     elif etype == "ssh":
                         sev = "LOW"
                         client_ver = ev.get("ssh", {}).get("client", {}).get("software_version", "")
-                        summary = f"Suricata SSH Connection ({client_ver})"
+                        summary = f"Suricata SSH Connection: {src_ip}:{src_port} -> {dest_ip}:{dest_port} ({client_ver})"
+                    elif etype == "tls":
+                        sev = "LOW"
+                        tls = ev.get("tls", {})
+                        sni = tls.get("sni") or tls.get("subject", "TLS session")
+                        summary = f"Suricata TLS: {sni}"
+                    elif etype == "flow":
+                        sev = "INFORMATIONAL"
+                        proto = ev.get("proto", "TCP")
+                        summary = f"Suricata Flow: {proto} {src_ip}:{src_port} -> {dest_ip}:{dest_port}"
                     else:
                         sev = "INFORMATIONAL"
-                        summary = f"Suricata {etype.upper()} ({src_ip}:{src_port} -> {dest_ip}:{dest_port})"
+                        summary = f"Suricata {etype.upper()}: {src_ip}:{src_port} -> {dest_ip}:{dest_port}"
 
                     events.append(EventItem(
                         id=evt_id,
@@ -662,7 +713,63 @@ class EventSearchService:
             except Exception:
                 pass
 
-        # 5. Threat Intelligence Indicators from ioc_storage.py
+        # 3. Curated in-memory DEMO_ALERTS from backend/app/api/v1/api.py
+        try:
+            from backend.app.api.v1.api import DEMO_ALERTS
+            for a in DEMO_ALERTS:
+                if a.id in seen_ids:
+                    continue
+                seen_ids.add(a.id)
+                events.append(self._alert_to_event(a))
+        except Exception:
+            pass
+
+        # 4. In-memory LIVE_SIMULATION_ALERTS from live_telemetry.py (omit synthetic duplicates if real events exist)
+        try:
+            from backend.app.services.live_telemetry import LIVE_SIMULATION_ALERTS
+            for a in LIVE_SIMULATION_ALERTS:
+                if a.id in seen_ids:
+                    continue
+                # If title is SYNTHETIC VERIFICATION, keep only if no real events are available
+                if "SYNTHETIC VERIFICATION" in getattr(a, "title", "").upper() and len(events) >= 50:
+                    continue
+                seen_ids.add(a.id)
+                events.append(self._alert_to_event(a))
+        except Exception:
+            pass
+
+        # 5. Persisted alerts from configs/persisted_alerts.json
+        try:
+            from backend.app.services.retention_policy import load_persisted_alerts
+            persisted = load_persisted_alerts()
+            for pa in persisted:
+                aid = pa.get("id")
+                if not aid or aid in seen_ids:
+                    continue
+                title = str(pa.get("title", ""))
+                # Filter out synthetic verification clutter from query results
+                if "SYNTHETIC VERIFICATION" in title.upper() and len(events) >= 50:
+                    continue
+                seen_ids.add(aid)
+                events.append(self._persisted_dict_to_event(pa))
+        except Exception:
+            if os.path.exists(PERSISTENT_ALERTS_FILE):
+                try:
+                    with open(PERSISTENT_ALERTS_FILE, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for pa in data:
+                                aid = pa.get("id")
+                                title = str(pa.get("title", ""))
+                                if aid and aid not in seen_ids:
+                                    if "SYNTHETIC VERIFICATION" in title.upper() and len(events) >= 50:
+                                        continue
+                                    seen_ids.add(aid)
+                                    events.append(self._persisted_dict_to_event(pa))
+                except Exception:
+                    pass
+
+        # 6. Threat Intelligence Indicators from ioc_storage.py
         try:
             from backend.app.services.ioc_storage import query_offline_iocs
             iocs = query_offline_iocs(limit=100)
