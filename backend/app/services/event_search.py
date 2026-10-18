@@ -303,6 +303,7 @@ def _matches_conjunction(event: EventItem, clause: str) -> bool:
                     raw_json_str = json.dumps(event.raw, default=str).lower()
 
                 if "*" in val or "?" in val:
+                    clean_v = v_low.rstrip("*").rstrip("-")
                     condition_met = (
                         fnmatch.fnmatch(event.summary.lower(), v_low)
                         or fnmatch.fnmatch(event.host.lower(), v_low)
@@ -311,6 +312,13 @@ def _matches_conjunction(event: EventItem, clause: str) -> bool:
                         or fnmatch.fnmatch(event.index.lower(), v_low)
                         or fnmatch.fnmatch(event.id.lower(), v_low)
                         or fnmatch.fnmatch(raw_json_str, f"*{v_low}*")
+                        or (bool(clean_v) and (
+                            clean_v in event.index.lower()
+                            or event.index.lower() in clean_v
+                            or clean_v in event.source_type.lower()
+                            or clean_v in event.summary.lower()
+                            or clean_v in raw_json_str
+                        ))
                     )
                 else:
                     condition_met = (
