@@ -261,22 +261,17 @@ def get_masked_threat_intel_config() -> Dict[str, Any]:
 def save_threat_intel_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     global _THREAT_CONFIG_CACHE
     current = load_threat_intel_config().copy()
-    if "abuse_ch_api_key" in cfg:
-        val = str(cfg["abuse_ch_api_key"]).strip()
-        if not "*" in val:
-            current["abuse_ch_api_key"] = val
-    if "otx_api_key" in cfg:
-        val = str(cfg["otx_api_key"]).strip()
-        if not "*" in val:
-            current["otx_api_key"] = val
-    if "virustotal_api_key" in cfg:
-        val = str(cfg["virustotal_api_key"]).strip()
-        if not "*" in val:
-            current["virustotal_api_key"] = val
-    for f in ["github_token", "github_repo", "github_branch", "github_file_path"]:
+    for f in ["abuse_ch_api_key", "otx_api_key", "virustotal_api_key", "github_token"]:
         if f in cfg:
             val = str(cfg[f]).strip()
-            if not "*" in val:
+            # Only update if user entered a new, non-empty, unmasked key
+            # If empty or contains '*', preserve the existing saved key!
+            if val and "*" not in val:
+                current[f] = val
+    for f in ["github_repo", "github_branch", "github_file_path"]:
+        if f in cfg:
+            val = str(cfg[f]).strip()
+            if val:
                 current[f] = val
     if "github_auto_push" in cfg:
         current["github_auto_push"] = bool(cfg["github_auto_push"])
@@ -307,8 +302,18 @@ def save_threat_intel_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
     key = api_key.strip()
+    if not key or "*" in key:
+        cfg = load_threat_intel_config()
+        if provider == "abuse_ch":
+            key = cfg.get("abuse_ch_api_key", "").strip()
+        elif provider == "alienvault_otx":
+            key = cfg.get("otx_api_key", "").strip()
+        elif provider == "virustotal":
+            key = cfg.get("virustotal_api_key", "").strip()
+        elif provider == "github":
+            key = cfg.get("github_token", "").strip()
     if not key:
-        return {"status": "error", "message": "API key cannot be blank"}
+        return {"status": "error", "message": "API key cannot be blank. Enter an API key or token first."}
 
     try:
         if provider == "abuse_ch":
