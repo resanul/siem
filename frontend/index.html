@@ -1521,16 +1521,26 @@ function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setSyncMessage(`✅ ${data.message || "GitHub sync complete!"}`);
-        loadDbStats();
+        if (data.status === "pushed" || data.status === "identical" || data.status === "success") {
+          setSyncMessage(`✅ ${data.message || "GitHub sync complete!"}`);
+          loadDbStats();
+          setTimeout(() => setSyncMessage(""), 7000);
+        } else if (data.status === "auth_error" || data.status === "error") {
+          setSyncMessage(`❌ ${data.message || "GitHub sync failed."}`);
+          setTimeout(() => setSyncMessage(""), 16000);
+        } else {
+          setSyncMessage(`⚠️ ${data.message || "GitHub sync notice."}`);
+          setTimeout(() => setSyncMessage(""), 10000);
+        }
       } else {
-        setSyncMessage("GitHub push returned HTTP " + res.status);
+        setSyncMessage(`❌ GitHub push returned HTTP ${res.status}`);
+        setTimeout(() => setSyncMessage(""), 10000);
       }
     } catch (e) {
-      setSyncMessage("GitHub sync failed: " + e.message);
+      setSyncMessage(`❌ GitHub sync failed: ${e.message}`);
+      setTimeout(() => setSyncMessage(""), 10000);
     } finally {
       setPushingGithub(false);
-      setTimeout(() => setSyncMessage(""), 7000);
     }
   };
 
@@ -4337,11 +4347,27 @@ function App() {
     "data-lucide": "refresh-cw",
     className: `w-3.5 h-3.5 ${syncingFeeds ? "animate-spin" : ""}`
   }), /*#__PURE__*/React.createElement("span", null, syncingFeeds ? "Syncing..." : "Sync Feeds"))), syncMessage && /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-1.5 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded border border-emerald-500/20 shadow-sm"
+    className: `flex items-center space-x-2 text-xs font-mono px-3 py-1.5 rounded border shadow-sm ${
+      (syncMessage.includes("❌") || syncMessage.toLowerCase().includes("failed") || syncMessage.toLowerCase().includes("error") || syncMessage.includes("403") || syncMessage.includes("401"))
+        ? "text-rose-400 bg-rose-500/10 border-rose-500/30"
+        : (syncMessage.includes("⚠️") || syncMessage.toLowerCase().includes("warning") || syncMessage.toLowerCase().includes("notice"))
+        ? "text-amber-400 bg-amber-500/10 border-amber-500/30"
+        : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+    }`
   }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "check-circle",
-    className: "w-3.5 h-3.5 text-emerald-400"
-  }), /*#__PURE__*/React.createElement("span", null, syncMessage))), /*#__PURE__*/React.createElement("div", {
+    "data-lucide": (syncMessage.includes("❌") || syncMessage.toLowerCase().includes("failed") || syncMessage.toLowerCase().includes("error") || syncMessage.includes("403") || syncMessage.includes("401"))
+      ? "alert-triangle"
+      : (syncMessage.includes("⚠️") || syncMessage.toLowerCase().includes("warning") || syncMessage.toLowerCase().includes("notice"))
+      ? "alert-circle"
+      : "check-circle",
+    className: `w-4 h-4 flex-shrink-0 ${
+      (syncMessage.includes("❌") || syncMessage.toLowerCase().includes("failed") || syncMessage.toLowerCase().includes("error") || syncMessage.includes("403") || syncMessage.includes("401"))
+        ? "text-rose-400"
+        : (syncMessage.includes("⚠️") || syncMessage.toLowerCase().includes("warning") || syncMessage.toLowerCase().includes("notice"))
+        ? "text-amber-400"
+        : "text-emerald-400"
+    }`
+  }), /*#__PURE__*/React.createElement("span", { className: "leading-relaxed break-words" }, syncMessage))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-2 gap-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-3 rounded-lg bg-[#0e1422] border border-[#1f293d] flex items-center justify-between shadow-sm"

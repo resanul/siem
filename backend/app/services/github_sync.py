@@ -219,7 +219,17 @@ def sync_iocs_to_github(force_push: bool = False) -> Dict[str, Any]:
             err_body = json.loads(e.read()).get("message", "")
         except Exception:
             pass
-        msg = f"Failed to push to GitHub: HTTP {e.code} ({err_body or e.reason})"
+        if e.code == 403 and "Resource not accessible by personal access token" in err_body:
+            msg = (
+                f"GitHub Permission Error (HTTP 403): Personal Access Token lacks write permission. "
+                f"For Fine-grained PAT: GitHub Settings -> Developer settings -> Personal access tokens -> "
+                f"Repository permissions -> set 'Contents' to 'Read and write' for repository '{repo}'. "
+                f"For Classic PAT: ensure the 'repo' scope is selected."
+            )
+        elif e.code in [401, 403]:
+            msg = f"GitHub Authentication Error (HTTP {e.code}): {err_body or e.reason}. Verify token and repo write access for {repo}."
+        else:
+            msg = f"Failed to push to GitHub: HTTP {e.code} ({err_body or e.reason})"
         record_github_sync_log(total_iocs, "PUSH", "", "ERROR", msg)
         res = {
             "status": "error",
