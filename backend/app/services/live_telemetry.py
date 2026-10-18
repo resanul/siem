@@ -66,6 +66,25 @@ SURICATA_LOG_PATH = find_suricata_eve_log()
 # In-memory storage for active live simulation and synthetic alerts
 LIVE_SIMULATION_ALERTS: List[AlertItem] = []
 
+
+def _tail_lines(file_path: str, max_lines: int = 200, chunk_size: int = 262144) -> List[str]:
+    """Efficiently reads the last N lines of large telemetry logs without reading the entire file."""
+    if not os.path.exists(file_path):
+        return []
+    try:
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            return []
+        read_bytes = min(file_size, chunk_size)
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            if file_size > read_bytes:
+                f.seek(file_size - read_bytes)
+                f.readline()  # discard partial first line
+            lines = f.readlines()
+            return lines[-max_lines:]
+    except Exception:
+        return []
+
 def _es_request(path: str, timeout: int = 4) -> Optional[Dict[str, Any]]:
     try:
         url = f"{ES_URL}{path}"
@@ -189,14 +208,7 @@ def fetch_suricata_events(limit: int = 15) -> List[AlertItem]:
         return alerts
 
     try:
-        lines: List[str] = []
-        with open(SURICATA_LOG_PATH, "r", encoding="utf-8", errors="replace") as f:
-            # Read last 200 lines
-            for line in f:
-                lines.append(line)
-                if len(lines) > 200:
-                    lines.pop(0)
-
+        lines = _tail_lines(SURICATA_LOG_PATH, max_lines=200, chunk_size=262144)
         for line in reversed(lines):
             if len(alerts) >= limit:
                 break
@@ -560,13 +572,7 @@ def get_live_network_telemetry() -> Dict[str, Any]:
 
     if os.path.exists(eve_log_file):
         try:
-            lines: List[str] = []
-            with open(eve_log_file, "r", encoding="utf-8", errors="replace") as f:
-                for line in f:
-                    lines.append(line)
-                    if len(lines) > 500:
-                        lines.pop(0)
-
+            lines = _tail_lines(eve_log_file, max_lines=500, chunk_size=262144)
             for line in reversed(lines):
                 try:
                     ev = json.loads(line)

@@ -176,16 +176,43 @@ function App() {
     } catch (e) {}
     return initialAlerts;
   });
-  const [overview, setOverview] = useState(initialOverview);
-  const [components, setComponents] = useState(initialComponents);
+  const [overview, setOverview] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_overview");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    return initialOverview;
+  });
+  const [components, setComponents] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_components");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialComponents;
+  });
   const [jobs, setJobs] = useState(initialJobs);
-  const [networkTelemetry, setNetworkTelemetry] = useState({
-    interface: "enp0s3 [Promiscuous]",
-    packets_processed: "8,070,108",
-    packet_drop_rate: "0.05% (Healthy)",
-    signatures_loaded: "41,250 (ET Open)",
-    protocol_distribution: { tls: 68, dns: 19, http: 11, ssh_other: 2 },
-    recent_flows: []
+  const [networkTelemetry, setNetworkTelemetry] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_network_telemetry");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    return {
+      interface: "ens34 [Promiscuous]",
+      packets_processed: "123,648",
+      packet_drop_rate: "0.00% (Healthy)",
+      signatures_loaded: "41,250 (ET Open)",
+      protocol_distribution: { tls: 68, dns: 19, http: 11, ssh_other: 2 },
+      recent_flows: []
+    };
   });
   const [healthDiagnostics, setHealthDiagnostics] = useState({
     host: {
@@ -712,7 +739,16 @@ function App() {
   const [soarLogOutput, setSoarLogOutput] = useState([]);
 
   // Live Threat Intelligence & IOC Hunter State
-  const [threatFeeds, setThreatFeeds] = useState([]);
+  const [threatFeeds, setThreatFeeds] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_threat_feeds");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [threatFeedsLoading, setThreatFeedsLoading] = useState(false);
   const [threatFilter, setThreatFilter] = useState("ALL");
   const [threatSearchQuery, setThreatSearchQuery] = useState("");
@@ -721,10 +757,25 @@ function App() {
   const [huntLoading, setHuntLoading] = useState(false);
   const [syncingFeeds, setSyncingFeeds] = useState(false);
   const [syncingTalos, setSyncingTalos] = useState(false);
-  const [talosCount, setTalosCount] = useState(17214);
+  const [talosCount, setTalosCount] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_talos_count");
+      if (cached) return Number(cached) || 17214;
+    } catch (e) {}
+    return 17214;
+  });
   const [syncMessage, setSyncMessage] = useState("");
   const [showThreatConfigModal, setShowThreatConfigModal] = useState(false);
-  const [dbStats, setDbStats] = useState(null);
+  const [dbStats, setDbStats] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_threat_db_stats");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    return null;
+  });
   const [pushingGithub, setPushingGithub] = useState(false);
   const [threatConfig, setThreatConfig] = useState({
     abuse_ch_api_key: "",
@@ -813,15 +864,16 @@ function App() {
       localStorage.setItem("opensoc_current_screen", currentScreen);
     } catch (e) {}
     if (currentScreen === "threat_intel") {
-      if (threatFeeds.length === 0 && !threatFeedsLoading) {
-        fetchThreatFeeds();
-      }
+      fetchThreatFeeds(false, threatFilter, threatSearchQuery, true);
       loadThreatConfig();
       loadDbStats();
     }
     if (currentScreen === "hosts") {
-      fetchHostsFleet();
+      fetchHostsFleet(true);
       fetchAgentPackages();
+    }
+    if (currentScreen === "network" || currentScreen === "network_telemetry") {
+      fetchNetworkTelemetry();
     }
     if (currentScreen === "settings") {
       fetchRetentionPolicy();
@@ -846,6 +898,13 @@ function App() {
     return () => clearInterval(timer);
   }, [currentScreen]);
 
+  // Periodic Auto-Sync for Live Suricata Network Telemetry (every 3 seconds)
+  useEffect(() => {
+    if (currentScreen !== "network" && currentScreen !== "network_telemetry") return;
+    const timer = setInterval(fetchNetworkTelemetry, 3000);
+    return () => clearInterval(timer);
+  }, [currentScreen]);
+
   // Auto-init token for lab session
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -861,6 +920,10 @@ function App() {
     }
     fetchProxyConfig();
     fetchRetentionPolicy();
+    fetchHostsFleet(true);
+    fetchThreatFeeds(false, null, null, true);
+    loadDbStats();
+    fetchNetworkTelemetry();
   }, []);
 
   // Live polling for real alerts, overview metrics, and system components
@@ -901,7 +964,7 @@ function App() {
           const dataOverview = await resOverview.json();
           if (isMounted && dataOverview) {
             if (dataOverview.metrics) {
-              setOverview({
+              const newOv = {
                 status: dataOverview.status || "OPERATIONAL",
                 release: dataOverview.release || "v1.0.0-production",
                 profile: dataOverview.profile || "Red Hat Enterprise Linux 9",
@@ -917,13 +980,17 @@ function App() {
                 totalEndpoints: dataOverview.metrics.total_endpoints || 3,
                 healthyEndpoints: dataOverview.metrics.healthy_endpoints || 3,
                 mitreCoverage: dataOverview.metrics.mitre_coverage_count || 32
-              });
+              };
+              setOverview(newOv);
+              try { localStorage.setItem("opensoc_overview", JSON.stringify(newOv)); } catch (e) {}
             }
             if (dataOverview.components && Array.isArray(dataOverview.components)) {
               setComponents(dataOverview.components);
+              try { localStorage.setItem("opensoc_components", JSON.stringify(dataOverview.components)); } catch (e) {}
             }
             if (dataOverview.network_telemetry) {
               setNetworkTelemetry(dataOverview.network_telemetry);
+              try { localStorage.setItem("opensoc_network_telemetry", JSON.stringify(dataOverview.network_telemetry)); } catch (e) {}
             }
             if (dataOverview.health_diagnostics) {
               setHealthDiagnostics(dataOverview.health_diagnostics);
@@ -1277,6 +1344,9 @@ function App() {
         if (Array.isArray(data)) {
           setThreatFeeds(data);
           setLastSyncTime(new Date().toLocaleTimeString());
+          try {
+            localStorage.setItem("opensoc_threat_feeds", JSON.stringify(data.slice(0, 300)));
+          } catch (e) {}
         }
       }
     } catch (e) {
@@ -1309,6 +1379,9 @@ function App() {
         if (data.feeds && Array.isArray(data.feeds)) {
           setThreatFeeds(data.feeds);
           setLastSyncTime(new Date().toLocaleTimeString());
+          try {
+            localStorage.setItem("opensoc_threat_feeds", JSON.stringify(data.feeds.slice(0, 300)));
+          } catch (e) {}
         }
         setSyncMessage(data.message || "Feeds synced successfully!");
       } else {
@@ -1425,6 +1498,9 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setDbStats(data.db_stats || null);
+        try {
+          if (data.db_stats) localStorage.setItem("opensoc_threat_db_stats", JSON.stringify(data.db_stats));
+        } catch (e) {}
       }
     } catch (e) {
       console.error("Failed to load DB stats", e);
@@ -1586,6 +1662,25 @@ function App() {
     } finally {
       setEnforcingRetention(false);
       setTimeout(() => setRetentionSaveMsg(""), 6000);
+    }
+  };
+
+  const fetchNetworkTelemetry = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/network/telemetry", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.recent_flows) {
+          setNetworkTelemetry(data);
+          try {
+            localStorage.setItem("opensoc_network_telemetry", JSON.stringify(data));
+          } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load network telemetry", e);
     }
   };
 
@@ -2465,7 +2560,13 @@ function App() {
     className: "hidden lg:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-emerald-400"
   }, /*#__PURE__*/React.createElement("span", {
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), (hostsLoading && hostsFleet.length === 0) ? /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0b101c] border border-dashed border-[#1f293d] rounded-xl p-12 text-center space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-mono text-slate-400"
+  }, "Syncing Wazuh endpoint fleet...")) : hostsFleet.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0b101c] border border-dashed border-[#1f293d] rounded-xl p-8 text-center space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400"

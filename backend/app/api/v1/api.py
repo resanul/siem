@@ -1342,13 +1342,14 @@ def get_endpoint_hosts(
     """Retrieves registered endpoints and fleet metrics."""
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
-    from backend.app.services.host_storage import list_hosts, get_fleet_stats
+    from backend.app.services.host_storage import list_hosts
     hosts = list_hosts(status_filter=status, search=search, include_demo=include_demo)
-    stats = get_fleet_stats(include_demo=include_demo)
+    total = len(hosts)
+    active = sum(1 for h in hosts if h.get("status") == "ONLINE")
     return {
-        "total": stats["total"],
-        "active": stats["active"],
-        "disconnected": stats["disconnected"],
+        "total": total,
+        "active": active,
+        "disconnected": total - active,
         "hosts": hosts
     }
 
