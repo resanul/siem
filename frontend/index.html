@@ -1061,11 +1061,12 @@ function App() {
     try {
       const res = await fetch("/api/v1/system/git-update", { method: "POST" });
       const data = await res.json();
-      const commitInfo = data.latest_commit || "latest version";
+      const rawCommit = data.latest_commit || "latest version";
+      const commitSha = rawCommit.includes(" - ") ? rawCommit.split(" - ")[0] : (rawCommit.slice(0, 8));
       setGitUpdateStatus({
         loading: false,
         success: true,
-        message: `Successfully synchronized from Git: ${commitInfo}! Reloading UI in 2s...`
+        message: `✅ System successfully updated to latest release (${commitSha})! Reloading UI in 2s...`
       });
       setTimeout(() => {
         window.location.reload();
