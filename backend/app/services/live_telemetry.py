@@ -263,6 +263,18 @@ def get_live_alerts_pool() -> List[AlertItem]:
     
     # 1. Any live simulation or synthetic event alerts
     pool.extend(LIVE_SIMULATION_ALERTS)
+    try:
+        from backend.app.services.retention_policy import load_persisted_alerts
+        existing_ids = {a.id for a in pool}
+        for pa in load_persisted_alerts():
+            if pa.get("id") not in existing_ids:
+                try:
+                    pool.append(AlertItem(**pa))
+                    existing_ids.add(pa.get("id"))
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
     # 2. Real Syslog alerts from Elasticsearch
     pool.extend(fetch_syslog_alerts(limit=15))

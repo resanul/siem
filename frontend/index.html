@@ -166,7 +166,16 @@ function App() {
     }
   });
   const [userRole, setUserRole] = useState("Platform Admin");
-  const [alerts, setAlerts] = useState(initialAlerts);
+  const [alerts, setAlerts] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_live_alerts");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialAlerts;
+  });
   const [overview, setOverview] = useState(initialOverview);
   const [components, setComponents] = useState(initialComponents);
   const [jobs, setJobs] = useState(initialJobs);
@@ -751,6 +760,26 @@ function App() {
   const [proxyTestResult, setProxyTestResult] = useState(null);
   const [proxySaving, setProxySaving] = useState(false);
   const [proxySaveMsg, setProxySaveMsg] = useState("");
+  const [retentionPolicy, setRetentionPolicy] = useState({
+    policy_name: "Standard SOC Compliance Data Retention",
+    retention_days: 7,
+    auto_purge_enabled: true,
+    hot_days: 7,
+    warm_days: 30,
+    cold_snapshot_days: 90,
+    purge_targets: {
+      elasticsearch_indices: true,
+      raw_sensor_logs: true,
+      synthetic_telemetry: true,
+      audit_logs: false
+    },
+    last_enforced: null,
+    purged_records: 0,
+    status: "ACTIVE"
+  });
+  const [savingRetention, setSavingRetention] = useState(false);
+  const [enforcingRetention, setEnforcingRetention] = useState(false);
+  const [retentionSaveMsg, setRetentionSaveMsg] = useState("");
   const [autoSyncInterval, setAutoSyncInterval] = useState(300); // 300s = 5m
   const [lastSyncTime, setLastSyncTime] = useState("");
   const [showAddIocModal, setShowAddIocModal] = useState(false);
@@ -777,7 +806,7 @@ function App() {
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, enrollMode, enrollOS, agentPackages, cachingPkgId, cacheMsg, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, enrollMode, enrollOS, agentPackages, cachingPkgId, cacheMsg, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg, retentionPolicy, savingRetention, enforcingRetention, retentionSaveMsg]);
 
   useEffect(() => {
     try {
@@ -793,6 +822,9 @@ function App() {
     if (currentScreen === "hosts") {
       fetchHostsFleet();
       fetchAgentPackages();
+    }
+    if (currentScreen === "settings") {
+      fetchRetentionPolicy();
     }
   }, [currentScreen]);
 
@@ -828,6 +860,7 @@ function App() {
       }).catch(() => {});
     }
     fetchProxyConfig();
+    fetchRetentionPolicy();
   }, []);
 
   // Live polling for real alerts, overview metrics, and system components
@@ -856,6 +889,9 @@ function App() {
               status: item.status
             }));
             setAlerts(formatted);
+            try {
+              localStorage.setItem("opensoc_live_alerts", JSON.stringify(formatted));
+            } catch (e) {}
           }
         }
 
@@ -1484,6 +1520,72 @@ function App() {
       setProxyTestResult({ success: false, message: e.message });
     } finally {
       setProxyTesting(false);
+    }
+  };
+
+  const fetchRetentionPolicy = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/system/retention", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setRetentionPolicy(data);
+      }
+    } catch (e) {
+      console.error("Failed to load retention policy", e);
+    }
+  };
+
+  const handleSaveRetention = async () => {
+    setSavingRetention(true);
+    setRetentionSaveMsg("");
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/v1/system/retention", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(retentionPolicy)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRetentionPolicy(data);
+        setRetentionSaveMsg("✓ Data retention policy saved successfully! Active retention set to " + data.retention_days + " days.");
+      } else {
+        setRetentionSaveMsg("⚠ Failed to save policy: " + (data.detail || ("HTTP " + res.status)));
+      }
+    } catch (e) {
+      setRetentionSaveMsg("⚠ Error saving retention policy: " + e.message);
+    } finally {
+      setSavingRetention(false);
+      setTimeout(() => setRetentionSaveMsg(""), 6000);
+    }
+  };
+
+  const handleEnforceRetention = async () => {
+    setEnforcingRetention(true);
+    setRetentionSaveMsg("");
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/system/retention/enforce", {
+        method: "POST",
+        headers
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.policy) setRetentionPolicy(data.policy);
+        setRetentionSaveMsg("✓ Retention lifecycle enforced! Cleaned up " + (data.purged_records || 0) + " expired records beyond the " + (data.retention_days || 7) + "-day threshold.");
+      } else {
+        setRetentionSaveMsg("⚠ Enforcement failed: " + (data.detail || ("HTTP " + res.status)));
+      }
+    } catch (e) {
+      setRetentionSaveMsg("⚠ Error enforcing retention: " + e.message);
+    } finally {
+      setEnforcingRetention(false);
+      setTimeout(() => setRetentionSaveMsg(""), 6000);
     }
   };
 
@@ -3517,11 +3619,115 @@ function App() {
     type: "radio",
     name: "profile",
     disabled: true
-  }), /*#__PURE__*/React.createElement("span", null, "Profile B: Distributed (Production Multi-Node)")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "font-semibold text-slate-200 block mb-1"
-  }, "Index Retention & Snapshot Policy"), /*#__PURE__*/React.createElement("div", {
-    className: "p-2.5 rounded bg-[#131b2e] border border-[#1f293d] font-mono text-slate-300"
-  }, "Hot: 7 days | Warm: 30 days | Cold Snapshot: 90 days (Auto-delete after 180 days)")))), currentScreen === "adversary_sim" && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, "Profile B: Distributed (Production Multi-Node)")))), /*#__PURE__*/React.createElement("div", {
+    className: "pt-4 border-t border-[#1f293d] space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "database",
+    className: "w-4 h-4 text-emerald-400"
+  }), /*#__PURE__*/React.createElement("label", {
+    className: "font-semibold text-slate-100 text-sm block"
+  }, "Data Retention Policy (ডেটা রিটেনশন পলিসি)")), /*#__PURE__*/React.createElement("p", {
+    className: "text-slate-400 text-xs mt-0.5"
+  }, "Configure telemetry and alert retention schedules. Data persists across reloads and server restarts until cutoff.")), /*#__PURE__*/React.createElement("span", {
+    className: "px-2.5 py-1 text-xs font-mono font-bold rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+  }), /*#__PURE__*/React.createElement("span", null, (retentionPolicy.retention_days || 7) + " Days Active"))),
+
+  retentionSaveMsg && /*#__PURE__*/React.createElement("div", {
+    className: `p-3 rounded text-xs font-mono border ${retentionSaveMsg.includes("✓") ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`
+  }, retentionSaveMsg),
+
+  /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "font-semibold text-slate-300 block mb-2"
+  }, "Select Retention Period (কত দিন ডাটা সংরক্ষিত থাকবে):"), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3"
+  }, [
+    { days: 7, label: "7 Days (Default)", desc: "SOC Recommended Standard" },
+    { days: 14, label: "14 Days", desc: "Extended Threat Analysis" },
+    { days: 30, label: "30 Days", desc: "Monthly Compliance Audit" },
+    { days: 90, label: "90 Days", desc: "Quarterly Regulatory Storage" }
+  ].map(preset => /*#__PURE__*/React.createElement("button", {
+    key: preset.days,
+    type: "button",
+    onClick: () => setRetentionPolicy({ ...retentionPolicy, retention_days: preset.days, hot_days: preset.days }),
+    className: `p-3 rounded-lg border text-left transition-all ${retentionPolicy.retention_days === preset.days ? "bg-emerald-500/20 border-emerald-500 text-slate-100 shadow-md" : "bg-[#131b2e] border-[#1f293d] text-slate-400 hover:border-slate-600"}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "font-bold text-xs font-mono " + (retentionPolicy.retention_days === preset.days ? "text-emerald-400" : "text-slate-200")
+  }, preset.label), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] text-slate-400 mt-0.5"
+  }, preset.desc)))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center space-x-3 bg-[#131b2e] p-3 rounded-lg border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-300 font-medium"
+  }, "Custom Retention Days:"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: 1,
+    max: 365,
+    value: retentionPolicy.retention_days || 7,
+    onChange: e => {
+      const v = parseInt(e.target.value, 10);
+      if (!isNaN(v) && v > 0) {
+        setRetentionPolicy({ ...retentionPolicy, retention_days: v, hot_days: v });
+      }
+    },
+    className: "w-24 bg-[#080c14] border border-[#1f293d] rounded px-3 py-1 text-xs font-mono text-emerald-400 text-center font-bold focus:outline-none focus:border-emerald-500"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-400"
+  }, "দিনের অতিরিক্ত পুরনো ডাটা ও এলার্ট রিটেনশন পলিসি অনুযায়ী স্বয়ংক্রিয় ক্লিনআপ হবে।"))),
+
+  /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded bg-[#131b2e]/60 border border-[#1f293d] space-y-2"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "flex items-center space-x-2.5 cursor-pointer text-slate-200 font-medium select-none"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!retentionPolicy.auto_purge_enabled,
+    onChange: e => setRetentionPolicy({ ...retentionPolicy, auto_purge_enabled: e.target.checked }),
+    className: "rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-950 w-4 h-4 cursor-pointer"
+  }), /*#__PURE__*/React.createElement("span", null, "Enable Auto-Purge Lifecycle (স্বয়ংক্রিয় ডাটা মেয়াদপূর্তি ক্লিনআপ সক্রিয়)")), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-slate-400 grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400"
+  }, "✓"), /*#__PURE__*/React.createElement("span", null, "Persistent Alerts & Triages")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400"
+  }, "✓"), /*#__PURE__*/React.createElement("span", null, "Elasticsearch Indices")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400"
+  }, "✓"), /*#__PURE__*/React.createElement("span", null, "Suricata & Syslog Logs")))),
+
+  /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center justify-between gap-3 pt-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] font-mono text-slate-400"
+  }, retentionPolicy.last_enforced ? "Last Enforced: " + retentionPolicy.last_enforced.replace("T", " ").replace("Z", " UTC") : "Status: Active & Persistent across reloads"), /*#__PURE__*/React.createElement("div", {
+    className: "flex space-x-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: handleEnforceRetention,
+    disabled: enforcingRetention,
+    className: "px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-semibold text-xs flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "trash-2",
+    className: "w-3.5 h-3.5 text-amber-400"
+  }), /*#__PURE__*/React.createElement("span", null, enforcingRetention ? "Pruning..." : "Purge Expired Now")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: handleSaveRetention,
+    disabled: savingRetention,
+    className: "px-4 py-1.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "save",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, savingRetention ? "Saving..." : "Save Retention Policy"))))))), currentScreen === "adversary_sim" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"

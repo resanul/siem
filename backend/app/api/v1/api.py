@@ -578,6 +578,13 @@ def inject_synthetic_event(
         is_demo=False,
     )
     LIVE_SIMULATION_ALERTS.insert(0, new_alert)
+    try:
+        from backend.app.services.retention_policy import save_persisted_alerts, load_persisted_alerts
+        persisted = load_persisted_alerts()
+        persisted.insert(0, new_alert.dict() if hasattr(new_alert, "dict") else dict(new_alert))
+        save_persisted_alerts(persisted)
+    except Exception:
+        pass
 
     audit_service.log(
         actor=current_user["sub"],
@@ -914,6 +921,56 @@ def test_system_proxy(
     proxy_url = payload.get("proxy_url", "").strip()
     target_url = payload.get("target_url", "https://otx.alienvault.com").strip()
     return test_proxy_connection(proxy_url, target_url)
+
+# ===================== DATA RETENTION POLICY & HOT/WARM LIFECYCLE =====================
+from backend.app.services.retention_policy import (
+    load_retention_policy,
+    save_retention_policy,
+    enforce_retention_policy,
+)
+
+
+@api_router.get("/system/retention")
+def get_system_retention_policy(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    """Returns current system data retention and lifecycle policy."""
+    return load_retention_policy()
+
+
+@api_router.post("/system/retention")
+def update_system_retention_policy(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Updates and saves system data retention policy."""
+    res = save_retention_policy(payload)
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="UPDATE_RETENTION_POLICY",
+        resource_type="system",
+        resource_id="retention",
+        status="SUCCESS",
+        details=res,
+    )
+    return res
+
+
+@api_router.post("/system/retention/enforce")
+def trigger_retention_enforcement(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
+    """Manually triggers data retention lifecycle and purges expired telemetry."""
+    res = enforce_retention_policy()
+    audit_service.log(
+        actor=current_user["sub"],
+        role=current_user["role"],
+        client_ip="127.0.0.1",
+        action="ENFORCE_RETENTION_PURGE",
+        resource_type="system",
+        resource_id="retention",
+        status="SUCCESS",
+        details=res,
+    )
+    return res
 
 
 # ===================== AGENT PACKAGES & OFFLINE REPOSITORY =====================
