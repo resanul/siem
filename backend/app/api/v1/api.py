@@ -52,6 +52,10 @@ from backend.app.services.live_telemetry import (
     get_live_health_diagnostics,
     LIVE_SIMULATION_ALERTS,
 )
+from backend.app.services.network_telemetry import (
+    get_network_dashboard_data,
+    ingest_network_log,
+)
 
 api_router = APIRouter()
 orchestrator = OrchestrationEngine()
@@ -287,7 +291,16 @@ def get_overview(current_user: Dict[str, Any] = Depends(require_permission("aler
 # ===================== NETWORK TELEMETRY =====================
 @api_router.get("/network/telemetry")
 def get_network_telemetry(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
-    return get_live_network_telemetry()
+    return get_network_dashboard_data()
+
+
+@api_router.post("/network/ingest")
+def post_network_ingest(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Allows forwarding network logs via REST/webhook directly."""
+    return ingest_network_log(payload)
 
 
 # ===================== HEALTH & DIAGNOSTICS =====================

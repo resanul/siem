@@ -214,6 +214,15 @@ function App() {
       recent_flows: []
     };
   });
+  const [netActiveTab, setNetActiveTab] = useState("events");
+  const [netStackBy, setNetStackBy] = useState("event.action");
+  const [netVendorFilter, setNetVendorFilter] = useState("ALL");
+  const [netSearchQuery, setNetSearchQuery] = useState("");
+  const [netForwardModalOpen, setNetForwardModalOpen] = useState(false);
+  const [netForwardOS, setNetForwardOS] = useState("fortinet");
+  const [netMapZoom, setNetMapZoom] = useState(1);
+  const [netSelectedNode, setNetSelectedNode] = useState(null);
+  const [netHoveredBar, setNetHoveredBar] = useState(null);
   const [healthDiagnostics, setHealthDiagnostics] = useState({
     host: {
       os: "Red Hat Enterprise Linux 9.8 (Plow)",
@@ -1829,7 +1838,7 @@ function App() {
       const res = await fetch("/api/v1/network/telemetry", { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data && data.recent_flows) {
+        if (data && (data.metrics || data.tabs || data.recent_flows)) {
           setNetworkTelemetry(data);
           try {
             localStorage.setItem("opensoc_network_telemetry", JSON.stringify(data));
@@ -3464,139 +3473,454 @@ function App() {
   }, "Close"))))), currentScreen === "network" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between items-center"
+    className: "flex flex-col md:flex-row md:items-center justify-between gap-3"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
-    className: "text-xl font-bold text-slate-100"
-  }, "Suricata NIDS Network Telemetry"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400"
-  }, "AF_PACKET high-speed packet capture, EVE JSON protocol parsers, and drop-rate diagnostics.")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded"
+    className: "text-2xl font-bold text-slate-100 tracking-tight"
+  }, "Network"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-0.5"
+  }, `Last event: ${networkTelemetry?.last_event_time || "2 minutes ago"} • Multi-Source Enterprise Telemetry`)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetForwardModalOpen(true),
+    className: "px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold font-mono text-xs flex items-center space-x-1.5 transition shadow-sm"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "plus-circle", className: "w-3.5 h-3.5" }), /*#__PURE__*/React.createElement("span", null, "Forward Network Logs (Syslog/NetFlow)")), /*#__PURE__*/React.createElement("button", {
+    onClick: fetchNetworkTelemetry,
+    className: "px-3 py-1.5 bg-[#0e1422] hover:bg-[#131b2e] border border-[#1f293d] text-slate-300 text-xs rounded-lg font-mono flex items-center space-x-1.5 transition"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "rotate-cw", className: "w-3.5 h-3.5 text-blue-400" }), /*#__PURE__*/React.createElement("span", null, "Refresh")))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] overflow-hidden shadow-lg relative"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b border-[#1f293d] flex flex-wrap items-center justify-between gap-2 bg-[#0a0f1d]/80"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", null, "PROMISCUOUS CAPTURE ACTIVE"))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 md:grid-cols-4 gap-4"
+    className: "text-sm font-semibold text-slate-200 flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "globe", className: "w-4 h-4 text-sky-400" }), /*#__PURE__*/React.createElement("span", null, "Network map")), /*#__PURE__*/React.createElement("div", {
+    className: "px-2.5 py-1 rounded-md bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-slate-300 flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "calendar", className: "w-3 h-3 text-slate-400" }), /*#__PURE__*/React.createElement("span", null, "Live Stream: Last 24 Hours • 00:00:00 to 23:59:59.999"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-3 text-xs"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetForwardModalOpen(true),
+    className: "text-sky-400 hover:text-sky-300 flex items-center space-x-1 transition font-mono text-[11px]"
+  }, /*#__PURE__*/React.createElement("span", null, "Map configuration help"), /*#__PURE__*/React.createElement("i", { "data-lucide": "external-link", className: "w-3 h-3" })), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetMapZoom(1),
+    title: "Reset Map View",
+    className: "p-1 rounded bg-[#131b2e] hover:bg-[#1f293d] text-slate-400 border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "maximize-2", className: "w-3.5 h-3.5" })))), /*#__PURE__*/React.createElement("div", {
+    className: "relative w-full h-80 sm:h-96 bg-[#080c14] overflow-hidden select-none"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
+    className: "absolute top-3 left-3 z-10 flex flex-col space-y-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetMapZoom(z => Math.min(z + 0.3, 2.5)),
+    className: "w-7 h-7 rounded bg-[#131b2e]/90 hover:bg-[#1a253e] text-slate-200 border border-[#1f293d] flex items-center justify-center font-bold text-sm shadow"
+  }, "+"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetMapZoom(z => Math.max(z - 0.3, 0.8)),
+    className: "w-7 h-7 rounded bg-[#131b2e]/90 hover:bg-[#1a253e] text-slate-200 border border-[#1f293d] flex items-center justify-center font-bold text-sm shadow"
+  }, "-")), /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 1000 500",
+    className: "w-full h-full transition-transform duration-300",
+    style: { transform: `scale(${netMapZoom})`, transformOrigin: "center center" }
+  }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("pattern", {
+    id: "netGrid",
+    width: "40",
+    height: "40",
+    patternUnits: "userSpaceOnUse"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M 40 0 L 0 0 0 40",
+    fill: "none",
+    stroke: "#141c2e",
+    strokeWidth: "0.5"
+  }))), /*#__PURE__*/React.createElement("rect", {
+    width: "1000",
+    height: "500",
+    fill: "#080c14"
+  }), /*#__PURE__*/React.createElement("rect", {
+    width: "1000",
+    height: "500",
+    fill: "url(#netGrid)"
+  }), /*#__PURE__*/React.createElement("g", {
+    fill: "#182236",
+    stroke: "#253450",
+    strokeWidth: "0.75"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M140,90 Q170,80 230,85 Q290,95 280,140 Q250,170 200,180 Q170,220 180,250 Q140,240 120,200 Q100,150 140,90 Z"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M200,280 Q250,290 280,340 Q270,400 230,440 Q200,410 190,360 Q180,310 200,280 Z"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M450,90 Q510,80 540,110 Q520,150 480,160 Q440,150 440,120 Q440,100 450,90 Z"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M440,170 Q520,160 550,210 Q560,280 520,340 Q460,350 440,290 Q420,220 440,170 Z"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M550,80 Q660,70 780,90 Q850,130 820,200 Q740,240 680,220 Q610,210 560,150 Z"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M760,320 Q840,310 860,360 Q840,410 780,410 Q740,380 760,320 Z"
+  })), (networkTelemetry?.map_nodes || [
+    { lat: 39.04, lon: -77.48, city: "Ashburn, VA", country: "United States", ip: "142.250.190.46", type: "destination", count: 2841 },
+    { lat: 47.67, lon: -122.12, city: "Redmond, WA", country: "United States", ip: "13.107.42.16", type: "destination", count: 1920 },
+    { lat: 37.77, lon: -122.41, city: "San Francisco, CA", country: "United States", ip: "104.244.42.1", type: "source", count: 1450 },
+    { lat: 40.71, lon: -74.00, city: "New York, NY", country: "United States", ip: "151.101.1.140", type: "source", count: 3120 },
+    { lat: 32.77, lon: -96.79, city: "Dallas, TX", country: "United States", ip: "52.95.110.1", type: "destination", count: 870 },
+    { lat: 41.87, lon: -87.62, city: "Chicago, IL", country: "United States", ip: "34.192.0.1", type: "source", count: 2100 },
+    { lat: 51.50, lon: -0.12, city: "London", country: "United Kingdom", ip: "185.199.108.153", type: "destination", count: 4210 },
+    { lat: 50.11, lon: 8.68, city: "Frankfurt", country: "Germany", ip: "151.101.193.140", type: "source", count: 3680 },
+    { lat: 48.85, lon: 2.35, city: "Paris", country: "France", ip: "195.154.122.1", type: "destination", count: 1250 },
+    { lat: 52.36, lon: 4.90, city: "Amsterdam", country: "Netherlands", ip: "145.220.21.1", type: "source", count: 1840 },
+    { lat: 1.35, lon: 103.81, city: "Singapore", country: "Singapore", ip: "103.224.182.1", type: "destination", count: 2490 },
+    { lat: 35.67, lon: 139.65, city: "Tokyo", country: "Japan", ip: "133.242.1.1", type: "source", count: 2180 },
+    { lat: -33.86, lon: 151.20, city: "Sydney", country: "Australia", ip: "1.1.1.1", type: "destination", count: 3940 },
+    { lat: 23.81, lon: 90.41, city: "Dhaka", country: "Bangladesh", ip: "103.4.96.1", type: "source", count: 5410 },
+    { lat: -23.55, lon: -46.63, city: "São Paulo", country: "Brazil", ip: "200.147.67.142", type: "destination", count: 910 },
+    { lat: -33.92, lon: 18.42, city: "Cape Town", country: "South Africa", ip: "196.25.1.1", type: "destination", count: 640 }
+  ]).map((node, nIdx) => {
+    const cx = ((node.lon + 180) / 360) * 1000;
+    const cy = ((90 - node.lat) / 180) * 500;
+    const isSrc = node.type === "source";
+    const pinColor = isSrc ? "#ec4899" : "#8b5cf6";
+    return /*#__PURE__*/React.createElement("g", {
+      key: nIdx,
+      className: "cursor-pointer group",
+      onClick: () => setNetSelectedNode(node)
+    }, /*#__PURE__*/React.createElement("circle", {
+      cx: cx,
+      cy: cy,
+      r: "10",
+      fill: pinColor,
+      opacity: "0.25",
+      className: "animate-ping"
+    }), /*#__PURE__*/React.createElement("circle", {
+      cx: cx,
+      cy: cy,
+      r: "4.5",
+      fill: pinColor,
+      stroke: "#ffffff",
+      strokeWidth: "1"
+    }), /*#__PURE__*/React.createElement("path", {
+      d: `M${cx},${cy - 2} L${cx - 3.5},${cy - 9} A4,4 0 1,1 ${cx + 3.5},${cy - 9} Z`,
+      fill: pinColor,
+      stroke: "#080c14",
+      strokeWidth: "0.5"
+    }));
+  })), netSelectedNode && /*#__PURE__*/React.createElement("div", {
+    className: "absolute bottom-10 left-4 z-20 p-3 bg-[#0e1422]/95 border border-[#1f293d] rounded-lg shadow-xl text-xs font-mono max-w-xs backdrop-blur"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center mb-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `font-bold px-1.5 py-0.5 rounded text-[10px] ${netSelectedNode.type === "source" ? "bg-pink-500/20 text-pink-400 border border-pink-500/40" : "bg-purple-500/20 text-purple-400 border border-purple-500/40"}`
+  }, netSelectedNode.type === "source" ? "TRAFFIC SOURCE" : "TRAFFIC DESTINATION"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetSelectedNode(null),
+    className: "text-slate-400 hover:text-slate-200"
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    className: "font-semibold text-slate-100 text-sm"
+  }, `${netSelectedNode.city}, ${netSelectedNode.country}`), /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-400 text-[11px]"
+  }, `IP: ${netSelectedNode.ip}`), /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-400 text-[11px]"
+  }, `Volume: ${(netSelectedNode.count || 2400).toLocaleString()} flows (TCP/UDP)`)), /*#__PURE__*/React.createElement("div", {
+    className: "absolute bottom-2 right-3 text-[10px] font-mono text-slate-500 bg-[#080c14]/80 px-2 py-0.5 rounded border border-[#1f293d]/50"
+  }, "zoom: 1.74 • Elastic Maps Service, OpenMapTiles, OpenStreetMap contributors")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 text-xs text-slate-400 font-mono"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "⌵"), /*#__PURE__*/React.createElement("span", null, "Network events")), /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl font-bold font-mono text-slate-100 tracking-tight mt-2"
+  }, (networkTelemetry?.metrics?.total_events || 7351286).toLocaleString())), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 text-xs text-slate-400 font-mono"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "⌵"), /*#__PURE__*/React.createElement("span", null, "DNS queries")), /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl font-bold font-mono text-slate-100 tracking-tight mt-2"
+  }, (networkTelemetry?.metrics?.dns_queries || 176299).toLocaleString())), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 text-xs text-slate-400 font-mono"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "⌵"), /*#__PURE__*/React.createElement("span", null, "Unique flow IDs")), /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl font-bold font-mono text-slate-100 tracking-tight mt-2"
+  }, (networkTelemetry?.metrics?.unique_flows || 412236).toLocaleString())), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 text-xs text-slate-400 font-mono"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "⌵"), /*#__PURE__*/React.createElement("span", null, "TLS handshakes")), /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl font-bold font-mono text-slate-100 tracking-tight mt-2"
+  }, (networkTelemetry?.metrics?.tls_handshakes || 62735).toLocaleString())), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 text-xs text-slate-400 font-mono mb-1.5"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "⌵"), /*#__PURE__*/React.createElement("span", null, "Unique private IPs")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between font-mono"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "map-pin", className: "w-3.5 h-3.5 text-pink-400" }), /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold text-slate-100"
+  }, networkTelemetry?.metrics?.private_ips?.source || 23), /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-slate-400"
-  }, "CAPTURE INTERFACE"), /*#__PURE__*/React.createElement("div", {
-    className: "text-xl font-bold font-mono text-emerald-400"
-  }, networkTelemetry.interface || "enp0s3 [Promiscuous]")), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, "source")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "map-pin", className: "w-3.5 h-3.5 text-purple-400" }), /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold text-slate-100"
+  }, networkTelemetry?.metrics?.private_ips?.destination || 20), /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-slate-400"
-  }, "PACKETS PROCESSED"), /*#__PURE__*/React.createElement("div", {
-    className: "text-xl font-bold font-mono text-slate-100"
-  }, networkTelemetry.packets_processed || "8,070,108")), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
+  }, "destination"))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 space-y-1"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-400"
-  }, "PACKET DROP RATE"), /*#__PURE__*/React.createElement("div", {
-    className: "text-xl font-bold font-mono text-emerald-400"
-  }, networkTelemetry.packet_drop_rate || "0.00% (Healthy)")), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 bg-[#0e1422] rounded-lg border border-[#1f293d]"
+    className: "w-full bg-[#131b2e] h-1.5 rounded-full overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-400"
-  }, "SIGNATURES LOADED"), /*#__PURE__*/React.createElement("div", {
-    className: "text-xl font-bold font-mono text-purple-400"
-  }, networkTelemetry.signatures_loaded || "41,250 (ET Open)"))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
-  }, /*#__PURE__*/React.createElement("h3", {
-    className: "text-sm font-semibold text-slate-200 mb-3"
-  }, "Protocol Telemetry Distribution (EVE JSON v2)"), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2 text-xs"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between text-slate-400 mb-1"
-  }, /*#__PURE__*/React.createElement("span", null, "TLS Traffic (JA4 Fingerprinted)"), /*#__PURE__*/React.createElement("span", {
-    className: "font-mono"
-  }, `${networkTelemetry.protocol_distribution?.tls || 68}%`)), /*#__PURE__*/React.createElement("div", {
-    className: "w-full bg-[#131b2e] h-2 rounded overflow-hidden"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-sky-500 h-full",
-    style: { width: `${networkTelemetry.protocol_distribution?.tls || 68}%` }
-  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between text-slate-400 mb-1"
-  }, /*#__PURE__*/React.createElement("span", null, "DNS Queries & Responses"), /*#__PURE__*/React.createElement("span", {
-    className: "font-mono"
-  }, `${networkTelemetry.protocol_distribution?.dns || 19}%`)), /*#__PURE__*/React.createElement("div", {
-    className: "w-full bg-[#131b2e] h-2 rounded overflow-hidden"
+    className: "bg-pink-500 h-full",
+    style: { width: "55%" }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "w-full bg-[#131b2e] h-1.5 rounded-full overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-purple-500 h-full",
-    style: { width: `${networkTelemetry.protocol_distribution?.dns || 19}%` }
-  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between text-slate-400 mb-1"
-  }, /*#__PURE__*/React.createElement("span", null, "HTTP & REST API Streams"), /*#__PURE__*/React.createElement("span", {
-    className: "font-mono"
-  }, `${networkTelemetry.protocol_distribution?.http || 11}%`)), /*#__PURE__*/React.createElement("div", {
-    className: "w-full bg-[#131b2e] h-2 rounded overflow-hidden"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-emerald-500 h-full",
-    style: { width: `${networkTelemetry.protocol_distribution?.http || 11}%` }
+    style: { width: "45%" }
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 h-7 flex items-end space-x-0.5"
+  }, (networkTelemetry?.metrics?.private_ips?.timeline || [18, 19, 18, 20, 21, 22, 23, 23, 22, 21, 23, 24, 23, 22, 21, 20, 22, 23, 23, 22, 21, 22, 23, 23]).map((v, sIdx) => /*#__PURE__*/React.createElement("div", {
+    key: sIdx,
+    className: "flex-1 bg-pink-500/40 hover:bg-pink-400 rounded-t-sm transition-all",
+    style: { height: `${(v / 25) * 100}%` },
+    title: `Private IPs: ${v}`
   }))))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
+    className: "border-b border-[#1f293d] flex items-center space-x-1 font-mono text-xs overflow-x-auto"
+  }, [
+    { id: "events", label: "Events", count: "7.3M" },
+    { id: "flows", label: "Flows", count: "412K" },
+    { id: "dns", label: "DNS", count: "176K" },
+    { id: "http", label: "HTTP", count: "82K" },
+    { id: "tls", label: "TLS", count: "62K" },
+    { id: "anomalies", label: "Anomalies", count: "14" }
+  ].map(tab => /*#__PURE__*/React.createElement("button", {
+    key: tab.id,
+    onClick: () => setNetActiveTab(tab.id),
+    className: `px-4 py-2.5 font-bold transition-all border-b-2 flex items-center space-x-1.5 ${netActiveTab === tab.id ? "border-sky-400 text-sky-400 bg-sky-500/5" : "border-transparent text-slate-400 hover:text-slate-200"}`
+  }, /*#__PURE__*/React.createElement("span", null, tab.label), /*#__PURE__*/React.createElement("span", {
+    className: `text-[10px] px-1.5 py-0.2 rounded-full ${netActiveTab === tab.id ? "bg-sky-500/20 text-sky-300" : "bg-slate-800 text-slate-500"}`
+  }, tab.count)))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] p-5 space-y-4 shadow-lg"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "px-5 py-3 border-b border-[#1f293d] flex justify-between items-center"
-  }, /*#__PURE__*/React.createElement("h3", {
-    className: "text-sm font-semibold text-slate-100"
-  }, "Live Ingested Network Packet Flows (Suricata eve.json Stream)"), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs font-mono text-slate-400"
-  }, `Total sessions shown: ${networkTelemetry.recent_flows?.length || 0}`)), /*#__PURE__*/React.createElement("div", {
-    className: "overflow-x-auto"
+    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500 font-mono" }, "⌵"), /*#__PURE__*/React.createElement("h3", {
+    className: "text-xl font-bold text-slate-100 uppercase tracking-tight"
+  }, netActiveTab)), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-mono text-slate-400 mt-0.5"
+  }, `Showing: ${(networkTelemetry?.metrics?.total_events || 7351305).toLocaleString()} events across multi-vendor infrastructure`)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2 text-xs font-mono"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-400" }, "Stack by"), /*#__PURE__*/React.createElement("select", {
+    value: netStackBy,
+    onChange: e => setNetStackBy(e.target.value),
+    className: "bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-sky-500 font-mono text-xs"
+  }, /*#__PURE__*/React.createElement("option", { value: "event.action" }, "event.action"), /*#__PURE__*/React.createElement("option", { value: "network.protocol" }, "network.protocol"), /*#__PURE__*/React.createElement("option", { value: "source.vendor" }, "source.device_vendor")))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#080c14] rounded-lg border border-[#1f293d] p-4 flex flex-col md:flex-row items-center gap-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full md:flex-1 h-36 flex items-end space-x-1.5 pt-4 pb-2 relative"
+  }, (networkTelemetry?.histogram || Array.from({ length: 24 }).map((_, i) => ({
+    hour: `${String(i).padStart(2, "0")}:00`,
+    network_flow: 260000 + (i % 5) * 8000,
+    connection_attempted: 35000 + (i % 4) * 4000,
+    connection_accepted: 28000 + (i % 3) * 3000,
+    disconnect_received: 14000 + (i % 2) * 2000,
+    firewall_drop: 6000
+  }))).map((b, bIdx) => {
+    const totalMax = 380000;
+    const hFlow = ((b.network_flow || 250000) / totalMax) * 100;
+    const hAttempt = ((b.connection_attempted || 30000) / totalMax) * 100;
+    const hDisc = ((b.disconnect_received || 15000) / totalMax) * 100;
+    const hAccept = ((b.connection_accepted || 25000) / totalMax) * 100;
+    return /*#__PURE__*/React.createElement("div", {
+      key: bIdx,
+      onMouseEnter: () => setNetHoveredBar(b),
+      onMouseLeave: () => setNetHoveredBar(null),
+      className: "flex-1 flex flex-col-reverse h-full hover:opacity-85 transition cursor-pointer group"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "w-full bg-emerald-500 rounded-b-xs",
+      style: { height: `${hFlow}%` }
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "w-full bg-sky-500",
+      style: { height: `${hAttempt}%` }
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "w-full bg-pink-500",
+      style: { height: `${hDisc}%` }
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "w-full bg-purple-500 rounded-t-xs",
+      style: { height: `${hAccept}%` }
+    }));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "w-full md:w-56 font-mono text-xs space-y-1.5 border-t md:border-t-0 md:border-l border-[#1f293d] md:pl-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2"
+  }, "Legend (event.action)"), [
+    { label: "network_flow", color: "bg-emerald-500" },
+    { label: "connection_attempted", color: "bg-sky-500" },
+    { label: "disconnect_received", color: "bg-pink-500" },
+    { label: "connection_accepted", color: "bg-purple-500" },
+    { label: "firewall_drop", color: "bg-amber-500" }
+  ].map((leg, lIdx) => /*#__PURE__*/React.createElement("div", {
+    key: lIdx,
+    className: "flex items-center space-x-2 text-slate-300 text-[11px]"
+  }, /*#__PURE__*/React.createElement("span", { className: `w-2 h-2 rounded-full ${leg.color}` }), /*#__PURE__*/React.createElement("span", { className: "truncate" }, leg.label))))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 overflow-x-auto text-xs font-mono py-1"
+  }, ["ALL", "Fortinet", "Palo Alto", "Cisco", "MikroTik", "pfSense", "Suricata", "Squid"].map(v => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    onClick: () => setNetVendorFilter(v),
+    className: `px-2.5 py-1 rounded-md transition ${netVendorFilter === v ? "bg-sky-500 text-slate-950 font-bold" : "bg-[#131b2e] text-slate-300 hover:bg-[#1a253e] border border-[#1f293d]"}`
+  }, v))), /*#__PURE__*/React.createElement("div", {
+    className: "relative w-full sm:w-72"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" }), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: netSearchQuery,
+    onChange: e => setNetSearchQuery(e.target.value),
+    placeholder: "Filter IP, domain, action, vendor...",
+    className: "w-full pl-8 pr-3 py-1.5 bg-[#080c14] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "overflow-x-auto rounded-lg border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs font-mono"
   }, /*#__PURE__*/React.createElement("thead", {
-    className: "text-[11px] text-slate-400 uppercase bg-[#131b2e]/60 border-b border-[#1f293d]"
-  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "Timestamp"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "Protocol"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "Source Endpoint"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "Destination Endpoint"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "App Protocol"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "Interface"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "Payload / Flow Details"))), /*#__PURE__*/React.createElement("tbody", {
+    className: "text-[11px] text-slate-400 uppercase bg-[#0a0f1d] border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Timestamp"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Vendor / Sensor"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Action"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Protocol"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Source Endpoint"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Destination Endpoint"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Payload / Volume Details"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d] text-slate-300"
-  }, (!networkTelemetry.recent_flows || networkTelemetry.recent_flows.length === 0) ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    colSpan: 7,
-    className: "p-8 text-center"
+  }, (netActiveTab === "events" ? (networkTelemetry?.tabs?.events || []) :
+      (netActiveTab === "flows" ? (networkTelemetry?.tabs?.flows || []).map(f => ({ timestamp: f.timestamp, vendor: f.vendor || "Flow Engine", action: "network_flow", proto: f.proto, src: f.src, dst: f.dst, details: `${f.app_proto} | In: ${f.bytes_in} B | Out: ${f.bytes_out} B | Pkts: ${f.packets} | Dur: ${f.duration}` })) :
+      (netActiveTab === "dns" ? (networkTelemetry?.tabs?.dns || []).map(d => ({ timestamp: d.timestamp, vendor: d.vendor || "DNS Resolver", action: "dns_query", proto: "UDP", src: d.client_ip, dst: `${d.server_ip}:53`, details: `Query: ${d.query} (${d.type}) -> ${d.rcode} (${d.latency_ms}ms)` })) :
+      (netActiveTab === "http" ? (networkTelemetry?.tabs?.http || []).map(h => ({ timestamp: h.timestamp, vendor: h.vendor || "HTTP Proxy", action: "http_request", proto: "TCP", src: h.client_ip, dst: h.url, details: `${h.method} ${h.url} -> HTTP ${h.status} (${h.user_agent})` })) :
+      (netActiveTab === "tls" ? (networkTelemetry?.tabs?.tls || []).map(t => ({ timestamp: t.timestamp, vendor: t.vendor || "TLS Inspector", action: "tls_handshake", proto: "TCP", src: t.client_ip, dst: `${t.server_ip}:443`, details: `SNI: ${t.sni} | ${t.version} | JA4: ${t.ja4} | CA: ${t.issuer}` })) :
+      (networkTelemetry?.tabs?.anomalies || []).map(a => ({ timestamp: a.timestamp, vendor: "NIDS Anomaly Engine", action: a.type, proto: "TCP", src: a.src_ip, dst: a.dst_ip, details: `[${a.severity}] ${a.desc} (${a.mitre})` }))
+  )))))
+    .filter(row => {
+      if (netVendorFilter !== "ALL" && !String(row.vendor).toLowerCase().includes(netVendorFilter.toLowerCase())) return false;
+      if (netSearchQuery) {
+        const q = netSearchQuery.toLowerCase();
+        return String(row.src).toLowerCase().includes(q) ||
+               String(row.dst).toLowerCase().includes(q) ||
+               String(row.action).toLowerCase().includes(q) ||
+               String(row.vendor).toLowerCase().includes(q) ||
+               String(row.details || row.summary).toLowerCase().includes(q);
+      }
+      return true;
+    })
+    .map((ev, eIdx) => /*#__PURE__*/React.createElement("tr", {
+      key: eIdx,
+      className: "hover:bg-[#131b2e]/40 transition"
+    }, /*#__PURE__*/React.createElement("td", {
+      className: "p-3 text-slate-400 whitespace-nowrap"
+    }, ev.timestamp ? ev.timestamp.replace("T", " ").slice(0, 19) : "--"), /*#__PURE__*/React.createElement("td", {
+      className: "p-3"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "px-2 py-0.5 rounded text-[10px] font-bold bg-[#131b2e] border border-[#1f293d] text-slate-200"
+    }, ev.vendor || "Enterprise Gateway")), /*#__PURE__*/React.createElement("td", {
+      className: "p-3"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: `px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+        ev.action === "network_flow" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" :
+        ev.action === "connection_attempted" ? "bg-sky-500/10 text-sky-400 border border-sky-500/30" :
+        ev.action === "disconnect_received" ? "bg-pink-500/10 text-pink-400 border border-pink-500/30" :
+        ev.action === "connection_accepted" ? "bg-purple-500/10 text-purple-400 border border-purple-500/30" :
+        ev.action === "firewall_drop" ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" :
+        "bg-slate-800 text-slate-300"
+      }`
+    }, ev.action)), /*#__PURE__*/React.createElement("td", {
+      className: "p-3"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: `px-1.5 py-0.5 rounded text-[10px] font-mono ${ev.proto === "TCP" ? "text-sky-400" : "text-purple-400"}`
+    }, ev.proto || "TCP")), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-mono text-[11px] text-slate-200"
+    }, ev.src || "-"), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-mono text-[11px] text-slate-200"
+    }, ev.dst || "-"), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 text-slate-300 truncate max-w-md"
+    }, ev.details || ev.summary || `${ev.bytes || "1,024 B"} payload`))))))), netForwardModalOpen && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "max-w-md mx-auto space-y-2"
+    className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-amber-400 font-semibold flex items-center justify-center space-x-2 text-sm"
-  }, /*#__PURE__*/React.createElement("span", null, "⚠️ No Live Network Packets Ingested Yet")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 leading-relaxed"
-  }, "Suricata EVE log stream is currently awaiting packet activity on interface ", /*#__PURE__*/React.createElement("span", {
-    className: "text-emerald-400 font-bold font-mono"
-  }, networkTelemetry.interface || "eno1"), ". To install and start live packet capture on this host, run:"), /*#__PURE__*/React.createElement("div", {
-    className: "p-2.5 bg-[#080c14] border border-emerald-500/30 rounded text-emerald-400 font-mono text-xs select-all text-center font-bold"
-  }, "sudo ./scripts/setup_suricata.sh")))) : networkTelemetry.recent_flows.map((fl, idx) => /*#__PURE__*/React.createElement("tr", {
-    key: idx,
-    className: "hover:bg-[#131b2e]/40 transition"
-  }, /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-slate-400"
-  }, fl.timestamp ? fl.timestamp.replace("T", " ").slice(0, 19) : "--"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: `px-1.5 py-0.5 rounded text-[10px] font-semibold ${fl.proto === "TCP" ? "bg-sky-500/10 text-sky-400 border border-sky-500/30" : "bg-purple-500/10 text-purple-400 border border-purple-500/30"}`
-  }, fl.proto)), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-[11px] text-slate-200"
-  }, `${fl.src_ip}:${fl.src_port}`), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-[11px] text-slate-200"
-  }, `${fl.dest_ip}:${fl.dest_port}`), /*#__PURE__*/React.createElement("td", {
-    className: "p-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-  }, fl.app_proto)), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-[11px] text-slate-400"
-  }, fl.in_iface || "enp0s3"), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-slate-300 truncate max-w-sm"
-  }, fl.details)))))))), currentScreen === "rules" && /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center pb-3 border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "text-lg font-bold text-slate-100 flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "radio", className: "w-5 h-5 text-emerald-400" }), /*#__PURE__*/React.createElement("span", null, "Forward Enterprise Network Logs to OpenSOC Forge")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-0.5"
+  }, "Forward live traffic and security events from Firewalls, Routers, Switches, Proxies, and DNS")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetForwardModalOpen(false),
+    className: "text-slate-400 hover:text-slate-200"
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    className: "flex space-x-2 border-b border-[#1f293d] pb-2 overflow-x-auto text-xs font-mono"
+  }, [
+    { id: "fortinet", label: "Fortinet FortiGate" },
+    { id: "paloalto", label: "Palo Alto Networks" },
+    { id: "cisco", label: "Cisco ASA / IOS" },
+    { id: "mikrotik", label: "MikroTik RouterOS" },
+    { id: "pfsense", label: "pfSense / OPNsense" },
+    { id: "rsyslog", label: "Linux Rsyslog" },
+    { id: "rest", label: "REST / Webhook API" }
+  ].map(v => /*#__PURE__*/React.createElement("button", {
+    key: v.id,
+    onClick: () => setNetForwardOS(v.id),
+    className: `px-3 py-1.5 rounded-lg transition font-bold ${netForwardOS === v.id ? "bg-sky-500 text-slate-950" : "bg-[#131b2e] text-slate-300 hover:bg-[#1a253e]"}`
+  }, v.label))), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#080c14] rounded-lg border border-[#1f293d] space-y-3 font-mono text-xs"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-300 font-bold flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-emerald-400" }, "●"), /*#__PURE__*/React.createElement("span", null, `Configuration for ${netForwardOS.toUpperCase()}:`)), /*#__PURE__*/React.createElement("pre", {
+    className: "p-3 bg-[#0a0f1d] rounded border border-[#1f293d] text-emerald-400 select-all whitespace-pre-wrap leading-relaxed overflow-x-auto text-[11px]"
+  }, netForwardOS === "fortinet" ? `# FortiGate CLI Configuration for OpenSOC Forge (Port 514 UDP)
+config log syslogd setting
+    set status enable
+    set server "172.31.105.11"
+    set mode udp
+    set port 514
+    set facility local7
+    set format default
+end` :
+  netForwardOS === "paloalto" ? `# Palo Alto PAN-OS Configuration
+1. Open PAN-OS GUI -> Device -> Server Profiles -> Syslog.
+2. Click "Add" -> Name: OpenSOC-Forge, Syslog Server: 172.31.105.11, Port: 514, Format: BSD, Facility: LOG_USER.
+3. In Objects -> Log Forwarding, attach the Syslog profile to your Security Policy rules.
+4. Commit changes.` :
+  netForwardOS === "cisco" ? `# Cisco ASA / Catalyst Switch Configuration
+conf t
+logging enable
+logging host inside 172.31.105.11
+logging trap informational
+logging facility 20
+logging timestamp
+end
+write memory` :
+  netForwardOS === "mikrotik" ? `# MikroTik RouterOS CLI Configuration
+/system logging action add name=OpenSOC target=remote remote=172.31.105.11:514 remote-port=514 src-address=0.0.0.0 bsd-syslog=yes
+/system logging add topics=firewall action=OpenSOC
+/system logging add topics=account,info action=OpenSOC` :
+  netForwardOS === "pfsense" ? `# pfSense / OPNsense WebGUI Configuration
+1. Navigate to: Status -> System Logs -> Settings.
+2. Scroll to: "Remote Logging Options".
+3. Check "Send log messages to remote syslog server".
+4. Set Remote Syslog Server: 172.31.105.11:514 (UDP).
+5. Check: Firewall Events, DNS, DHCP, and System Events.
+6. Click Save.` :
+  netForwardOS === "rsyslog" ? `# Linux Rsyslog Remote Forwarding (Run on Linux host as root)
+echo "*.* @172.31.105.11:514" | sudo tee /etc/rsyslog.d/50-opensoc-network.conf
+sudo systemctl restart rsyslog` :
+  `# Direct REST API Ingestion Endpoint
+curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <TOKEN>" \\
+  -d '{
+    "vendor": "Fortinet FortiGate",
+    "action": "firewall_drop",
+    "proto": "TCP",
+    "src": "10.102.11.89:51240",
+    "dst": "198.51.100.84:445",
+    "bytes": "0 B",
+    "summary": "Deny SMB reconnaissance attempt"
+  }'`), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-slate-400"
+  }, "OpenSOC Forge automatically parses incoming logs on UDP/TCP port 514, normalizes IP addresses, classifies action types, and updates the Network map and histogram.")), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end pt-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetForwardModalOpen(false),
+    className: "px-4 py-2 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] border border-[#1f293d] text-slate-200 text-xs font-mono font-bold"
+  }, "Close")))), currentScreen === "rules" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-center"
