@@ -152,54 +152,95 @@ def fetch_syslog_alerts(limit: int = 15) -> List[AlertItem]:
 
 def fetch_wazuh_alerts(limit: int = 15) -> List[AlertItem]:
     alerts: List[AlertItem] = []
-    res = _es_request(f"/wazuh-alerts-*/_search?size={limit}")
-    if not res or "hits" not in res:
-        return alerts
+    
+    # 1. Read live alerts directly from /var/ossec/logs/alerts/alerts.json
+    alerts_json_path = "/var/ossec/logs/alerts/alerts.json"
+    if os.path.exists(alerts_json_path):
+        try:
+            lines = _tail_lines(alerts_json_path, max_lines=limit * 2, chunk_size=262144)
+            for line in reversed(lines):
+                if not line.strip(): continue
+                try:
+                    src = json.loads(line)
+                except Exception:
+                    continue
+                
+                doc_id = str(src.get("id", time.time()))
+                rule = src.get("rule", {})
+                desc = rule.get("description", "Wazuh Security Event")
+                level = int(rule.get("level", 3))
+                ts = src.get("timestamp") or datetime.utcnow().isoformat() + "Z"
+                agent = src.get("agent", {})
+                host = agent.get("name") or agent.get("ip") or "wazuh-agent"
+                data = src.get("data", {})
+                src_ip = data.get("srcip") or agent.get("ip") or "172.31.105.11"
+                dest_ip = data.get("dstip")
+                
+                if level >= 10:
+                    severity = AlertSeverity.CRITICAL
+                elif level >= 7:
+                    severity = AlertSeverity.HIGH
+                elif level >= 4:
+                    severity = AlertSeverity.MEDIUM
+                else:
+                    severity = AlertSeverity.LOW
 
-    for hit in res.get("hits", {}).get("hits", []):
-        src = hit.get("_source", {})
-        doc_id = hit.get("_id", str(time.time()))
-        rule = src.get("rule", {})
-        desc = rule.get("description", "Wazuh Security Event")
-        level = int(rule.get("level", 3))
-        ts = src.get("@timestamp") or src.get("timestamp") or datetime.utcnow().isoformat() + "Z"
-        agent = src.get("agent", {})
-        host = agent.get("name") or "rhel-server-01"
+                mitre_id = "T1071.001" if "squid" in rule.get("groups", []) else "T1082"
+                mitre_tac = "Command and Control" if "squid" in rule.get("groups", []) else "Discovery"
 
-        if level >= 10:
-            severity = AlertSeverity.CRITICAL
-        elif level >= 7:
-            severity = AlertSeverity.HIGH
-        elif level >= 4:
-            severity = AlertSeverity.MEDIUM
-        else:
-            severity = AlertSeverity.LOW
+                alerts.append(AlertItem(
+                    id=f"ALT-WZH-{doc_id[-10:]}",
+                    timestamp=ts,
+                    severity=severity,
+                    source=AlertSource.WAZUH,
+                    title=f"Wazuh [{host}]: {desc}",
+                    description=src.get("full_log") or desc,
+                    host=host,
+                    src_ip=src_ip,
+                    dest_ip=dest_ip,
+                    mitre_attack_id=mitre_id,
+                    mitre_tactic=mitre_tac,
+                    status=AlertStatus.NEW,
+                    raw_payload=src,
+                    is_demo=False
+                ))
+                if len(alerts) >= limit:
+                    break
+        except Exception:
+            pass
 
-        mitre_id = "T1082"
-        mitre_tac = "Discovery"
-        if "disk" in desc.lower() or "partition" in desc.lower():
-            mitre_id = "T1499"
-            mitre_tac = "Impact"
-        elif "started" in desc.lower():
-            mitre_id = "T1543"
-            mitre_tac = "Persistence"
+    # 2. Fallback to Elasticsearch query if alerts is empty
+    if not alerts:
+        res = _es_request(f"/wazuh-alerts-*/_search?size={limit}")
+        if res and "hits" in res:
+            for hit in res.get("hits", {}).get("hits", []):
+                src = hit.get("_source", {})
+                doc_id = hit.get("_id", str(time.time()))
+                rule = src.get("rule", {})
+                desc = rule.get("description", "Wazuh Security Event")
+                level = int(rule.get("level", 3))
+                ts = src.get("@timestamp") or src.get("timestamp") or datetime.utcnow().isoformat() + "Z"
+                agent = src.get("agent", {})
+                host = agent.get("name") or "rhel-server-01"
 
-        alerts.append(AlertItem(
-            id=f"ALT-WZH-{doc_id[:10]}",
-            timestamp=ts,
-            severity=severity,
-            source=AlertSource.WAZUH,
-            title=f"Wazuh HIDS: {desc}",
-            description=src.get("full_log") or desc,
-            host=host,
-            src_ip="192.168.10.177",
-            dest_ip=None,
-            mitre_attack_id=mitre_id,
-            mitre_tactic=mitre_tac,
-            status=AlertStatus.NEW,
-            raw_payload=src,
-            is_demo=False
-        ))
+                severity = AlertSeverity.HIGH if level >= 7 else (AlertSeverity.MEDIUM if level >= 4 else AlertSeverity.LOW)
+                alerts.append(AlertItem(
+                    id=f"ALT-WZH-{doc_id[:10]}",
+                    timestamp=ts,
+                    severity=severity,
+                    source=AlertSource.WAZUH,
+                    title=f"Wazuh HIDS: {desc}",
+                    description=src.get("full_log") or desc,
+                    host=host,
+                    src_ip="172.31.105.11",
+                    dest_ip=None,
+                    mitre_attack_id="T1082",
+                    mitre_tactic="Discovery",
+                    status=AlertStatus.NEW,
+                    raw_payload=src,
+                    is_demo=False
+                ))
+
     return alerts
 
 def fetch_suricata_events(limit: int = 15) -> List[AlertItem]:
