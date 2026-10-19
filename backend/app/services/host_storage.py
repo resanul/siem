@@ -273,18 +273,28 @@ def try_sync_wazuh_agents(force: bool = False):
                 if h_name in ("localhost", "localhost.localdomain"):
                     h_name = "dashboard-11"
 
-                ip_addr = r["ip"] or r["register_ip"] or "172.31.105.11"
-                if ip_addr in ["any", "127.0.0.1", ""]:
-                    ip_addr = "172.31.105.11" if ag_id == "000" else (r["register_ip"] or "DHCP / Dynamic")
+                ip_addr = r["ip"] or ""
+                if not ip_addr or ip_addr in ["any", "127.0.0.1"]:
+                    if ag_id == "000":
+                        ip_addr = "172.31.105.11"
+                    elif r["register_ip"] and r["register_ip"] not in ["any", "127.0.0.1", ""]:
+                        ip_addr = r["register_ip"]
+                    else:
+                        ip_addr = "Connecting (DHCP)"
 
                 os_str = f"{r['os_name'] or ''} {r['os_version'] or ''}".strip()
                 if ag_id == "000":
                     os_str = f"{os_str} (Central Manager)" if os_str else "Red Hat Enterprise Linux 9.8 (Central Manager)"
-                else:
-                    os_str = os_str or "Linux"
+                elif not os_str:
+                    os_str = "Windows (Syncing...)" if any(k in h_name.lower() for k in ["win", "desktop", "isrcd", "pc"]) else "Detecting OS..."
 
                 conn_stat = (r["connection_status"] or "").lower()
-                status_display = "ONLINE" if conn_stat in ["active", "pending", "synced"] else ("OFFLINE" if conn_stat == "disconnected" else "ONLINE")
+                if conn_stat in ["active", "synced"]:
+                    status_display = "ONLINE"
+                elif conn_stat in ["pending", "never_connected"]:
+                    status_display = "PENDING"
+                else:
+                    status_display = "OFFLINE"
                 add_host(
                     hostname=h_name,
                     ip_address=ip_addr,
@@ -295,7 +305,24 @@ def try_sync_wazuh_agents(force: bool = False):
                     is_demo=False
                 )
             wconn.close()
+
+            # Reconcile: Purge any endpoints that were deleted or removed from Wazuh
             if found_agents:
+                active_agent_ids = {str(r["id"]).zfill(3) for r in rows}
+                try:
+                    db_path = _get_db_path()
+                    conn = sqlite3.connect(db_path, timeout=5)
+                    c = conn.cursor()
+                    c.execute("SELECT id FROM endpoints WHERE is_demo = 0")
+                    all_local_ids = [row[0] for row in c.fetchall()]
+                    stale_ids = [lid for lid in all_local_ids if lid not in active_agent_ids]
+                    for sid in stale_ids:
+                        c.execute("DELETE FROM endpoints WHERE id = ?", (sid,))
+                    if stale_ids:
+                        conn.commit()
+                    conn.close()
+                except Exception:
+                    pass
                 return
         except Exception:
             pass
