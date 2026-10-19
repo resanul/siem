@@ -11,11 +11,25 @@
       "CISA KEV",
       "Cisco Talos"
     ],
-    "total_indicators": 18758,
-    "generated_at_utc": "2026-10-19 10:25:12 UTC",
+    "total_indicators": 18759,
+    "generated_at_utc": "2026-10-19 10:26:14 UTC",
     "schema_version": "1.0"
   },
   "indicators": [
+    {
+      "indicator": "https://bh.9winter.com/hwm/",
+      "type": "URL",
+      "reputation": "MALICIOUS",
+      "confidence": 100,
+      "threat_actor": "crep1x",
+      "malware_family": "Vidar",
+      "source": "abuse.ch ThreatFox",
+      "last_seen": "2026-10-19 10:15:48",
+      "ransomware_use": "Botnet C2",
+      "cvss_score": "MALICIOUS C2",
+      "status": "FEED ACTIVE",
+      "description": "Threat: botnet_cc, Tags: vidar"
+    },
     {
       "indicator": "de0b9b6656c9e9fc9db4271610a09c2ae27d07c5a4757e94b2e0314a9dda6ee4",
       "type": "SHA-256",
@@ -841,20 +855,6 @@
       "cvss_score": "MALICIOUS HASH",
       "status": "FEED ACTIVE",
       "description": "File: macho_ab5b9b53b603.bin, Type: macho, Tags: ['ClickFix', 'Foxveil', 'loader', 'Mach-O', 'macho', 'macOS']"
-    },
-    {
-      "indicator": "60bae69ef9f63f44e992ca2eb2e1c4e07915ba6f26035fb92b64f6049c5d861e",
-      "type": "SHA256_HASH",
-      "reputation": "MALICIOUS",
-      "confidence": 100,
-      "threat_actor": "c4ffeine",
-      "malware_family": "AMOS",
-      "source": "abuse.ch ThreatFox",
-      "last_seen": "2026-10-19 09:38:03",
-      "ransomware_use": "Botnet C2",
-      "cvss_score": "MALICIOUS C2",
-      "status": "FEED ACTIVE",
-      "description": "Threat: payload, Tags: AMOS,ClickFix,Foxveil,macOS,nova"
     },
     {
       "indicator": "xywaso.workers.dev",
@@ -2647,6 +2647,20 @@
       "cvss_score": "100% CONFIRMED",
       "status": "ACTIVE IOC",
       "description": "Cisco Talos Intelligence campaign indicator (Haskers Gang Zingostealer (Binary Hashes (SHA256):))"
+    },
+    {
+      "indicator": "60bae69ef9f63f44e992ca2eb2e1c4e07915ba6f26035fb92b64f6049c5d861e",
+      "type": "SHA256_HASH",
+      "reputation": "MALICIOUS",
+      "confidence": 100,
+      "threat_actor": "c4ffeine",
+      "malware_family": "AMOS",
+      "source": "abuse.ch ThreatFox",
+      "last_seen": "2026-10-19 09:38:03",
+      "ransomware_use": "Botnet C2",
+      "cvss_score": "MALICIOUS C2",
+      "status": "FEED ACTIVE",
+      "description": "Threat: payload, Tags: AMOS,ClickFix,Foxveil,macOS,nova"
     },
     {
       "indicator": "2d8f5187a6208fbb269abfd072663d03adffec6c77a24a5c5af31ca52778089d",
