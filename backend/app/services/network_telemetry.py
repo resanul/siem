@@ -132,6 +132,92 @@ def _get_active_sockets() -> Tuple[Set[str], Set[str]]:
     return srcs, dsts
 
 
+def _get_real_squid_events(limit: int = 150) -> List[Dict[str, Any]]:
+    """Reads live Squid proxy access logs from Wazuh alerts.json (ingested via rule 100350 / 35000-35015)."""
+    alerts_path = "/var/ossec/logs/alerts/alerts.json"
+    if not os.path.exists(alerts_path):
+        return []
+
+    events: List[Dict[str, Any]] = []
+    try:
+        st = os.stat(alerts_path)
+        file_size = st.st_size
+        chunk_size = min(file_size, 2097152)  # 2 MB tail
+        with open(alerts_path, "r", encoding="utf-8", errors="replace") as f:
+            if file_size > chunk_size:
+                f.seek(file_size - chunk_size)
+                f.readline()
+            lines = f.readlines()
+
+        for line in reversed(lines):
+            if "squid" not in line.lower():
+                continue
+            try:
+                ev = json.loads(line)
+                loc = ev.get("location", "")
+                groups = ev.get("rule", {}).get("groups", [])
+                dec_name = ev.get("decoder", {}).get("name", "")
+                if "squid" in groups or "squid" in loc or "squid" in dec_name:
+                    data = ev.get("data", {})
+                    full_log = ev.get("full_log", "")
+                    agent = ev.get("agent", {})
+                    agent_name = agent.get("name") or "squid-proxy"
+                    agent_ip = agent.get("ip") or ""
+
+                    src_ip = data.get("srcip", "")
+                    url = data.get("url", "")
+                    status = str(data.get("id", "200"))
+                    action_code = data.get("action", "TCP_TUNNEL")
+
+                    parts = full_log.split()
+                    bytes_val = 1024
+                    method = "CONNECT"
+                    if len(parts) >= 6:
+                        try:
+                            bytes_val = int(parts[4])
+                        except Exception:
+                            pass
+                        for p in parts[3:7]:
+                            if p in ["GET", "POST", "CONNECT", "HEAD", "PUT", "DELETE", "OPTIONS"]:
+                                method = p
+                                break
+
+                    ts = ev.get("timestamp", "")
+                    ts_clean = ts.replace("T", " ")[:19] if "T" in ts else datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+                    if status.startswith("2") or status.startswith("3"):
+                        action_type = "connection_accepted"
+                    elif status.startswith("4") or status.startswith("5"):
+                        action_type = "firewall_drop"
+                    else:
+                        action_type = "network_flow"
+
+                    events.append({
+                        "timestamp": ts_clean,
+                        "vendor": f"Squid Proxy ({agent_name})",
+                        "action": action_type,
+                        "proto": "TCP",
+                        "src": src_ip or agent_ip,
+                        "dst": url or "internal.proxy",
+                        "bytes": f"{bytes_val:,} B",
+                        "details": f"{method} {url} -> HTTP {status} ({action_code} via {agent_name})",
+                        "client_ip": src_ip or agent_ip,
+                        "method": method,
+                        "url": url,
+                        "status": status,
+                        "user_agent": f"{action_code} / {agent_name}",
+                        "agent_name": agent_name,
+                        "agent_ip": agent_ip
+                    })
+                    if len(events) >= limit:
+                        break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return events
+
+
 class RealtimeEveSnapshot:
     """Efficiently caches and incrementally updates Suricata EVE telemetry."""
     def __init__(self, eve_path: str = EVE_LOG_FILE):
@@ -270,7 +356,7 @@ class RealtimeEveSnapshot:
                                     "url": h.get("url", "/"),
                                     "status": h.get("status", 200),
                                     "user_agent": h.get("http_user_agent", "Internal Health Probe")[:50],
-                                    "vendor": "Squid Proxy Gateway"
+                                    "vendor": "Suricata HTTP Inspector"
                                 })
 
                         elif et == "tls":
@@ -364,6 +450,55 @@ class RealtimeEveSnapshot:
 
             except Exception:
                 pass
+
+        # Ingest real Squid proxy logs from Wazuh
+        real_squid_events = _get_real_squid_events(limit=150)
+        curr_hr_str = now_dt.strftime("%H:00")
+        for sq in real_squid_events:
+            total_http_events += 1
+            sq_src = sq.get("src", "")
+            sq_dst = sq.get("dst", "")
+            if sq_src and sq_src.startswith(("10.", "172.16.", "172.2", "172.3", "192.168.")):
+                active_src_ips.add(sq_src)
+                if curr_hr_str in hourly_private_ips:
+                    hourly_private_ips[curr_hr_str].add(sq_src)
+
+            # Extract destination hostname/IP
+            dst_host = sq_dst.split(":")[0].strip()
+            if dst_host and not dst_host.startswith(("10.", "172.16.", "172.2", "172.3", "192.168.", "127.", "0.")):
+                external_ip_counts[dst_host] += 1
+
+            # Insert into live_http
+            live_http.insert(0, {
+                "timestamp": sq["timestamp"],
+                "client_ip": sq["client_ip"],
+                "method": sq["method"],
+                "url": sq["url"],
+                "status": sq["status"],
+                "user_agent": sq["user_agent"],
+                "vendor": sq["vendor"]
+            })
+
+            # Insert into live_events
+            live_events.insert(0, {
+                "timestamp": sq["timestamp"],
+                "vendor": sq["vendor"],
+                "action": sq["action"],
+                "proto": sq["proto"],
+                "src": sq["src"],
+                "dst": sq["dst"],
+                "bytes": sq["bytes"],
+                "details": sq["details"]
+            })
+
+            if curr_hr_str in hourly_actions and sq["action"] in hourly_actions[curr_hr_str]:
+                hourly_actions[curr_hr_str][sq["action"]] += 1
+
+        # Keep live collections at reasonable display bounds
+        if len(live_http) > 100:
+            del live_http[100:]
+        if len(live_events) > 150:
+            del live_events[150:]
 
         # Ingest custom forwarded events if any
         for ce in CUSTOM_INGESTED_LOGS[-50:]:
