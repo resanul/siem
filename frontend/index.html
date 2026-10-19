@@ -107,7 +107,7 @@ const initialOverview = {
   status: "OPERATIONAL",
   release: "v1.0.0-production",
   profile: "RHEL 9 / Podman (Production)",
-  workspace: "OpenSOC Forge Live System (192.168.10.177)",
+  workspace: "OpenSOC Forge Live System (dashboard-11 / 172.31.105.11)",
   eps: 0,
   latency: 3.8,
   totalAlerts: 0,
@@ -1093,7 +1093,7 @@ function App() {
                 status: dataOverview.status || "OPERATIONAL",
                 release: dataOverview.release || "v1.0.0-production",
                 profile: dataOverview.profile || "Red Hat Enterprise Linux 9",
-                workspace: dataOverview.workspace || "OpenSOC Forge Live System (192.168.10.177)",
+                workspace: dataOverview.workspace || "OpenSOC Forge Live System (dashboard-11 / 172.31.105.11)",
                 eps: dataOverview.metrics.events_per_second || 0,
                 latency: dataOverview.metrics.pipeline_latency_ms || 3.8,
                 totalAlerts: dataOverview.metrics.total_alerts || 0,
@@ -2231,7 +2231,7 @@ function App() {
     className: "text-slate-400 text-xs uppercase font-mono tracking-wider"
   }, "Workspace:"), /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-semibold text-slate-200 bg-[#131b2e] px-2.5 py-1 rounded border border-[#1f293d]"
-  }, overview.workspace || "OpenSOC Forge Live System (192.168.10.177)"), /*#__PURE__*/React.createElement("span", {
+  }, overview.workspace || "OpenSOC Forge Live System (dashboard-11 / 172.31.105.11)"), /*#__PURE__*/React.createElement("span", {
     className: "flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono"
   }, /*#__PURE__*/React.createElement("span", {
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
@@ -3066,7 +3066,7 @@ function App() {
     className: "hidden lg:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-emerald-400"
   }, /*#__PURE__*/React.createElement("span", {
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "192.168.10.177"}:1514`)))), (hostsLoading && hostsFleet.length === 0) ? /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, `Wazuh: ${window.location.hostname || "172.31.105.11"}:1514`)))), (hostsLoading && hostsFleet.length === 0) ? /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0b101c] border border-dashed border-[#1f293d] rounded-xl p-12 text-center space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"

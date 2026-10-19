@@ -604,7 +604,9 @@ class EventSearchService:
 
                     ts = ev.get("timestamp", datetime.now(timezone.utc).isoformat())
                     agent = ev.get("agent", {})
-                    host = agent.get("name") or "localhost"
+                    host = agent.get("name") or "dashboard-11"
+                    if host in ("localhost", "localhost.localdomain", "000"):
+                        host = "dashboard-11"
 
                     if rule_level >= 10:
                         sev = "CRITICAL"
@@ -660,7 +662,9 @@ class EventSearchService:
                     dest_ip = ev.get("dest_ip", "-")
                     src_port = ev.get("src_port", "")
                     dest_port = ev.get("dest_port", "")
-                    host = ev.get("in_iface") or "ens34"
+                    host = ev.get("in_iface") or "dashboard-11"
+                    if host in ("localhost", "localhost.localdomain", "sensor-iface"):
+                        host = "dashboard-11"
 
                     if etype == "alert":
                         alert_info = ev.get("alert", {})
@@ -826,17 +830,19 @@ class EventSearchService:
                         try:
                             sdata = json.loads(lstr)
                             ts = sdata.get("timestamp") or sdata.get("@timestamp") or datetime.now(timezone.utc).isoformat()
-                            host = sdata.get("host") or sdata.get("hostname") or "syslog-host"
+                            host = sdata.get("host") or sdata.get("hostname") or "dashboard-11"
                             if isinstance(host, dict):
-                                host = host.get("name") or host.get("hostname") or "syslog-host"
+                                host = host.get("name") or host.get("hostname") or "dashboard-11"
+                            if host in ("localhost", "localhost.localdomain", "syslog-host"):
+                                host = "dashboard-11"
                             msg = sdata.get("message") or lstr
                             sev = str(sdata.get("log", {}).get("syslog", {}).get("severity") or sdata.get("severity") or "INFORMATIONAL").upper()
                             raw_val = sdata
                         except Exception:
                             ts = datetime.now(timezone.utc).isoformat()
-                            host = "syslog-host"
+                            host = "dashboard-11"
                             parts = lstr.split()
-                            if len(parts) >= 4:
+                            if len(parts) >= 4 and parts[3] not in ("localhost", "localhost.localdomain"):
                                 host = parts[3]
                             msg = lstr
                             sev = "INFORMATIONAL"
@@ -896,12 +902,16 @@ class EventSearchService:
                 if k not in raw_dict:
                     raw_dict[k] = v
 
+        host_clean = alert.host or "dashboard-11"
+        if host_clean in ("localhost", "localhost.localdomain", "unknown", "node", "sensor"):
+            host_clean = "dashboard-11"
+
         return EventItem(
             id=alert.id,
             timestamp=alert.timestamp,
             index=index,
             source_type=src_type,
-            host=alert.host or "unknown",
+            host=host_clean,
             severity=sev_val,
             summary=alert.title,
             raw=raw_dict,
@@ -923,12 +933,16 @@ class EventSearchService:
             index = f"{src}-alerts"
             src_type = f"{src}.alert"
 
+        pa_host = str(pa.get("host", "dashboard-11"))
+        if pa_host in ("localhost", "localhost.localdomain", "unknown", "node", "sensor"):
+            pa_host = "dashboard-11"
+
         return EventItem(
             id=str(pa.get("id", f"pa-{hashlib.md5(json.dumps(pa).encode()).hexdigest()[:8]}")),
             timestamp=str(pa.get("timestamp", datetime.now(timezone.utc).isoformat())),
             index=index,
             source_type=src_type,
-            host=str(pa.get("host", "sensor")),
+            host=pa_host,
             severity=str(pa.get("severity", "HIGH")).upper(),
             summary=str(pa.get("title") or pa.get("description") or "Security Alert"),
             raw=pa,

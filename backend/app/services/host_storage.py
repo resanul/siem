@@ -262,24 +262,34 @@ def try_sync_wazuh_agents(force: bool = False):
             wconn = sqlite3.connect(wazuh_db, timeout=1)
             wconn.row_factory = sqlite3.Row
             wc = wconn.cursor()
-            wc.execute("SELECT id, name, ip, register_ip, os_name, os_version, version, connection_status FROM agent WHERE id > 0")
+            wc.execute("SELECT id, name, ip, register_ip, os_name, os_version, version, connection_status FROM agent WHERE id >= 0")
             rows = wc.fetchall()
             found_agents = False
             for r in rows:
                 found_agents = True
-                ag_id = str(r["id"]).zfill(3)
+                raw_id = r["id"]
+                ag_id = str(raw_id).zfill(3)
                 h_name = r["name"] or f"agent-{ag_id}"
-                ip_addr = r["ip"] or r["register_ip"] or "DHCP / Dynamic"
+                if h_name in ("localhost", "localhost.localdomain"):
+                    h_name = "dashboard-11"
+
+                ip_addr = r["ip"] or r["register_ip"] or "172.31.105.11"
                 if ip_addr in ["any", "127.0.0.1", ""]:
-                    ip_addr = r["register_ip"] or "DHCP / Dynamic"
-                os_str = f"{r['os_name'] or ''} {r['os_version'] or ''}".strip() or "Linux"
+                    ip_addr = "172.31.105.11" if ag_id == "000" else (r["register_ip"] or "DHCP / Dynamic")
+
+                os_str = f"{r['os_name'] or ''} {r['os_version'] or ''}".strip()
+                if ag_id == "000":
+                    os_str = f"{os_str} (Central Manager)" if os_str else "Red Hat Enterprise Linux 9.8 (Central Manager)"
+                else:
+                    os_str = os_str or "Linux"
+
                 conn_stat = (r["connection_status"] or "").lower()
                 status_display = "ONLINE" if conn_stat in ["active", "pending", "synced"] else ("OFFLINE" if conn_stat == "disconnected" else "ONLINE")
                 add_host(
                     hostname=h_name,
                     ip_address=ip_addr,
                     os_name=os_str,
-                    agent_version=r["version"] or "4.9.2",
+                    agent_version=r["version"] or "4.14.9",
                     status=status_display,
                     host_id=ag_id,
                     is_demo=False
