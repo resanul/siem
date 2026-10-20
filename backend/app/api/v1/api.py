@@ -327,6 +327,26 @@ def get_health_diagnostics(current_user: Dict[str, Any] = Depends(require_permis
     return get_live_health_diagnostics()
 
 
+# ===================== IDENTITY PROTECTION (CROWDSTRIKE FALCON ITDR) =====================
+@api_router.get("/identity/telemetry")
+def get_identity_telemetry(
+    force_refresh: bool = False,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Fetches real-time Active Directory identity protection telemetry from CrowdStrike Falcon."""
+    from backend.app.services.crowdstrike_identity import get_crowdstrike_identity_telemetry
+    return get_crowdstrike_identity_telemetry(force_refresh=force_refresh)
+
+
+@api_router.post("/identity/sync")
+def post_identity_sync(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Forces instant synchronization with CrowdStrike Falcon Identity Protection API."""
+    from backend.app.services.crowdstrike_identity import get_crowdstrike_identity_telemetry
+    return get_crowdstrike_identity_telemetry(force_refresh=True)
+
+
 # ===================== EVENT SEARCH =====================
 @api_router.post("/events/search", response_model=EventSearchResponse)
 def search_events_post(

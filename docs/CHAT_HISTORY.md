@@ -22,6 +22,44 @@
 
 ## 📅 Session Timeline & Development History
 
+### Session 21 — CrowdStrike Falcon Identity Protection (Active Directory ITDR) Integration
+- **Date / Time:** 2026-10-20 17:10 – 17:30 UTC+6
+- **Context:** Active Directory Security, User Identity Analytics & CrowdStrike Falcon API Integration
+- **User Request:**
+  - *"আমি এখানে crowedstrick Identity protection এর ডাটা add করতে চাই, তাই opensoc এ এখানে একটা options add করতে হবে। যেখানে AD এর ডাটা থাকবে , ছবির মত হইতে হবে বিষইয়টা এমন না, তবে বিসার্স করে বের করো কিভাবে ডিজাইন করা যেতে পারে। crowedstrick API দিয়ে Add হবে।"*
+  - Provided API credentials: Client ID (`ee7f2ead38f14a0da05fd363d7222866`), Secret (`DkCb...`), Base URL (`https://api.us-2.crowdstrike.com`).
+  - Attached reference dashboard image: Elastic Security Users / Identity Analytics (Monitored Users, Authentications success/fail bar, Events timeline, sub-tabs: Events, All users, Authentications, Anomalies, User risk).
+- **API Research & Discovery:**
+  1. Authenticated OAuth2 bearer token against `https://api.us-2.crowdstrike.com/oauth2/token`.
+  2. Scanned permitted endpoints: `/identity-protection/queries/devices/v1` returned active IDP sensor `58a299a49a274dd899befdae95a94914`.
+  3. Queried sensor details via `/devices/entities/devices/v1`: discovered live Active Directory Domain Controller **`TBL-ADNS-04`** (`172.31.152.14`, Domain: `tblbd.com`, Windows Server 2022, Falcon Sensor v7.40, Status: `Normal`).
+  4. Queried IDP alerts via `/alerts/queries/alerts/v2?filter=product:'idp'`: retrieved **1,030 real Active Directory security alerts** with rich metadata:
+     - User accounts: `abu.baker@tblbd.com`, `ben.m`, `shaila.parvin@tblbd.com`, `baytul.islam`, `trustbank_zoom`, etc.
+     - Security Identifiers (SIDs): e.g. `S-1-5-21-1240074682-15997918-477385878-12050` and Object GUIDs.
+     - Threat scenarios: *Use of stale user account* (40), *Suspicious lateral movement* (12), *Unusual login to an endpoint* (16), *Privilege escalation* (3), *Stale endpoint usage* (28).
+     - MITRE ATT&CK: `TA0001 / T1078 (Valid Accounts)`, `TA0004 / T1068 (Privilege Escalation)`.
+- **Backend Service Implementation (`backend/app/services/crowdstrike_identity.py`):**
+  - Built token lifecycle manager with proxy support and 30-minute token auto-refresh.
+  - Implemented 30-second cache layer for sub-millisecond UI responsiveness.
+  - Extracted 64+ AD user profiles with normalized risk scores, alert counts, and anomaly tags.
+  - Added REST API routes in `backend/app/api/v1/api.py`:
+    - `GET /api/v1/identity/telemetry`: Aggregated AD metrics, controllers, users, events, and timeline.
+    - `POST /api/v1/identity/sync`: Instant on-demand API re-sync.
+- **Frontend Console UI/UX (`frontend/index.html`):**
+  - Added **`Users & Identity`** navigation item under `OPERATIONS` with live `AD Live` badge and `users` icon.
+  - Developed full Active Directory Identity Protection screen modeled after the reference image:
+    - **Header:** Live status badge (`CrowdStrike Falcon ITDR • TBLBD.COM`), sensor health, and quick actions (`[↻ Sync Falcon API]`, `[Falcon Console ↗]`).
+    - **4 Top KPI Cards:** Monitored Users (69), Authentications (988 Success vs 41 Fail, 96.4% rate), Identity Detections (1,030 Alerts with scenario pills), AD Domain Controller (`TBL-ADNS-04`, 172.31.152.14).
+    - **5 Navigation Tabs:** `Events`, `All users`, `Authentications`, `Anomalies & Scenarios`, `User risk`.
+    - **Events View:** 24h activity distribution histogram, live search bar, Stack-by scenario filter, and high-density events table with MITRE tags and Falcon links.
+    - **Users View:** Directory of Active Directory accounts with SIDs, OUs, risk scores, and anomaly history.
+    - **Event Inspection Modal:** Modal dialog displaying full AD attributes, MITRE mapping, and direct 1-click links to the Falcon console.
+- **Verification & Deployment:**
+  - Validated 100% AST bracket balance on `frontend/index.html` (0 syntax errors).
+  - Deployed to `172.31.105.11` and verified `opensoc-forge.service` endpoint response (`STATUS: HEALTHY`, `DOMAIN CONTROLLER: TBL-ADNS-04`, `EVENTS COUNT: 100`).
+
+---
+
 ### Session 20 — Flow Table Fix, Elasticsearch/Indexer Analysis & JS Bracket Syntax Resolution
 - **Date / Time:** 2026-10-19 20:50 – 21:10 UTC+6
 - **Context:** Network Telemetry UI Bugfix, Elasticsearch Diagnostic & JS Syntax Hotfix

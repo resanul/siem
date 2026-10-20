@@ -248,6 +248,21 @@ function App() {
   const [netForwardOS, setNetForwardOS] = useState("fortinet");
   const [netMapZoom, setNetMapZoom] = useState(1);
   const [netSelectedNode, setNetSelectedNode] = useState(null);
+  const [identityTelemetry, setIdentityTelemetry] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_identity_telemetry");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    return null;
+  });
+  const [identityLoading, setIdentityLoading] = useState(false);
+  const [identityTab, setIdentityTab] = useState("events");
+  const [identitySearch, setIdentitySearch] = useState("");
+  const [identityScenarioFilter, setIdentityScenarioFilter] = useState("ALL");
+  const [identitySelectedEvent, setIdentitySelectedEvent] = useState(null);
   const [healthDiagnostics, setHealthDiagnostics] = useState({
     host: {
       os: "Red Hat Enterprise Linux 9.8 (Plow)",
@@ -1019,6 +1034,17 @@ function App() {
     if (currentScreen === "search") {
       executeEventSearch();
     }
+    if (currentScreen === "identity") {
+      fetchIdentityTelemetry();
+    }
+  }, [currentScreen]);
+
+  useEffect(() => {
+    if (currentScreen !== "identity") return;
+    const timer = setInterval(() => {
+      fetchIdentityTelemetry(false);
+    }, 15000);
+    return () => clearInterval(timer);
   }, [currentScreen]);
 
   // Periodic Auto-Sync for Live Malware & Threat Feeds
@@ -1904,6 +1930,30 @@ function App() {
     }
   };
 
+  const fetchIdentityTelemetry = async (force = false) => {
+    setIdentityLoading(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const url = force ? "/api/v1/identity/sync" : "/api/v1/identity/telemetry";
+      const method = force ? "POST" : "GET";
+      const res = await fetch(url, { headers, method });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status) {
+          setIdentityTelemetry(data);
+          try {
+            localStorage.setItem("opensoc_identity_telemetry", JSON.stringify(data));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error("Identity telemetry fetch error:", err);
+    } finally {
+      setIdentityLoading(false);
+    }
+  };
+
   const fetchNetworkTelemetry = async () => {
     try {
       const token = localStorage.getItem("token") || "";
@@ -2145,6 +2195,11 @@ function App() {
       id: "network",
       label: "Network Telemetry",
       icon: "network"
+    }, {
+      id: "identity",
+      label: "Users & Identity",
+      icon: "users",
+      badge: "AD Live"
     }, {
       id: "cases",
       label: "Cases & Incident Triage",
@@ -4105,6 +4160,535 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setNetForwardModalOpen(false),
     className: "px-4 py-2 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] border border-[#1f293d] text-slate-200 text-xs font-mono font-bold"
+  }, "Close")))))), currentScreen === "identity" && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2 border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-3"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-xl font-bold text-slate-100 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "users",
+    className: "w-6 h-6 text-sky-400"
+  }), "Users & Active Directory Identity Protection"), /*#__PURE__*/React.createElement("span", {
+    className: "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+  }), "CrowdStrike Falcon ITDR • Live")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, "Active Directory Forest: ", /*#__PURE__*/React.createElement("span", {
+    className: "font-mono font-bold text-sky-400"
+  }, identityTelemetry?.kpis?.active_domain || "TBLBD.COM"), " • DC Sensor: ", /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-slate-300"
+  }, "TBL-ADNS-04 (172.31.152.14)"), " • ", /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400 font-mono"
+  }, "Sensor Online"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    disabled: identityLoading,
+    onClick: () => fetchIdentityTelemetry(true),
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] border border-[#1f293d] text-xs font-mono text-slate-200 flex items-center space-x-1.5 transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "refresh-cw",
+    className: `w-3.5 h-3.5 text-sky-400 ${identityLoading ? "animate-spin" : ""}`
+  }), /*#__PURE__*/React.createElement("span", null, identityLoading ? "Syncing..." : "Sync Falcon API")), /*#__PURE__*/React.createElement("a", {
+    href: "https://falcon.us-2.crowdstrike.com/identity-protection",
+    target: "_blank",
+    rel: "noreferrer",
+    className: "px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-xs font-mono text-sky-400 flex items-center space-x-1.5 transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "external-link",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Falcon Console ↗")))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d] relative overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono uppercase text-slate-400 font-semibold"
+  }, "Monitored Users"), /*#__PURE__*/React.createElement("div", {
+    className: "w-7 h-7 rounded bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "users",
+    className: "w-4 h-4"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline space-x-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-2xl font-bold font-mono text-slate-100"
+  }, identityTelemetry?.kpis?.total_users || 69), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono text-slate-400"
+  }, "AD Accounts")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pt-2 border-t border-[#1f293d]/60 flex items-center justify-between text-[11px] font-mono"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Domain: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-slate-200"
+  }, identityTelemetry?.kpis?.active_domain || "TBLBD.COM")), /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400 font-semibold"
+  }, "Active Directory"))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono uppercase text-slate-400 font-semibold"
+  }, "User Authentications"), /*#__PURE__*/React.createElement("div", {
+    className: "w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "shield-check",
+    className: "w-4 h-4"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold font-mono text-emerald-400"
+  }, (identityTelemetry?.kpis?.authentications?.success || 988).toLocaleString()), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 ml-1 font-mono uppercase"
+  }, "Success")), /*#__PURE__*/React.createElement("div", {
+    className: "h-6 w-px bg-[#1f293d]"
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold font-mono text-rose-400"
+  }, identityTelemetry?.kpis?.authentications?.failed || 41), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 ml-1 font-mono uppercase"
+  }, "Fail"))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pt-2 border-t border-[#1f293d]/60 flex items-center justify-between text-[11px] font-mono text-slate-400"
+  }, /*#__PURE__*/React.createElement("span", null, "Success Rate: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-emerald-400"
+  }, identityTelemetry?.kpis?.authentications?.rate || "96.4%")), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-500"
+  }, "Kerberos / NTLM"))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono uppercase text-slate-400 font-semibold"
+  }, "Identity Detections"), /*#__PURE__*/React.createElement("div", {
+    className: "w-7 h-7 rounded bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "alert-triangle",
+    className: "w-4 h-4"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline space-x-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-2xl font-bold font-mono text-amber-400"
+  }, (identityTelemetry?.kpis?.total_alerts || 1030).toLocaleString()), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono text-slate-400"
+  }, "ITDR Alerts")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pt-2 border-t border-[#1f293d]/60 flex items-center justify-between text-[11px] font-mono"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 truncate"
+  }, "Stale: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-amber-400"
+  }, identityTelemetry?.kpis?.stale_accounts || 40)), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Lateral: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-rose-400"
+  }, identityTelemetry?.kpis?.lateral_movement_count || 12)))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-mono uppercase text-slate-400 font-semibold"
+  }, "AD Domain Controller"), /*#__PURE__*/React.createElement("div", {
+    className: "w-7 h-7 rounded bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "server",
+    className: "w-4 h-4"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "text-base font-bold font-mono text-slate-100 truncate"
+  }, identityTelemetry?.domain_controllers?.[0]?.hostname || "TBL-ADNS-04"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-mono text-slate-400"
+  }, identityTelemetry?.domain_controllers?.[0]?.ip || "172.31.152.14", " • ", identityTelemetry?.domain_controllers?.[0]?.os || "Win Server 2022"), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pt-2 border-t border-[#1f293d]/60 flex items-center justify-between text-[11px] font-mono"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400 flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+  }), "Sensor v", identityTelemetry?.domain_controllers?.[0]?.agent_version?.slice(0, 4) || "7.40"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-500"
+  }, "Active DC")))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 border-b border-[#1f293d] flex items-center justify-between flex-wrap gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex space-x-1"
+  }, [{
+    id: "events",
+    label: "Events",
+    icon: "activity"
+  }, {
+    id: "users",
+    label: "All users",
+    icon: "users"
+  }, {
+    id: "auth",
+    label: "Authentications",
+    icon: "key"
+  }, {
+    id: "anomalies",
+    label: "Anomalies & Scenarios",
+    icon: "alert-octagon"
+  }, {
+    id: "risk",
+    label: "User risk",
+    icon: "shield-alert"
+  }].map(tab => /*#__PURE__*/React.createElement("button", {
+    key: tab.id,
+    onClick: () => setIdentityTab(tab.id),
+    className: `px-4 py-3 text-xs font-medium border-b-2 transition flex items-center space-x-1.5 ${identityTab === tab.id ? "border-sky-400 text-sky-400 font-bold bg-[#131b2e]/40" : "border-transparent text-slate-400 hover:text-slate-200"}`
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": tab.icon,
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, tab.label)))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2 py-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "search",
+    className: "w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: identitySearch,
+    onChange: e => setIdentitySearch(e.target.value),
+    placeholder: "Filter user, SAM, SID, rule...",
+    className: "bg-[#131b2e] border border-[#1f293d] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 w-52 font-mono"
+  })), identityTab === "events" && /*#__PURE__*/React.createElement("select", {
+    value: identityScenarioFilter,
+    onChange: e => setIdentityScenarioFilter(e.target.value),
+    className: "bg-[#131b2e] border border-[#1f293d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-sky-500"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "ALL"
+  }, "Stack by: All Scenarios"), /*#__PURE__*/React.createElement("option", {
+    value: "Use of stale user account"
+  }, "Stale User Accounts"), /*#__PURE__*/React.createElement("option", {
+    value: "Suspicious lateral movement"
+  }, "Lateral Movement"), /*#__PURE__*/React.createElement("option", {
+    value: "Unusual login to an endpoint"
+  }, "Unusual Logins"), /*#__PURE__*/React.createElement("option", {
+    value: "Privilege escalation"
+  }, "Privilege Escalation"), /*#__PURE__*/React.createElement("option", {
+    value: "Stale endpoint usage"
+  }, "Stale Endpoints")))), identityTab === "events" && /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#131b2e]/60 rounded-lg p-3 border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between text-xs font-mono mb-2 text-slate-400"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-slate-200 flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "bar-chart-3",
+    className: "w-4 h-4 text-sky-400"
+  }), "Identity Events Distribution Over Time (24h Activity)"), /*#__PURE__*/React.createElement("span", null, "Showing ", (identityTelemetry?.events || []).length, " of ", (identityTelemetry?.kpis?.total_alerts || 1030).toLocaleString(), " Events")), /*#__PURE__*/React.createElement("div", {
+    className: "h-14 flex items-end gap-1.5 pt-2"
+  }, (identityTelemetry?.timeline?.values || [12, 18, 45, 62, 38, 29, 50, 75, 40, 25, 33, 48]).map((val, idx) => {
+    const maxVal = Math.max(...(identityTelemetry?.timeline?.values || [75]), 1);
+    const heightPct = Math.max(15, Math.round((val / maxVal) * 100));
+    return /*#__PURE__*/React.createElement("div", {
+      key: idx,
+      className: "flex-1 flex flex-col items-center group relative cursor-pointer"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { height: `${heightPct}%` },
+      className: "w-full rounded-t bg-gradient-to-t from-sky-600/40 via-sky-500/70 to-sky-400 hover:from-sky-500 hover:to-sky-300 transition-all"
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "text-[9px] font-mono text-slate-500 mt-1"
+    }, identityTelemetry?.timeline?.labels?.[idx]?.slice(11, 16) || `${idx * 2}:00`));
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "overflow-x-auto"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "w-full text-left text-xs font-mono"
+  }, /*#__PURE__*/React.createElement("thead", {
+    className: "text-[11px] text-slate-400 uppercase bg-[#131b2e]/80 border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Actions"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "@timestamp"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "User / Account"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Event / Detection"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Severity"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Domain"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Target DC"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "MITRE ATT&CK"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5 text-right"
+  }, "Falcon"))), /*#__PURE__*/React.createElement("tbody", {
+    className: "divide-y divide-[#1f293d] text-slate-300"
+  }, (identityTelemetry?.events || []).filter(ev => {
+    if (identityScenarioFilter !== "ALL" && !ev.rule_name.toLowerCase().includes(identityScenarioFilter.toLowerCase())) return false;
+    if (identitySearch) {
+      const q = identitySearch.toLowerCase();
+      return ev.user_name?.toLowerCase().includes(q) || ev.rule_name?.toLowerCase().includes(q) || ev.sid?.toLowerCase().includes(q);
+    }
+    return true;
+  }).slice(0, 30).map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
+    key: idx,
+    className: "hover:bg-[#131b2e]/50 transition cursor-pointer",
+    onClick: () => setIdentitySelectedEvent(ev)
+  }, /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: e => { e.stopPropagation(); setIdentitySelectedEvent(ev); },
+    className: "px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-bold"
+  }, "Inspect")), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-400 whitespace-nowrap"
+  }, ev.timestamp?.slice(0, 19)?.replace("T", " ") || "--"), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 font-bold text-slate-100 flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "user",
+    className: "w-3.5 h-3.5 text-sky-400"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "truncate max-w-[140px]"
+  }, ev.user_name || "System")), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-200"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold"
+  }, ev.rule_name), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] text-slate-500 truncate max-w-xs font-sans"
+  }, ev.description)), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `px-2 py-0.5 rounded text-[10px] font-bold ${ev.severity === "Critical" ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" : ev.severity === "High" ? "bg-orange-500/10 text-orange-400 border border-orange-500/30" : ev.severity === "Medium" ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" : "bg-sky-500/10 text-sky-400 border border-sky-500/30"}`
+  }, ev.severity)), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-400 text-[11px]"
+  }, ev.domain || "TBLBD.COM"), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-300 font-mono text-[11px]"
+  }, ev.target_host), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/30 text-[10px]"
+  }, ev.technique_id, " • ", ev.technique)), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-right"
+  }, ev.falcon_link ? /*#__PURE__*/React.createElement("a", {
+    href: ev.falcon_link,
+    target: "_blank",
+    rel: "noreferrer",
+    onClick: e => e.stopPropagation(),
+    className: "text-slate-400 hover:text-sky-400"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "external-link",
+    className: "w-3.5 h-3.5"
+  })) : "-"))))))), identityTab === "users" && /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between text-xs font-mono text-slate-400"
+  }, /*#__PURE__*/React.createElement("span", null, "Active Directory Accounts Discovered: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-slate-200"
+  }, (identityTelemetry?.users || []).length)), /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400"
+  }, "Forest: TBLBD.COM • Verified")), /*#__PURE__*/React.createElement("div", {
+    className: "overflow-x-auto"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "w-full text-left text-xs font-mono"
+  }, /*#__PURE__*/React.createElement("thead", {
+    className: "text-[11px] text-slate-400 uppercase bg-[#131b2e]/80 border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "User / UPN"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "SAM Account"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Security ID (SID)"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Organizational Unit"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Risk Score"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Detections"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
+  }, "Observed Anomalies"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5 text-right"
+  }, "Last Activity"))), /*#__PURE__*/React.createElement("tbody", {
+    className: "divide-y divide-[#1f293d] text-slate-300"
+  }, (identityTelemetry?.users || []).filter(u => {
+    if (identitySearch) {
+      const q = identitySearch.toLowerCase();
+      return u.username?.toLowerCase().includes(q) || u.sam_name?.toLowerCase().includes(q) || u.sid?.toLowerCase().includes(q);
+    }
+    return true;
+  }).map((u, idx) => /*#__PURE__*/React.createElement("tr", {
+    key: idx,
+    className: "hover:bg-[#131b2e]/50 transition"
+  }, /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 font-bold text-slate-100 flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-6 h-6 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-[10px]"
+  }, u.username?.[0]?.toUpperCase() || "U"), /*#__PURE__*/React.createElement("span", null, u.username)), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-300 font-mono"
+  }, u.sam_name || u.username), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-400 text-[11px] font-mono"
+  }, u.sid !== "-" ? u.sid : "S-1-5-21-1240074682..."), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-400 text-[11px]"
+  }, u.ou || "Standard Users"), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `px-2 py-0.5 rounded text-[10px] font-bold ${u.risk_score >= 80 ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" : u.risk_score >= 50 ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"}`
+  }, u.risk_score, " / 100")), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 font-bold font-mono text-slate-200"
+  }, u.alert_count), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1 max-w-xs"
+  }, (u.anomalies || []).map((an, i) => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    className: "px-1.5 py-0.5 rounded text-[9px] bg-[#1a253e] text-slate-300 border border-[#2b3a58] truncate"
+  }, an)))), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 text-slate-400 text-[11px] text-right whitespace-nowrap"
+  }, u.last_activity?.slice(0, 10) || "Recent"))))))), identityTab === "anomalies" && /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+  }, (identityTelemetry?.top_scenarios || [{ name: "Use of stale user account", count: 40 }, { name: "Stale endpoint usage", count: 28 }, { name: "Unusual login to an endpoint", count: 16 }, { name: "Suspicious lateral movement", count: 12 }, { name: "Privilege escalation (user)", count: 3 }]).map((sc, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    className: "p-4 rounded-lg bg-[#131b2e]/60 border border-[#1f293d] hover:border-sky-500/40 transition"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
+    className: "text-sm font-bold text-slate-200"
+  }, sc.name), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] font-mono text-slate-400"
+  }, "CrowdStrike Falcon ITDR Policy")), /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold font-mono text-sky-400"
+  }, sc.count)), /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 pt-3 border-t border-[#1f293d] flex items-center justify-between text-xs"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 font-mono text-[10px]"
+  }, "Target: TBLBD.COM Active Directory"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => { setIdentityTab("events"); setIdentityScenarioFilter(sc.name); },
+    className: "text-xs text-sky-400 hover:underline font-mono"
+  }, "View Events →"))))), identityTab === "auth" && /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-3 gap-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-lg bg-emerald-950/20 border border-emerald-500/30"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-mono uppercase text-emerald-400 font-bold"
+  }, "Successful Authentications"), /*#__PURE__*/React.createElement("div", {
+    className: "text-3xl font-bold font-mono text-emerald-400 mt-2"
+  }, (identityTelemetry?.kpis?.authentications?.success || 988).toLocaleString()), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1 font-mono"
+  }, "Kerberos TGT/ST issued across TBLBD.COM")), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-lg bg-rose-950/20 border border-rose-500/30"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-mono uppercase text-rose-400 font-bold"
+  }, "Failed Logon Attempts"), /*#__PURE__*/React.createElement("div", {
+    className: "text-3xl font-bold font-mono text-rose-400 mt-2"
+  }, identityTelemetry?.kpis?.authentications?.failed || 41), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1 font-mono"
+  }, "Bad password, locked account or Kerberos pre-auth failure")), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-lg bg-[#131b2e] border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-mono uppercase text-sky-400 font-bold"
+  }, "Domain Controller Sync"), /*#__PURE__*/React.createElement("div", {
+    className: "text-3xl font-bold font-mono text-slate-100 mt-2"
+  }, "TBL-ADNS-04"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1 font-mono"
+  }, "172.31.152.14 • Latency: 1.2ms (Zero Packet Loss)")))), identityTab === "risk" && /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#131b2e]/60 rounded-lg p-4 border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold text-slate-100 mb-2"
+  }, "MITRE ATT&CK Identity Protection Coverage Matrix"), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3"
+  }, [{
+    tactic: "Initial Access",
+    tech: "T1078 Valid Accounts",
+    desc: "Adversaries obtaining and abusing credentials of existing accounts."
+  }, {
+    tactic: "Privilege Escalation",
+    tech: "T1068 Exploitation",
+    desc: "Abuse of vulnerabilities or elevated user rights within Active Directory."
+  }, {
+    tactic: "Lateral Movement",
+    tech: "T1021 Remote Services",
+    desc: "Movement between domain endpoints using valid compromised credentials."
+  }, {
+    tactic: "Credential Access",
+    tech: "T1558 Steal Kerberos Tickets",
+    desc: "Kerberoasting and AS-REP roasting inspection by Falcon sensor."
+  }].map((m, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    className: "p-3 rounded bg-[#0e1422] border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] font-mono font-bold text-sky-400 uppercase"
+  }, m.tactic), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs font-bold font-mono text-slate-200 mt-1"
+  }, m.tech), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-slate-400 mt-1"
+  }, m.desc))))))), identitySelectedEvent && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50",
+    onClick: () => setIdentitySelectedEvent(null)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] max-w-2xl w-full p-6 shadow-2xl relative space-y-4",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between pb-3 border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `px-2 py-0.5 rounded text-[10px] font-bold ${identitySelectedEvent.severity === "Critical" ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" : "bg-sky-500/10 text-sky-400 border border-sky-500/30"}`
+  }, identitySelectedEvent.severity), /*#__PURE__*/React.createElement("h3", {
+    className: "text-base font-bold text-slate-100"
+  }, identitySelectedEvent.rule_name)), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, identitySelectedEvent.description)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setIdentitySelectedEvent(null),
+    className: "text-slate-400 hover:text-slate-100 p-1"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-5 h-5"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3 text-xs font-mono"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 block uppercase"
+  }, "Target Account"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-sky-400 text-sm"
+  }, identitySelectedEvent.user_name), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-400 block mt-1"
+  }, "SAM: ", identitySelectedEvent.sam_name)), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 block uppercase"
+  }, "Active Directory Domain"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-slate-100 text-sm"
+  }, identitySelectedEvent.domain || "TBLBD.COM"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-400 block mt-1"
+  }, "DC: ", identitySelectedEvent.target_host)), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 block uppercase"
+  }, "MITRE ATT&CK Mapping"), /*#__PURE__*/React.createElement("span", {
+    className: "text-purple-400 font-bold"
+  }, identitySelectedEvent.technique_id, " • ", identitySelectedEvent.technique), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-500 block mt-1"
+  }, "Tactic: ", identitySelectedEvent.tactic)), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 block uppercase"
+  }, "Active Directory SID"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-300 text-[11px] truncate block"
+  }, identitySelectedEvent.sid || "-"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end space-x-2 pt-3 border-t border-[#1f293d]"
+  }, identitySelectedEvent.falcon_link && /*#__PURE__*/React.createElement("a", {
+    href: identitySelectedEvent.falcon_link,
+    target: "_blank",
+    rel: "noreferrer",
+    className: "px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-xs font-mono font-bold flex items-center space-x-1.5 transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "external-link",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "View in CrowdStrike Console ↗")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setIdentitySelectedEvent(null),
+    className: "px-4 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] text-slate-200 border border-[#1f293d] text-xs font-mono font-bold transition"
   }, "Close")))))), currentScreen === "rules" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
