@@ -592,3 +592,9 @@ When continuing work from either **Home** or **Office**:
      - Deployed all updated files to `172.31.105.11` and restarted `opensoc-forge.service`.
      - Tested live `/api/v1/overview` and `/api/v1/sophos/test` endpoints.
      - Verified 100% file synchronization across all 19 system files using `verify_content_match.py`.
+
+- **Save UI Feedback Bugfix (`frontend/index.html`):**
+  - **Issue:** When saving Sophos Central API credentials, UI displayed `Save error: fetchOverview is not defined`, even though the backend OAuth2 validation and credential save had already succeeded.
+  - **Root Cause:** `handleSaveSophosConfig` (and `handleSaveCsConfig`) called `fetchOverview()`, but the function was not declared in the component scope.
+  - **Resolution:** Added `const fetchOverview = async () => { ... }` in `frontend/index.html` that queries `/api/v1/overview` and updates both `components` and `overview` state.
+  - **Status:** Verified live on server `172.31.105.11` — saving and updating now complete with clean green success feedback and zero UI exceptions.
