@@ -727,3 +727,27 @@ When continuing work from either **Home** or **Office**:
      - Restarted `opensoc-forge.service` with clean active status.
   3. **Verification & Dual-Branch Synchronization:**
      - Verified `python scripts/verify_content_match.py` confirms all 19 files are 100% identical.
+
+
+---
+
+### Session 22 — UI Diagnostics Elimination: Parenthesis Balance on "All Real Logs" & Headless Browser DOM Verification
+- **Date / Time:** 2026-10-20 20:00 – 20:25 UTC+6
+- **Context:** UI Exception Recovery, AST/Parenthesis Stack Resolution, Headless Chrome Validation & Live Deployment
+- **User Requests:**
+  1. *"এটার পর সমস্যাটা টা হয়,কিউই তে onno task থাকার কারনে পরে আর একটা instruction চলে গেছে। তাই rollback করে try again"*
+- **Root Cause Identified:**
+  - In `frontend/index.html` at line 11220, the closing sequence for the `All Real Logs` table row ended with 6 parentheses (`}, "{} Raw JSON"))))))`) instead of 7 (`}, "{} Raw JSON")))))))`).
+  - This left the outer container `div` of `All Real Logs` unclosed on the parser stack. As a consequence, when the React root component `function App()` ended at line 16342, the browser threw `Uncaught SyntaxError: missing ) after argument list Line: 16342:32`, triggering the UI Diagnostics modal.
+- **Actions Taken:**
+  1. **Stack & Parenthesis Resolution (`frontend/index.html`):**
+     - Added the missing 7th parenthesis at line 11220 (`}, "{} Raw JSON")))))))`) to cleanly close the `All Real Logs` container div.
+     - Scanned the entire file with a full stack parser, confirming **0 unclosed brackets and 0 syntax errors**.
+  2. **Headless Chrome DOM Execution Test:**
+     - Executed headless Google Chrome (`--headless=new --dump-dom`) on the rendered console.
+     - Confirmed that `#root` mounts cleanly, zero runtime syntax errors occur, and the `OpenSOC Forge — UI Diagnostics` modal is completely eliminated.
+     - Confirmed that the 5 KPI filter cards (`ENDPOINT NOTABLES`, `THREAT NOTABLES`, `ISOLATED HOSTS`, `RANSOMWARE BLOCKED`, `TAMPER PROTECTION`) and the `All Real Logs` tab render and filter live Sophos Central API data.
+  3. **Production Server Deployment & Verification:**
+     - Deployed updated `frontend/index.html` to target server `172.31.105.11` at `/opt/opensoc-forge/frontend/index.html`.
+     - Restarted `opensoc-forge.service` and verified active operational state.
+     - Ran `python scripts/verify_content_match.py`, verifying all 19 tracked files are 100% identical across local and server.
