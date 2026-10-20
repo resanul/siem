@@ -32,7 +32,9 @@ git push origin master:main
 
 ### 3. Comprehensive Session Details
 Please read **[`docs/CHAT_HISTORY.md`](docs/CHAT_HISTORY.md)** for:
-- Detailed breakdown of all **Sessions 1 through 10**
-- Complete CTI Feed integration (8 feeds, SQLite caching, 2x daily sync)
-- Threat Hunting & UI/UX enhancements
+- Detailed breakdown of all **Sessions 1 through 15**
+- Complete CTI Feed integration (8 feeds, SQLite caching, 2x daily sync, 19,000+ IOCs)
+- Threat Hunting & UI/UX enhancements (Zero-flicker offline localStorage caching)
+- Offline agent package repository & enterprise proxy support
+- Real endpoint onboarding (Windows 11 & Kali Linux) & VirtualBox Wi-Fi network routing
 - VM deployment steps, commands, and container logs
