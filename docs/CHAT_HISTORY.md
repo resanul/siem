@@ -684,3 +684,26 @@ When continuing work from either **Home** or **Office**:
   5. **Server Deployment & 100% Verification:**
      - Deployed updated files to production server `172.31.105.11` in `/opt/opensoc-forge/` and restarted `opensoc-forge.service`.
      - Verified `python scripts/verify_content_match.py` confirms 100% identical state across all files.
+
+
+---
+
+### Session 20 — UI Syntax Diagnostics Fix: Nested Tab Ternary Operator Resolution
+- **Date / Time:** 2026-10-20 19:40 – 19:50 UTC+6
+- **Context:** UI Exception Recovery, Browser Script Execution & JSX Syntax Repair
+- **User Requests:**
+  1. *"??"* (Uploaded screenshot showing OpenSOC Forge — UI Diagnostics error: `Uncaught SyntaxError: missing ) after argument list` at `Line: 10851:8`).
+- **Root Cause Identified:**
+  - In `frontend/index.html`, when Tab 3 (`All Real Logs`) was integrated into the `Endpoint Security Posture (XDR)` screen, the ternary tab rendering condition had two colons `:` with only one question mark `?`:
+    `sophosTab === "notables" ? notables_div : endpoints_div : all_logs_div`
+  - JavaScript threw `Uncaught SyntaxError: missing ) after argument list` at the second colon because the middle branch lacked `sophosTab === "endpoints" ?`.
+- **Actions Taken:**
+  1. **Ternary Operator Repair (`frontend/index.html`):**
+     - Corrected the expression to:
+       `sophosTab === "notables" ? notables_div : sophosTab === "endpoints" ? endpoints_div : all_logs_div`
+     - Validated ternary depth balance to 0 with zero syntax errors.
+  2. **Production Deployment & Service Verification:**
+     - Deployed corrected `frontend/index.html` to `172.31.105.11` in `/opt/opensoc-forge/frontend/index.html`.
+     - Restarted `opensoc-forge.service` with clean status `active (running)`.
+  3. **Verification & Dual-Branch Synchronization:**
+     - Verified `python scripts/verify_content_match.py` confirms all 19 files are 100% identical.
