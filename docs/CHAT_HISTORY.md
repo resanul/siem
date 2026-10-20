@@ -21,6 +21,32 @@
 
 ## 📅 Session Timeline & Development History
 
+### Session 16 — Git IOC Dataset Auto-Ingestion to SQLite & Safety Downgrade Guard
+- **Date / Time:** 2026-10-20 07:40 – 07:55 UTC+6
+- **Context:** Threat Intelligence Feed Ingestion Pipeline Resolution
+- **User Request:**
+  - *"1st of all IOC feed to ekhono github a updated ase okhan theke to update hoini"*
+- **Root Cause Identified:**
+  - `data/threat_intel_iocs.json` on GitHub contained 19,058+ indicators. While `git pull` downloaded the file, the SQLite database `/var/lib/opensoc/threat_intel_iocs.db` on the VM remained at 18,077 indicators.
+  - `scripts/deploy_vm.py` and `update.sh` previously only copied `backend/` and `frontend/` to `/opt/opensoc-forge/`, completely omitting `data/`.
+  - `docker-compose.yml` did not mount `./data:/opt/opensoc-forge/data`.
+  - `export_iocs_snapshot()` lacked a safety guard; whenever the container restarted, it queried the smaller SQLite DB and risked overwriting the larger dataset file on disk.
+- **Actions Taken:**
+  1. **Dataset Import Engine (`backend/app/services/ioc_storage.py`):**
+     - Implemented `import_iocs_from_json()` to parse `threat_intel_iocs.json` and execute batch upsert transactions into SQLite.
+     - Added auto-ingestion hook in `init_ioc_database()`: on startup, if the dataset file contains more indicators than SQLite, it automatically synchronizes.
+     - Added safety guard to `export_iocs_snapshot()` to prevent downgrading or shrinking larger dataset files on disk.
+  2. **Deployment & Asset Synchronization (`scripts/deploy_vm.py`, `update.sh`, `docker-compose.yml`):**
+     - Added `data/` directory synchronization to `/opt/opensoc-forge/data/`.
+     - Mounted `./data:/opt/opensoc-forge/data:rw,z` in `docker-compose.yml`.
+     - Added automated dataset ingestion step directly into `deploy_vm.py`.
+  3. **Verification on Target VM (`192.168.10.177:7070`):**
+     - Executed ingestion across the live SQLite database.
+     - Confirmed total active indicators reached **19,810** (Cisco Talos: 17,214; ThreatFox: 1,306; URLhaus: 691; MalwareBazaar: 439; CISA KEV: 80; Emerging Threats: 80).
+     - Verified API response: `GET /api/v1/threat-intel/db-stats` returns `total_iocs: 19810`.
+
+---
+
 ### Session 15 — Office & Remote Git Pull, Main Branch Merge & Dual-Branch Synchronization
 - **Date / Time:** 2026-10-20 07:25 – 07:35 UTC+6
 - **Context:** Home / Office Bidirectional Git Workspace Sync
@@ -297,6 +323,32 @@ When continuing work from either **Home** or **Office**:
    ```
 5. **Always Append New Session Log:**
    - Whenever completing a feature or making architectural changes, append a new session summary under `## 📅 Session Timeline & Development History
+
+### Session 16 — Git IOC Dataset Auto-Ingestion to SQLite & Safety Downgrade Guard
+- **Date / Time:** 2026-10-20 07:40 – 07:55 UTC+6
+- **Context:** Threat Intelligence Feed Ingestion Pipeline Resolution
+- **User Request:**
+  - *"1st of all IOC feed to ekhono github a updated ase okhan theke to update hoini"*
+- **Root Cause Identified:**
+  - `data/threat_intel_iocs.json` on GitHub contained 19,058+ indicators. While `git pull` downloaded the file, the SQLite database `/var/lib/opensoc/threat_intel_iocs.db` on the VM remained at 18,077 indicators.
+  - `scripts/deploy_vm.py` and `update.sh` previously only copied `backend/` and `frontend/` to `/opt/opensoc-forge/`, completely omitting `data/`.
+  - `docker-compose.yml` did not mount `./data:/opt/opensoc-forge/data`.
+  - `export_iocs_snapshot()` lacked a safety guard; whenever the container restarted, it queried the smaller SQLite DB and risked overwriting the larger dataset file on disk.
+- **Actions Taken:**
+  1. **Dataset Import Engine (`backend/app/services/ioc_storage.py`):**
+     - Implemented `import_iocs_from_json()` to parse `threat_intel_iocs.json` and execute batch upsert transactions into SQLite.
+     - Added auto-ingestion hook in `init_ioc_database()`: on startup, if the dataset file contains more indicators than SQLite, it automatically synchronizes.
+     - Added safety guard to `export_iocs_snapshot()` to prevent downgrading or shrinking larger dataset files on disk.
+  2. **Deployment & Asset Synchronization (`scripts/deploy_vm.py`, `update.sh`, `docker-compose.yml`):**
+     - Added `data/` directory synchronization to `/opt/opensoc-forge/data/`.
+     - Mounted `./data:/opt/opensoc-forge/data:rw,z` in `docker-compose.yml`.
+     - Added automated dataset ingestion step directly into `deploy_vm.py`.
+  3. **Verification on Target VM (`192.168.10.177:7070`):**
+     - Executed ingestion across the live SQLite database.
+     - Confirmed total active indicators reached **19,810** (Cisco Talos: 17,214; ThreatFox: 1,306; URLhaus: 691; MalwareBazaar: 439; CISA KEV: 80; Emerging Threats: 80).
+     - Verified API response: `GET /api/v1/threat-intel/db-stats` returns `total_iocs: 19810`.
+
+---
 
 ### Session 15 — Office & Remote Git Pull, Main Branch Merge & Dual-Branch Synchronization
 - **Date / Time:** 2026-10-20 07:25 – 07:35 UTC+6
