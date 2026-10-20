@@ -707,3 +707,23 @@ When continuing work from either **Home** or **Office**:
      - Restarted `opensoc-forge.service` with clean status `active (running)`.
   3. **Verification & Dual-Branch Synchronization:**
      - Verified `python scripts/verify_content_match.py` confirms all 19 files are 100% identical.
+
+
+---
+
+### Session 21 — UI Syntax Diagnostics Fix: Unexpected Closing Parenthesis on Managed Endpoints Table
+- **Date / Time:** 2026-10-20 19:50 – 20:00 UTC+6
+- **Context:** UI Exception Recovery, Bracket Balancing & Runtime Script Repair
+- **User Requests:**
+  1. Screenshot of OpenSOC Forge — UI Diagnostics error: `Uncaught SyntaxError: Unexpected token ')'` at `Line: 11100:8`.
+- **Root Cause Identified:**
+  - At line 11100 in `frontend/index.html` at the end of the `Managed Endpoints` table container, five closing parentheses were present (`}))))) :`) when only four were opened (`.map`, `tbody`, `table`, `div`). The extraneous 5th parenthesis caused Chrome to throw `Uncaught SyntaxError: Unexpected token ')'`.
+- **Actions Taken:**
+  1. **Bracket Balance Resolution (`frontend/index.html`):**
+     - Corrected `}))))) :` to `})))) :` to match the exact nesting depth.
+     - Verified character-by-character bracket balance across the entire screen component (0 mismatches, 0 unexpected tokens).
+  2. **Production Server Deployment & Service Verification:**
+     - Deployed updated `frontend/index.html` to `172.31.105.11` in `/opt/opensoc-forge/frontend/index.html`.
+     - Restarted `opensoc-forge.service` with clean active status.
+  3. **Verification & Dual-Branch Synchronization:**
+     - Verified `python scripts/verify_content_match.py` confirms all 19 files are 100% identical.
