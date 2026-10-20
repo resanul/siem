@@ -45,6 +45,11 @@ _DATA_CACHE: Dict[str, Any] = {
 _ssl_context = ssl._create_unverified_context()
 
 
+def safe_urlopen(req, timeout=12):
+    """Wrapper around urllib.request.urlopen with unverified SSL context."""
+    return urllib.request.urlopen(req, timeout=timeout, context=_ssl_context)
+
+
 def _get_config_target_path() -> str:
     for candidate in [CONFIG_PERSISTENT_FILE, CONFIG_LOCAL_FILE, CONFIG_TEMP_FILE]:
         d = os.path.dirname(candidate)
