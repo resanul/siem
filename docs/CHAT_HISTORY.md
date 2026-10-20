@@ -559,3 +559,36 @@ When continuing work from either **Home** or **Office**:
      - Deployed backend service and frontend bundle to production server `172.31.105.11`.
      - Verified live `/api/v1/overview` component reporting `crowdstrike_falcon` as `HEALTHY`.
      - Successfully synchronized repository across `main` and `master` branches.
+
+
+### Session 16 — Sophos Central (XDR / MDR) Platform Component Integration & API Management
+- **Date / Time:** 2026-10-20 18:00 – 18:08 UTC+6
+- **Context:** Component Inventory Expansion, Cloud Endpoint XDR Ingestion & Multi-Tenant API Adapter Architecture
+- **User Requests:**
+  1. *"এবার sophos XDR add করবো, Add করার ব্যাবস্তা করো।"*
+- **Actions Taken:**
+  1. **Platform Component Inventory Integration (`frontend/index.html`):**
+     - Registered `sophos_xdr` (Display Name: `Sophos Central (XDR / MDR)`) alongside `crowdstrike_falcon` and core SIEM components.
+     - Implemented dynamic status badge (`HEALTHY`, `NOT CONFIGURED`, `DEGRADED`, or `STOPPED`).
+     - Added context-aware action buttons:
+       - Configured state: `[⚙ API Config]` (Sky blue) and `[🗑 Delete API]` (Rose red).
+       - Unconfigured state: `[+ Add API Keys]` (Emerald green).
+  2. **Interactive Sophos XDR Configuration Modal Dialog:**
+     - Client ID input.
+     - Client Secret input with eye toggle visibility control.
+     - Regional Base URL dropdown (Global `api.central.sophos.com`, US-East, US-West, EU-Central, EU-West, APAC).
+     - Tenant ID input (with auto-discovery via `/whoami/v1`).
+     - Live `[⚡ Test Connection]` button connecting directly to `https://id.sophos.com/api/v2/oauth2/token` and `https://api.sophos.com/whoami/v1`.
+     - `[💾 Save & Connect API]` and `[🗑 Delete API]` controls with interactive status alerts.
+  3. **Backend Service & FastAPI Endpoints:**
+     - Created `backend/app/services/sophos_xdr.py`: Persistent credentials store (`/var/lib/opensoc/sophos_config.json`), OAuth2 token caching, WhoAmI regional resolution, and component health monitoring.
+     - Added routes in `backend/app/api/v1/api.py`:
+       - `GET /api/v1/sophos/config` (Masked credentials)
+       - `POST /api/v1/sophos/config` (Live OAuth2 validation & persistent save)
+       - `DELETE /api/v1/sophos/config` (Credential purge & cache reset)
+       - `POST /api/v1/sophos/test` (On-the-fly connectivity validation)
+     - Added `sophos_xdr` to `get_live_overview_data()` in `backend/app/services/live_telemetry.py`.
+  4. **Production Server Deployment & Verification:**
+     - Deployed all updated files to `172.31.105.11` and restarted `opensoc-forge.service`.
+     - Tested live `/api/v1/overview` and `/api/v1/sophos/test` endpoints.
+     - Verified 100% file synchronization across all 19 system files using `verify_content_match.py`.

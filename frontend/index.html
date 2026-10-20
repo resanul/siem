@@ -181,6 +181,28 @@ const initialComponents = [{
   uptime: "Active",
   can_toggle: false,
   enabled: true
+}, {
+  name: "crowdstrike_falcon",
+  version: "7.40 / API v2",
+  status: "HEALTHY",
+  ports: "api.us-2 (HTTPS:443)",
+  type: "Identity & EDR Cloud Adapter",
+  pid: "-",
+  uptime: "Active Cloud API",
+  can_toggle: false,
+  enabled: true,
+  is_cloud_api: true
+}, {
+  name: "sophos_xdr",
+  version: "Central Cloud / API v1",
+  status: "NOT_CONFIGURED",
+  ports: "api.central (HTTPS:443)",
+  type: "Endpoint XDR & Telemetry Adapter",
+  pid: "-",
+  uptime: "Not Configured",
+  can_toggle: false,
+  enabled: false,
+  is_cloud_api: true
 }];
 const initialJobs = [];
 function App() {
@@ -271,6 +293,15 @@ function App() {
   const [csTestLoading, setCsTestLoading] = useState(false);
   const [csSaveLoading, setCsSaveLoading] = useState(false);
   const [csFeedback, setCsFeedback] = useState(null);
+  const [sophosConfigModalOpen, setSophosConfigModalOpen] = useState(false);
+  const [sophosClientId, setSophosClientId] = useState("");
+  const [sophosClientSecret, setSophosClientSecret] = useState("");
+  const [sophosTenantId, setSophosTenantId] = useState("");
+  const [sophosBaseUrl, setSophosBaseUrl] = useState("https://api.central.sophos.com");
+  const [sophosShowSecret, setSophosShowSecret] = useState(false);
+  const [sophosTestLoading, setSophosTestLoading] = useState(false);
+  const [sophosSaveLoading, setSophosSaveLoading] = useState(false);
+  const [sophosFeedback, setSophosFeedback] = useState(null);
   const [healthDiagnostics, setHealthDiagnostics] = useState({
     host: {
       os: "Red Hat Enterprise Linux 9.8 (Plow)",
@@ -2024,6 +2055,96 @@ function App() {
       }
     } catch (e) {
       setCsFeedback({ type: "error", message: `✕ Delete error: ${e.message}` });
+    }
+  };
+
+  const loadSophosConfig = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/sophos/config", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.client_id) setSophosClientId(data.client_id);
+        if (data.tenant_id) setSophosTenantId(data.tenant_id);
+        if (data.base_url) setSophosBaseUrl(data.base_url);
+      }
+    } catch (e) {}
+  };
+
+  const handleTestSophosConfig = async () => {
+    setSophosTestLoading(true);
+    setSophosFeedback(null);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) };
+      const res = await fetch("/api/v1/sophos/test", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ client_id: sophosClientId, client_secret: sophosClientSecret, tenant_id: sophosTenantId, base_url: sophosBaseUrl })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSophosFeedback({ type: "success", message: `✓ ${data.message || "Connection Successful! Sophos Central authenticated."}` });
+        if (data.tenant_id && !sophosTenantId) setSophosTenantId(data.tenant_id);
+      } else {
+        setSophosFeedback({ type: "error", message: `✕ ${data.detail || data.message || "Connection failed. Please check Sophos credentials."}` });
+      }
+    } catch (e) {
+      setSophosFeedback({ type: "error", message: `✕ Connection error: ${e.message}` });
+    } finally {
+      setSophosTestLoading(false);
+    }
+  };
+
+  const handleSaveSophosConfig = async () => {
+    setSophosSaveLoading(true);
+    setSophosFeedback(null);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) };
+      const res = await fetch("/api/v1/sophos/config", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ client_id: sophosClientId, client_secret: sophosClientSecret, tenant_id: sophosTenantId, base_url: sophosBaseUrl, enabled: true })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSophosFeedback({ type: "success", message: "✓ Sophos Central API saved and connected successfully!" });
+        fetchOverview();
+        setTimeout(() => {
+          setSophosConfigModalOpen(false);
+          setSophosFeedback(null);
+        }, 1200);
+      } else {
+        setSophosFeedback({ type: "error", message: `✕ ${data.detail || data.message || "Failed to save Sophos API config."}` });
+      }
+    } catch (e) {
+      setSophosFeedback({ type: "error", message: `✕ Save error: ${e.message}` });
+    } finally {
+      setSophosSaveLoading(false);
+    }
+  };
+
+  const handleDeleteSophosConfig = async () => {
+    if (!window.confirm("Are you sure you want to delete and disconnect Sophos Central API credentials?")) return;
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/sophos/config", { method: "DELETE", headers });
+      if (res.ok) {
+        setSophosClientId("");
+        setSophosClientSecret("");
+        setSophosTenantId("");
+        setSophosFeedback({ type: "success", message: "Sophos Central API removed." });
+        fetchOverview();
+        setTimeout(() => {
+          setSophosConfigModalOpen(false);
+          setSophosFeedback(null);
+        }, 1200);
+      }
+    } catch (e) {
+      setSophosFeedback({ type: "error", message: `✕ Delete error: ${e.message}` });
     }
   };
 
@@ -5000,16 +5121,35 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
       className: "p-3 text-right"
     }, c.is_cloud_api ? /*#__PURE__*/React.createElement("div", {
       className: "flex items-center justify-end gap-2"
-    }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => {
-        loadCsConfig();
-        setCsConfigModalOpen(true);
-      },
-      className: "flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/30 transition-all font-bold"
-    }, "⚙ API Config"), (c.status === "HEALTHY" || c.status === "DEGRADED") && /*#__PURE__*/React.createElement("button", {
-      onClick: handleDeleteCsConfig,
-      className: "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 transition-all font-semibold"
-    }, "🗑 Delete API")) : (c.can_toggle ? /*#__PURE__*/React.createElement("div", {
+    }, c.name === "sophos_xdr" ? [
+      /*#__PURE__*/React.createElement("button", {
+        key: "conf",
+        onClick: () => {
+          loadSophosConfig();
+          setSophosConfigModalOpen(true);
+        },
+        className: "flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/30 transition-all font-bold"
+      }, (c.status === "HEALTHY" || c.status === "DEGRADED") ? "⚙ API Config" : "+ Add API Keys"),
+      (c.status === "HEALTHY" || c.status === "DEGRADED") && /*#__PURE__*/React.createElement("button", {
+        key: "del",
+        onClick: handleDeleteSophosConfig,
+        className: "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 transition-all font-semibold"
+      }, "🗑 Delete API")
+    ] : [
+      /*#__PURE__*/React.createElement("button", {
+        key: "conf",
+        onClick: () => {
+          loadCsConfig();
+          setCsConfigModalOpen(true);
+        },
+        className: "flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/30 transition-all font-bold"
+      }, (c.status === "HEALTHY" || c.status === "DEGRADED") ? "⚙ API Config" : "+ Add API Keys"),
+      (c.status === "HEALTHY" || c.status === "DEGRADED") && /*#__PURE__*/React.createElement("button", {
+        key: "del",
+        onClick: handleDeleteCsConfig,
+        className: "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 transition-all font-semibold"
+      }, "🗑 Delete API")
+    ]) : (c.can_toggle ? /*#__PURE__*/React.createElement("div", {
       className: "flex items-center justify-end gap-2"
     }, isRunning ? /*#__PURE__*/React.createElement("button", {
       disabled: isLoading,
@@ -5130,7 +5270,114 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "save",
     className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, csSaveLoading ? "Saving..." : "Save & Connect API")))))) , currentScreen === "jobs" && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, csSaveLoading ? "Saving..." : "Save & Connect API")))))) , sophosConfigModalOpen && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50",
+    onClick: () => setSophosConfigModalOpen(false)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] max-w-lg w-full p-6 shadow-2xl relative space-y-4",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between pb-3 border-b border-[#1f293d]"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "shield",
+    className: "w-5 h-5 text-indigo-400"
+  }), /*#__PURE__*/React.createElement("h3", {
+    className: "text-base font-bold text-slate-100 font-mono tracking-tight"
+  }, "Sophos Central (XDR / MDR) API")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, "Configure Sophos Central API credentials for endpoint detection and telemetry.")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSophosConfigModalOpen(false),
+    className: "text-slate-400 hover:text-slate-200 transition p-1"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-4 h-4"
+  }))), sophosFeedback && /*#__PURE__*/React.createElement("div", {
+    className: `p-3 rounded-lg text-xs font-mono border ${sophosFeedback.type === "success" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}`
+  }, sophosFeedback.message), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3 text-xs"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+  }, "SOPHOS CLIENT ID"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: sophosClientId,
+    onChange: e => setSophosClientId(e.target.value),
+    placeholder: "e.g. 5a562acc-248f-415f-98bb-488412e560d7",
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+  }, "CLIENT SECRET"), /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: sophosShowSecret ? "text" : "password",
+    value: sophosClientSecret,
+    onChange: e => setSophosClientSecret(e.target.value),
+    placeholder: "Sophos Central API Secret...",
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 pr-10 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+  }), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setSophosShowSecret(!sophosShowSecret),
+    className: "absolute right-2.5 top-2 text-slate-400 hover:text-slate-200"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": sophosShowSecret ? "eye-off" : "eye",
+    className: "w-4 h-4"
+  })))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+  }, "TENANT ID (OPTIONAL)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: sophosTenantId,
+    onChange: e => setSophosTenantId(e.target.value),
+    placeholder: "Auto-detected via /whoami or enter Tenant UUID",
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+  }, "REGIONAL BASE URL"), /*#__PURE__*/React.createElement("select", {
+    value: sophosBaseUrl,
+    onChange: e => setSophosBaseUrl(e.target.value),
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "https://api.central.sophos.com"
+  }, "Global Central: https://api.central.sophos.com (Default)"), /*#__PURE__*/React.createElement("option", {
+    value: "https://api-us01.central.sophos.com"
+  }, "US-East (Virginia): https://api-us01.central.sophos.com"), /*#__PURE__*/React.createElement("option", {
+    value: "https://api-us02.central.sophos.com"
+  }, "US-West (Oregon): https://api-us02.central.sophos.com"), /*#__PURE__*/React.createElement("option", {
+    value: "https://api-eu01.central.sophos.com"
+  }, "EU-Central (Frankfurt): https://api-eu01.central.sophos.com"), /*#__PURE__*/React.createElement("option", {
+    value: "https://api-eu02.central.sophos.com"
+  }, "EU-West (Ireland): https://api-eu02.central.sophos.com"), /*#__PURE__*/React.createElement("option", {
+    value: "https://api-ap01.central.sophos.com"
+  }, "APAC (Sydney): https://api-ap01.central.sophos.com")))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between pt-3 border-t border-[#1f293d] flex-wrap gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    disabled: sophosTestLoading,
+    onClick: handleTestSophosConfig,
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] border border-[#1f293d] text-slate-200 text-xs font-mono font-bold flex items-center space-x-1.5 transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "zap",
+    className: "w-3.5 h-3.5 text-amber-400"
+  }), /*#__PURE__*/React.createElement("span", null, sophosTestLoading ? "Testing..." : "Test Connection")), (sophosClientId || sophosClientSecret) && /*#__PURE__*/React.createElement("button", {
+    onClick: handleDeleteSophosConfig,
+    className: "px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center space-x-1.5 transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "trash-2",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Delete API"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSophosConfigModalOpen(false),
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] text-slate-400 text-xs font-mono transition"
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    disabled: sophosSaveLoading,
+    onClick: handleSaveSophosConfig,
+    className: "px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center space-x-1.5 shadow-lg shadow-indigo-900/30 transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "save",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, sophosSaveLoading ? "Saving..." : "Save & Connect API")))))) , currentScreen === "jobs" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-center"

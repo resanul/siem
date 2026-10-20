@@ -397,6 +397,59 @@ def test_crowdstrike_config_endpoint(
     return test_crowdstrike_credentials(client_id, client_secret, base_url)
 
 
+# ===================== SOPHOS CENTRAL (XDR) INTEGRATION =====================
+@api_router.get("/sophos/config")
+def get_sophos_config_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Returns masked Sophos Central API configuration and current connection health."""
+    from backend.app.services.sophos_xdr import get_masked_sophos_config
+    return get_masked_sophos_config()
+
+
+@api_router.post("/sophos/config")
+def post_sophos_config_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Validates and persists Sophos Central API credentials."""
+    client_id = payload.get("client_id", "").strip()
+    client_secret = payload.get("client_secret", "").strip()
+    tenant_id = payload.get("tenant_id", "").strip()
+    base_url = payload.get("base_url", "https://api.central.sophos.com").strip()
+    enabled = payload.get("enabled", True)
+
+    from backend.app.services.sophos_xdr import save_sophos_config
+    res = save_sophos_config(client_id, client_secret, tenant_id=tenant_id, base_url=base_url, enabled=enabled)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("message", "Validation failed"))
+    return res
+
+
+@api_router.delete("/sophos/config")
+def delete_sophos_config_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Purges Sophos Central API credentials and resets component state."""
+    from backend.app.services.sophos_xdr import delete_sophos_config
+    return delete_sophos_config()
+
+
+@api_router.post("/sophos/test")
+def test_sophos_config_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Tests connection with provided Sophos Central credentials without saving."""
+    client_id = payload.get("client_id", "").strip()
+    client_secret = payload.get("client_secret", "").strip()
+    tenant_id = payload.get("tenant_id", "").strip()
+    base_url = payload.get("base_url", "https://api.central.sophos.com").strip()
+
+    from backend.app.services.sophos_xdr import test_sophos_credentials
+    return test_sophos_credentials(client_id, client_secret, tenant_id=tenant_id, base_url=base_url)
+
+
 # ===================== EVENT SEARCH =====================
 @api_router.post("/events/search", response_model=EventSearchResponse)
 def search_events_post(

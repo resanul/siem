@@ -693,6 +693,34 @@ def get_live_overview_data() -> Dict[str, Any]:
         "details": cs_status_info.get("details", "Active Directory DC: TBL-ADNS-04 (172.31.152.14) • tblbd.com")
     })
 
+    # 7. Sophos Central (XDR / MDR) Cloud Component
+    try:
+        from backend.app.services.sophos_xdr import get_sophos_component_status
+        sophos_status_info = get_sophos_component_status()
+    except Exception:
+        sophos_status_info = {
+            "status": "NOT_CONFIGURED",
+            "enabled": False,
+            "uptime": "Not Configured",
+            "details": "Sophos Central API credentials not configured",
+            "ports": "api.central (HTTPS:443)"
+        }
+
+    components.append({
+        "name": "sophos_xdr",
+        "display_name": "Sophos Central (XDR / MDR)",
+        "version": "Central Cloud / API v1",
+        "status": sophos_status_info.get("status", "NOT_CONFIGURED"),
+        "ports": sophos_status_info.get("ports", "api.central (HTTPS:443)"),
+        "type": "Endpoint XDR & Telemetry Adapter",
+        "pid": "-",
+        "uptime": sophos_status_info.get("uptime", "Not Configured"),
+        "can_toggle": False,
+        "enabled": sophos_status_info.get("enabled", False),
+        "is_cloud_api": True,
+        "details": sophos_status_info.get("details", "Sophos Central XDR Telemetry")
+    })
+
     net_telemetry = get_live_network_telemetry()
 
     return {
