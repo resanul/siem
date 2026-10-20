@@ -49,7 +49,9 @@ def main():
         ("Retrieving latest commit details", f"git -C /home/{args.user}/siem log -1 --pretty=format:'%h - %s (%cr)'"),
         ("Synchronizing backend assets to /opt/opensoc-forge", f"echo {args.password} | sudo -S cp -rf /home/{args.user}/siem/backend /opt/opensoc-forge/"),
         ("Synchronizing frontend assets to /opt/opensoc-forge", f"echo {args.password} | sudo -S cp -rf /home/{args.user}/siem/frontend /opt/opensoc-forge/"),
+        ("Synchronizing data and threat intelligence assets to /opt/opensoc-forge", f"echo {args.password} | sudo -S cp -rf /home/{args.user}/siem/data /opt/opensoc-forge/"),
         ("Restarting opensoc-forge-mgmt container", f"echo {args.password} | sudo -S podman restart opensoc-forge-mgmt"),
+        ("Ingesting latest IOC dataset into offline SQLite database", f"echo {args.password} | sudo -S podman exec opensoc-forge-mgmt python3 -c \"from backend.app.services.ioc_storage import import_iocs_from_json; print(import_iocs_from_json())\""),
     ]
 
     latest_commit = "Unknown"
