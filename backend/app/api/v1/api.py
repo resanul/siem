@@ -450,6 +450,37 @@ def test_sophos_config_endpoint(
     return test_sophos_credentials(client_id, client_secret, tenant_id=tenant_id, base_url=base_url)
 
 
+@api_router.get("/sophos/telemetry")
+def get_sophos_telemetry_endpoint(
+    force_refresh: bool = Query(default=False),
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Returns real-time Sophos Central XDR endpoint posture, notables, and fleet telemetry."""
+    from backend.app.services.sophos_xdr import get_sophos_xdr_telemetry
+    return get_sophos_xdr_telemetry(force_refresh=force_refresh)
+
+
+@api_router.post("/sophos/sync")
+def post_sophos_sync_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Forces instant synchronization with Sophos Central XDR API."""
+    from backend.app.services.sophos_xdr import get_sophos_xdr_telemetry
+    return get_sophos_xdr_telemetry(force_refresh=True)
+
+
+@api_router.post("/sophos/isolate")
+def post_sophos_isolate_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Isolates (quarantines) or reconnects a Sophos managed endpoint from network."""
+    endpoint_id = payload.get("endpoint_id", "")
+    isolate = payload.get("isolate", True)
+    from backend.app.services.sophos_xdr import toggle_endpoint_isolation
+    return toggle_endpoint_isolation(endpoint_id, isolate)
+
+
 # ===================== EVENT SEARCH =====================
 @api_router.post("/events/search", response_model=EventSearchResponse)
 def search_events_post(

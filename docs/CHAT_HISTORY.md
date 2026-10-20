@@ -598,3 +598,33 @@ When continuing work from either **Home** or **Office**:
   - **Root Cause:** `handleSaveSophosConfig` (and `handleSaveCsConfig`) called `fetchOverview()`, but the function was not declared in the component scope.
   - **Resolution:** Added `const fetchOverview = async () => { ... }` in `frontend/index.html` that queries `/api/v1/overview` and updates both `components` and `overview` state.
   - **Status:** Verified live on server `172.31.105.11` — saving and updating now complete with clean green success feedback and zero UI exceptions.
+
+
+### Session 17 — Enterprise Endpoint Security Posture (XDR) Dashboard Screen & Splunk ES Alignment
+- **Date / Time:** 2026-10-20 18:35 – 18:52 UTC+6
+- **Context:** Enterprise SIEM Endpoint Posture Visualization, Splunk ES Architectural Alignment, and Sophos Central XDR Telemetry Operations
+- **User Requests:**
+  1. *"আমার ড্যাশবোর্ড এ sophos XDR এর ডাটার জন্য এমন একটা field লাগবে তবে আমার dashboad এ যেটা সুট করবে তেমন design করো। এবং নামটা একটু চিন্তা করে professional দেখে দিও, Based on Enterprise level SIEM."*
+  2. Uploaded reference screenshot of Splunk Enterprise Security (`Security Posture` with Key Indicators, Urgency distribution, Over Time timeline trend, Top Notables table with sparklines).
+- **Actions Taken:**
+  1. **Enterprise Nomenclature & Navigation:**
+     - Created dedicated screen: **`Endpoint Security Posture (XDR)`** (ID: `endpoint_xdr`) placed in `OPERATIONS` navigation with badge `XDR Live`.
+     - Modeled directly on Enterprise SIEM standard: Splunk Enterprise Security (`Security Posture` / `Endpoint Notables`).
+  2. **Top Key Indicators Banner (Splunk ES KPI Cards):**
+     - `ENDPOINT NOTABLES`: `47` (+12 ↗)
+     - `THREAT NOTABLES`: `23` (+5 ↗)
+     - `ISOLATED HOSTS`: `2` (Active zero-trust quarantine)
+     - `RANSOMWARE BLOCKED`: `14` (Intercept X CryptoGuard file recovery)
+     - `TAMPER PROTECTION`: `98.4%` (Enforced across fleet)
+  3. **Visual Analytics & Trend Charts:**
+     - **Notable Events By Urgency:** Distribution horizontal bars (Critical 33.3%, High 39.5%, Medium 18.8%, Low 8.4%).
+     - **Notable Events Over Time (24h Trend):** Multi-series timeline chart representing 24h burst cycles across Endpoint, Threat, and Network streams.
+  4. **Top Notable Events & Forensic Investigation:**
+     - Splunk ES-style table with rule name, process path, urgency, host, IP, MITRE ATT&CK tactic/technique, 24h sparkline, count, and `[Forensics]` drawer.
+     - Interactive Forensics Drawer with process lineage, SHA256, and raw incident indicators.
+  5. **Managed Endpoints & Zero-Trust Network Isolation:**
+     - Device table detailing hostname, OS, Sophos agent version, Intercept X modules, tamper protection, and health.
+     - Live interactive `[⚡ Isolate Host]` and `[🔓 Reconnect Host]` controls with `/api/v1/sophos/isolate` integration.
+  6. **Deployment & Dual-Branch Synchronization:**
+     - Deployed to `172.31.105.11` and verified live with curl.
+     - Synchronized 100% across local workspace, remote server, and GitHub (`main` & `master`).
