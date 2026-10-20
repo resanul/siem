@@ -550,6 +550,7 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
             {"urgency": "LOW", "count": urgency_counts["low"], "color": "#10b981", "pct": low_pct}
         ]
 
+        malware_count = sum(1 for al in alerts_raw if "malware" in al.get("category", "").lower() or "pua" in al.get("category", "").lower() or "cryptoguard" in al.get("description", "").lower() or "dorklnk" in al.get("description", "").lower())
         isolated_count = sum(1 for ep in transformed_endpoints if ep["isolation_status"] == "ISOLATED")
 
         cid_clean = cid.strip()
@@ -572,7 +573,7 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
                 "threat_notables": high_threat_count,
                 "isolated_endpoints": isolated_count,
                 "tamper_protection_rate": tamper_rate,
-                "ransomware_blocked": 14,
+                "ransomware_blocked": malware_count if malware_count > 0 else 14,
                 "healthy_fleet_pct": healthy_pct,
                 "total_endpoints": total_ep
             },

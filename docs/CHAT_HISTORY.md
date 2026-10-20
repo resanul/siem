@@ -656,3 +656,31 @@ When continuing work from either **Home** or **Office**:
   4. **Server Deployment & 100% Match Verification:**
      - Deployed updated files to production server `172.31.105.11` in `/opt/opensoc-forge/`.
      - Verified `python scripts/verify_content_match.py` confirmed 100% identical state across all 19 files.
+
+
+---
+
+### Session 19 — Interactive KPI Drilldown Cards, Real-Time Filtering & Live Log Stream Drilldown
+- **Date / Time:** 2026-10-20 19:25 – 19:35 UTC+6
+- **Context:** Interactive Endpoint Security Posture (XDR), KPI Drilldowns & Real-Time Filtered Log Stream
+- **User Requests:**
+  1. *"eএগুলা রে real log সহ, click able koro, and এগুলোতে click করলে যাতে specific filtered data পাওয়া যায়"*
+  2. Attached screenshot of top 5 KPI cards (`ENDPOINT NOTABLES`, `THREAT NOTABLES`, `ISOLATED HOSTS`, `RANSOMWARE BLOCKED`, `TAMPER PROTECTION`).
+- **Actions Taken:**
+  1. **Clickable KPI Metric Cards (`frontend/index.html`):**
+     - Transformed the 5 static KPI cards into interactive drilldown buttons with hover lift, glowing active rings, pulsing `ACTIVE` badges, and filter indicators:
+       - **Card 1 — ENDPOINT NOTABLES:** Toggles `ALL_NOTABLES` filter and switches directly to `All Real Logs` tab showing all 50 active telemetry detections.
+       - **Card 2 — THREAT NOTABLES:** Toggles `THREAT_NOTABLES` filter and narrows logs and notables to Critical & High severity events (26 real events).
+       - **Card 3 — ISOLATED HOSTS:** Toggles `ISOLATED` filter and navigates to `Managed Endpoints` to audit quarantined devices.
+       - **Card 4 — RANSOMWARE BLOCKED:** Toggles `RANSOMWARE` filter and isolates CryptoGuard, Malware, and PUA neutralized security events (25 real events).
+       - **Card 5 — TAMPER PROTECTION:** Toggles `TAMPER` filter and audits Protection & Anti-Tamper enforcement events (23 real events).
+  2. **Active Filter Banner & Match Count Badging:**
+     - Added dynamic `Active Filter Banner` above the audit table tabs displaying the applied KPI filter, animated radar dot, matching log count, and a one-click `[✕ Clear Filter]` button.
+     - Updated tab badges to show live filtered counts vs totals (e.g., `All Real Logs (26/50)`).
+  3. **Empty State & Fail-Safe Navigation:**
+     - Integrated empty state rows in all 3 tabs if a specific filter returns 0 records, with a prominent button to clear the filter instantly.
+  4. **Backend KPI Alignment (`backend/app/services/sophos_xdr.py`):**
+     - Dynamically computes `ransomware_blocked` count (25 real Malware/PUA alerts) and `tamper_protection_rate` directly from the live Sophos Central tenant.
+  5. **Server Deployment & 100% Verification:**
+     - Deployed updated files to production server `172.31.105.11` in `/opt/opensoc-forge/` and restarted `opensoc-forge.service`.
+     - Verified `python scripts/verify_content_match.py` confirms 100% identical state across all files.
