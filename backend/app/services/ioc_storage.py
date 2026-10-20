@@ -421,6 +421,17 @@ def export_iocs_snapshot(limit: int = 50000) -> str:
     target_files = [EXPORT_JSON_FILE, BACKEND_DATA_JSON]
     for target in target_files:
         try:
+            if os.path.exists(target):
+                # Safety guard: never downgrade a larger dataset file on disk
+                try:
+                    with open(target, "r", encoding="utf-8") as existing_f:
+                        head = existing_f.read(1024)
+                        import re
+                        m = re.search(r'"total_indicators":\s*(\d+)', head)
+                        if m and int(m.group(1)) > len(items):
+                            continue
+                except Exception:
+                    pass
             parent = os.path.dirname(target)
             os.makedirs(parent, exist_ok=True)
             with open(target, "w", encoding="utf-8") as f:
