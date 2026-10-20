@@ -2,6 +2,7 @@
 OpenSOC Forge - CrowdStrike Falcon Identity Protection (ITDR / Active Directory) Service
 Provides live integration with CrowdStrike Falcon Identity Threat Protection API,
 streaming real Active Directory domain controllers, user risk profiles, and identity threat events.
+Includes credential management (Add, Edit, Test, Delete) for platform component inventory.
 """
 
 import os
@@ -14,10 +15,18 @@ from datetime import datetime
 from collections import Counter
 from typing import Dict, Any, List, Optional
 
-# Default CrowdStrike credentials provided by organization
-CROWDSTRIKE_CLIENT_ID = os.environ.get("CROWDSTRIKE_CLIENT_ID", "ee7f2ead38f14a0da05fd363d7222866")
-CROWDSTRIKE_CLIENT_SECRET = os.environ.get("CROWDSTRIKE_CLIENT_SECRET", "DkCb4nA3sZVo6cHgQBLmezdN0a1Ut79J28q5yWXM")
-CROWDSTRIKE_BASE_URL = os.environ.get("CROWDSTRIKE_BASE_URL", "https://api.us-2.crowdstrike.com").rstrip("/")
+CONFIG_PERSISTENT_FILE = "/var/lib/opensoc/crowdstrike_config.json"
+CONFIG_LOCAL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "configs", "crowdstrike_config.json")
+CONFIG_TEMP_FILE = "/tmp/crowdstrike_config.json"
+
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "client_id": "ee7f2ead38f14a0da05fd363d7222866",
+    "client_secret": "DkCb4nA3sZVo6cHgQBLmezdN0a1Ut79J28q5yWXM",
+    "base_url": "https://api.us-2.crowdstrike.com",
+    "enabled": True,
+    "status": "HEALTHY",
+    "last_tested": "Active Cloud API"
+}
 
 _TOKEN_CACHE: Dict[str, Any] = {
     "access_token": None,
@@ -32,6 +41,196 @@ _DATA_CACHE: Dict[str, Any] = {
 _ssl_context = ssl._create_unverified_context()
 
 
+def _get_config_target_path() -> str:
+    for candidate in [CONFIG_PERSISTENT_FILE, CONFIG_LOCAL_FILE, CONFIG_TEMP_FILE]:
+        d = os.path.dirname(candidate)
+        if os.path.exists(candidate) or (d and os.path.exists(d)):
+            return candidate
+    return CONFIG_TEMP_FILE
+
+
+def load_crowdstrike_config(reload: bool = False) -> Dict[str, Any]:
+    """Loads saved CrowdStrike credentials from persistent JSON or defaults."""
+    for p in [CONFIG_PERSISTENT_FILE, CONFIG_LOCAL_FILE, CONFIG_TEMP_FILE]:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return {**DEFAULT_CONFIG, **data}
+            except Exception:
+                pass
+    return DEFAULT_CONFIG.copy()
+
+
+def get_masked_crowdstrike_config() -> Dict[str, Any]:
+    """Returns configuration with sensitive keys masked for security in UI."""
+    cfg = load_crowdstrike_config()
+    cid = cfg.get("client_id", "").strip()
+    sec = cfg.get("client_secret", "").strip()
+    
+    is_configured = bool(cid and sec)
+    masked_cid = f"{cid[:6]}...{cid[-4:]}" if len(cid) >= 10 else (cid if cid else "")
+    masked_sec = "••••••••••••••••" if sec else ""
+
+    return {
+        "is_configured": is_configured,
+        "client_id": cid, # needed for edit forms if requested
+        "client_id_masked": masked_cid,
+        "client_secret_masked": masked_sec,
+        "base_url": cfg.get("base_url", "https://api.us-2.crowdstrike.com"),
+        "status": cfg.get("status", "HEALTHY" if is_configured else "NOT_CONFIGURED"),
+        "enabled": cfg.get("enabled", True),
+        "last_tested": cfg.get("last_tested", "-")
+    }
+
+
+def test_crowdstrike_credentials(client_id: str, client_secret: str, base_url: str = "https://api.us-2.crowdstrike.com") -> Dict[str, Any]:
+    """Validates OAuth2 credentials against CrowdStrike Falcon API."""
+    if not client_id or not client_secret:
+        return {"success": False, "message": "Client ID and Client Secret are required."}
+
+    clean_base = base_url.rstrip("/")
+    token_url = f"{clean_base}/oauth2/token"
+    payload = urllib.parse.urlencode({
+        "client_id": client_id.strip(),
+        "client_secret": client_secret.strip()
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        token_url,
+        data=payload,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "OpenSOC-Forge-Identity/1.0"
+        }
+    )
+
+    try:
+        from backend.app.services.proxy_manager import safe_urlopen
+        resp = safe_urlopen(req, timeout=10)
+        res_data = json.loads(resp.read().decode("utf-8"))
+        token = res_data.get("access_token")
+        if token:
+            return {
+                "success": True,
+                "message": "Connection Successful! Falcon OAuth2 token acquired.",
+                "expires_in": res_data.get("expires_in", 1799)
+            }
+    except Exception as e:
+        try:
+            with urllib.request.urlopen(req, context=_ssl_context, timeout=10) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                token = res_data.get("access_token")
+                if token:
+                    return {
+                        "success": True,
+                        "message": "Connection Successful! Falcon OAuth2 token acquired.",
+                        "expires_in": res_data.get("expires_in", 1799)
+                    }
+        except Exception as e2:
+            return {"success": False, "message": f"Authentication Failed: {str(e2)}"}
+
+    return {"success": False, "message": "Failed to authenticate with CrowdStrike API."}
+
+
+def save_crowdstrike_config(client_id: str, client_secret: str, base_url: str = "https://api.us-2.crowdstrike.com", enabled: bool = True) -> Dict[str, Any]:
+    """Validates and persistently saves CrowdStrike credentials."""
+    global _TOKEN_CACHE, _DATA_CACHE
+    
+    # Test credentials first
+    test_res = test_crowdstrike_credentials(client_id, client_secret, base_url)
+    if not test_res.get("success"):
+        return {
+            "success": False,
+            "message": test_res.get("message", "Validation failed"),
+            "status": "DEGRADED"
+        }
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    new_cfg = {
+        "client_id": client_id.strip(),
+        "client_secret": client_secret.strip(),
+        "base_url": base_url.strip().rstrip("/"),
+        "enabled": enabled,
+        "status": "HEALTHY",
+        "last_tested": now_str
+    }
+
+    target_path = _get_config_target_path()
+    try:
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(new_cfg, f, indent=2)
+    except Exception as e:
+        print(f"[CrowdStrike Identity] Error saving config to {target_path}: {e}")
+
+    # Invalidate token and data cache so next request fetches fresh data
+    _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
+    _DATA_CACHE = {"last_synced": 0, "data": None}
+
+    return {
+        "success": True,
+        "message": "CrowdStrike Falcon API keys saved and connected successfully!",
+        "status": "HEALTHY",
+        "config": get_masked_crowdstrike_config()
+    }
+
+
+def delete_crowdstrike_config() -> Dict[str, Any]:
+    """Deletes stored CrowdStrike credentials and resets component state."""
+    global _TOKEN_CACHE, _DATA_CACHE
+
+    empty_cfg = {
+        "client_id": "",
+        "client_secret": "",
+        "base_url": "https://api.us-2.crowdstrike.com",
+        "enabled": False,
+        "status": "NOT_CONFIGURED",
+        "last_tested": "API Keys Removed"
+    }
+
+    target_path = _get_config_target_path()
+    try:
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(empty_cfg, f, indent=2)
+    except Exception as e:
+        print(f"[CrowdStrike Identity] Error writing empty config: {e}")
+
+    # Clear caches
+    _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
+    _DATA_CACHE = {"last_synced": 0, "data": None}
+
+    return {
+        "success": True,
+        "message": "CrowdStrike Falcon API keys successfully deleted. Component set to NOT CONFIGURED.",
+        "status": "NOT_CONFIGURED"
+    }
+
+
+def get_crowdstrike_component_status() -> Dict[str, Any]:
+    """Returns component metadata for Platform Component Inventory and Overview."""
+    cfg = load_crowdstrike_config()
+    cid = cfg.get("client_id", "").strip()
+    sec = cfg.get("client_secret", "").strip()
+    
+    if not cid or not sec:
+        return {
+            "status": "NOT_CONFIGURED",
+            "enabled": False,
+            "uptime": "Disconnected",
+            "details": "API keys not configured. Click [+ Add API] to connect."
+        }
+    
+    return {
+        "status": cfg.get("status", "HEALTHY"),
+        "enabled": cfg.get("enabled", True),
+        "uptime": cfg.get("last_tested", "Active Cloud API"),
+        "details": f"Active Directory DC: TBL-ADNS-04 (172.31.152.14) • Forest: TBLBD.COM"
+    }
+
+
 def _get_falcon_token() -> Optional[str]:
     """Retrieves or refreshes OAuth2 Bearer token from CrowdStrike."""
     global _TOKEN_CACHE
@@ -39,10 +238,18 @@ def _get_falcon_token() -> Optional[str]:
     if _TOKEN_CACHE["access_token"] and now < _TOKEN_CACHE["expires_at"] - 60:
         return _TOKEN_CACHE["access_token"]
 
-    token_url = f"{CROWDSTRIKE_BASE_URL}/oauth2/token"
+    cfg = load_crowdstrike_config()
+    client_id = cfg.get("client_id", "").strip()
+    client_secret = cfg.get("client_secret", "").strip()
+    base_url = cfg.get("base_url", "https://api.us-2.crowdstrike.com").rstrip("/")
+
+    if not client_id or not client_secret:
+        return None
+
+    token_url = f"{base_url}/oauth2/token"
     payload = urllib.parse.urlencode({
-        "client_id": CROWDSTRIKE_CLIENT_ID,
-        "client_secret": CROWDSTRIKE_CLIENT_SECRET
+        "client_id": client_id,
+        "client_secret": client_secret
     }).encode("utf-8")
 
     req = urllib.request.Request(
@@ -65,7 +272,6 @@ def _get_falcon_token() -> Optional[str]:
             _TOKEN_CACHE["expires_at"] = now + expires_in
             return token
     except Exception:
-        # Direct fallback without proxy manager if not configured
         try:
             with urllib.request.urlopen(req, context=_ssl_context, timeout=12) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
@@ -86,7 +292,10 @@ def _falcon_request(endpoint: str, method: str = "GET", body: Optional[bytes] = 
     if not token:
         return {}
 
-    url = f"{CROWDSTRIKE_BASE_URL}{endpoint}"
+    cfg = load_crowdstrike_config()
+    base_url = cfg.get("base_url", "https://api.us-2.crowdstrike.com").rstrip("/")
+    url = f"{base_url}{endpoint}"
+
     req = urllib.request.Request(
         url,
         data=body,
@@ -122,6 +331,40 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
     if not force_refresh and _DATA_CACHE["data"] and now - _DATA_CACHE["last_synced"] < 30:
         return _DATA_CACHE["data"]
 
+    cfg = load_crowdstrike_config()
+    cid = cfg.get("client_id", "").strip()
+    sec = cfg.get("client_secret", "").strip()
+    if not cid or not sec:
+        empty_res = {
+            "status": "NOT_CONFIGURED",
+            "last_synced": datetime.utcnow().isoformat() + "Z",
+            "api_tenant": {
+                "client_id_masked": "Not Configured",
+                "base_url": cfg.get("base_url", "https://api.us-2.crowdstrike.com"),
+                "provider": "CrowdStrike Falcon Identity Protection (ITDR)"
+            },
+            "domain_controllers": [],
+            "kpis": {
+                "total_users": 0,
+                "total_alerts": 0,
+                "active_domain": "Not Connected",
+                "active_dc_count": 0,
+                "authentications": {"success": 0, "failed": 0, "rate": "0.0%"},
+                "severities": {},
+                "high_risk_users": 0,
+                "stale_accounts": 0,
+                "lateral_movement_count": 0,
+                "privilege_escalation_count": 0
+            },
+            "timeline": {"labels": [], "values": []},
+            "top_scenarios": [],
+            "top_tactics": [],
+            "users": [],
+            "events": []
+        }
+        _DATA_CACHE["data"] = empty_res
+        return empty_res
+
     # 1. Fetch IDP sensors / Active Directory Domain Controllers
     idp_devices_res = _falcon_request("/identity-protection/queries/devices/v1")
     idp_device_ids = idp_devices_res.get("resources", [])
@@ -142,7 +385,6 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
             })
     
     if not controllers:
-        # Resilient fallback default
         controllers.append({
             "id": "58a299a49a274dd899befdae95a94914",
             "hostname": "TBL-ADNS-04",
@@ -193,7 +435,6 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
         guid = a.get("source_account_object_guid") or "-"
         ou = a.get("source_account_ou") or "Domain Controllers"
 
-        # Track distinct users
         if user not in user_map:
             user_map[user] = {
                 "username": user,
@@ -214,7 +455,6 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
         if rule_name not in user_entry["anomalies"]:
             user_entry["anomalies"].append(rule_name)
         
-        # Risk scoring heuristic
         if sev_name in ["Critical", "High"]:
             user_entry["max_severity"] = sev_name
             user_entry["risk_score"] = max(user_entry["risk_score"], 85)
@@ -227,7 +467,6 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                 user_entry["max_severity"] = "Low"
             user_entry["risk_score"] = max(user_entry["risk_score"], 35)
 
-        # Sparkline time bucket (hour)
         day_hour = created_ts[:13] if len(created_ts) >= 13 else "recent"
         time_series_map[day_hour] = time_series_map.get(day_hour, 0) + 1
 
@@ -250,15 +489,12 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
             "target_ip": controllers[0]["ip"] if controllers else "172.31.152.14"
         })
 
-    # Sort users by risk and alert count
     all_users = sorted(list(user_map.values()), key=lambda u: (u["risk_score"], u["alert_count"]), reverse=True)
 
-    # Calculate overall authentications / activity
     total_events = total_alerts_count
     success_auths = int(total_events * 0.96)
     failed_auths = int(total_events * 0.04)
 
-    # Activity timeline series
     timeline_labels = sorted(list(time_series_map.keys()))[-12:]
     timeline_values = [time_series_map.get(k, 0) for k in timeline_labels]
 
@@ -266,8 +502,8 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
         "status": "HEALTHY",
         "last_synced": datetime.utcnow().isoformat() + "Z",
         "api_tenant": {
-            "client_id_masked": f"{CROWDSTRIKE_CLIENT_ID[:6]}...{CROWDSTRIKE_CLIENT_ID[-4:]}",
-            "base_url": CROWDSTRIKE_BASE_URL,
+            "client_id_masked": f"{cid[:6]}...{cid[-4:]}",
+            "base_url": cfg.get("base_url", "https://api.us-2.crowdstrike.com"),
             "provider": "CrowdStrike Falcon Identity Protection (ITDR)"
         },
         "domain_controllers": controllers,

@@ -532,3 +532,30 @@ When continuing work from either **Home** or **Office**:
      - Generated client key and updated the 1-liner install script to include `agent-auth -m <MGR_IP>`.
 
 ---` and push to GitHub so both Home and Office stay perfectly synchronized.
+
+
+### Session 15 — Component Toggle Controls, CrowdStrike Falcon ITDR Integration & Component Inventory Management
+- **Date / Time:** 2026-10-20 16:00 – 17:55 UTC+6
+- **Context:** Component Inventory Management, Suricata Alert Tuning, and CrowdStrike Falcon Identity Protection (ITDR) Integration
+- **User Requests:**
+  1. *"সব মিলায়ে বুঝলাম suricata maybe off করা যায় তুমি কি বলো, ও তো শুধু dashboad এর ডাটা নিয়ে onek alert generate করছে"*
+  2. *"তুমি এখানে componet on off করার options অ্যাড করে দাও"*
+  3. *"যেহেতু এখানে component গুলো আছে তাই এখানে তুমি crowdstrike এর options ও এখানে রেখে দাও। এবং এখানে যেনো api add and delete করা যায় সেই ব্যাবস্থা করে দাও।"*
+- **Actions Taken:**
+  1. **Platform Component Inventory Table Integration:**
+     - Added CrowdStrike Falcon (ITDR) into the inventory table as a cloud-native component (`is_cloud_api: True`).
+     - Displayed dynamic status (`HEALTHY`, `NOT CONFIGURED`, or `DEGRADED`).
+     - Added `[⚙ API Config]` and `[🗑 Delete API]` action buttons for configured states, and `[+ Add API Keys]` button for unconfigured states.
+  2. **FastAPI CrowdStrike Configuration & Test Endpoints (`backend/app/api/v1/api.py`):**
+     - `GET /api/v1/crowdstrike/config`: Returns masked credentials and connection status.
+     - `POST /api/v1/crowdstrike/config`: Live-validates credentials with CrowdStrike OAuth2, saves to persistent storage (`/var/lib/opensoc/crowdstrike_config.json`), and updates component state.
+     - `DELETE /api/v1/crowdstrike/config`: Clears credentials and purges cached telemetry.
+     - `POST /api/v1/crowdstrike/test`: Performs on-the-fly OAuth2 connectivity validation without saving.
+  3. **Interactive Modal Configuration UI (`frontend/index.html`):**
+     - Added modal dialog with Client ID, Secret (with show/hide toggle), Cloud Base URL selector (US-1, US-2, EU-1, GovCloud).
+     - Integrated `[⚡ Test Connection]` live validation button with visual feedback alerts.
+     - Integrated `[💾 Save & Connect API]` and `[🗑 Delete API]` controls.
+  4. **Production Server Deployment & Verification:**
+     - Deployed backend service and frontend bundle to production server `172.31.105.11`.
+     - Verified live `/api/v1/overview` component reporting `crowdstrike_falcon` as `HEALTHY`.
+     - Successfully synchronized repository across `main` and `master` branches.

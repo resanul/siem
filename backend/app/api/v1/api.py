@@ -347,6 +347,56 @@ def post_identity_sync(
     return get_crowdstrike_identity_telemetry(force_refresh=True)
 
 
+@api_router.get("/crowdstrike/config")
+def get_crowdstrike_config_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Retrieves masked CrowdStrike Falcon API credentials and connection health."""
+    from backend.app.services.crowdstrike_identity import get_masked_crowdstrike_config
+    return get_masked_crowdstrike_config()
+
+
+@api_router.post("/crowdstrike/config")
+def post_crowdstrike_config_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Saves and validates CrowdStrike Falcon API credentials."""
+    client_id = payload.get("client_id", "").strip()
+    client_secret = payload.get("client_secret", "").strip()
+    base_url = payload.get("base_url", "https://api.us-2.crowdstrike.com").strip()
+    enabled = payload.get("enabled", True)
+
+    from backend.app.services.crowdstrike_identity import save_crowdstrike_config
+    res = save_crowdstrike_config(client_id, client_secret, base_url, enabled=enabled)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("message", "Validation failed"))
+    return res
+
+
+@api_router.delete("/crowdstrike/config")
+def delete_crowdstrike_config_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Purges CrowdStrike Falcon API credentials and resets component state."""
+    from backend.app.services.crowdstrike_identity import delete_crowdstrike_config
+    return delete_crowdstrike_config()
+
+
+@api_router.post("/crowdstrike/test")
+def test_crowdstrike_config_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Tests connection with provided CrowdStrike credentials without saving."""
+    client_id = payload.get("client_id", "").strip()
+    client_secret = payload.get("client_secret", "").strip()
+    base_url = payload.get("base_url", "https://api.us-2.crowdstrike.com").strip()
+
+    from backend.app.services.crowdstrike_identity import test_crowdstrike_credentials
+    return test_crowdstrike_credentials(client_id, client_secret, base_url)
+
+
 # ===================== EVENT SEARCH =====================
 @api_router.post("/events/search", response_model=EventSearchResponse)
 def search_events_post(
