@@ -16,7 +16,7 @@ from collections import Counter
 from typing import Dict, Any, List, Optional
 
 CONFIG_PERSISTENT_FILE = "/var/lib/opensoc/crowdstrike_config.json"
-CONFIG_LOCAL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "configs", "crowdstrike_config.json")
+CONFIG_LOCAL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "configs", "crowdstrike_config.json")
 CONFIG_TEMP_FILE = "/tmp/crowdstrike_config.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {

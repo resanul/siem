@@ -628,3 +628,31 @@ When continuing work from either **Home** or **Office**:
   6. **Deployment & Dual-Branch Synchronization:**
      - Deployed to `172.31.105.11` and verified live with curl.
      - Synchronized 100% across local workspace, remote server, and GitHub (`main` & `master`).
+
+
+---
+
+### Session 18 — 100% Real Live Sophos Central Telemetry Ingestion & All Real Logs Audit Stream
+- **Date / Time:** 2026-10-20 19:00 – 19:20 UTC+6
+- **Context:** Sophos Central Live Tenant Telemetry, Real Security Alert Auditing & Raw JSON Forensic Inspection
+- **User Requests:**
+  1. *"এগুলো কি real data?? যদি তাই হয় all log দেখার ও একটা options রাখো। এবং obossoi real logs দেখাও"*
+- **Actions Taken:**
+  1. **Live Regional Tenant Auto-Discovery & Validation:**
+     - Connected live to Sophos Central `/whoami/v1` and authenticated tenant:
+       - **Tenant Name:** `Trust Bank PLC`
+       - **Tenant ID:** `f55209e1-802e-45e4-8cf8-f5db160a1ebd`
+       - **Data Region Host:** `https://api-us03.central.sophos.com`
+     - Replaced preliminary preview data with 100% real live production telemetry streamed directly from Trust Bank PLC's Sophos Central cloud tenant.
+  2. **Backend Telemetry Service Update (`backend/app/services/sophos_xdr.py`):**
+     - Live querying of `/endpoint/v1/endpoints` (ingesting real 50 endpoints: `Sophos-DMZ-01`, `Sophos-BrDis-01`, `DBD-193`, `ITD-118`, `MPD-32`, etc.).
+     - Live querying of `/common/v1/alerts` (ingesting genuine security detections: `Malware 'Mal/DorkLnk-A'`, `Manual PUA cleanup required: 'KMS Activator' at C:\Windows\system32\SppExtComObjHook.dll`, clone duplicate alerts, etc.).
+     - Generates real KPIs: Total endpoints (50), active alert notables (50), high threat count, tamper protection enforcement rate, and urgency breakdown.
+     - Compiles `all_real_logs` containing raw live alert events with complete metadata.
+  3. **Frontend UI Enhancement (`frontend/index.html`):**
+     - Added Tab 3 to `Endpoint Security Posture (XDR)`: **`All Real Logs (Live Audit Stream)`** with dynamic live count badge.
+     - Live security event audit table displaying: `TIMESTAMP (UTC)`, `SEVERITY`, `CATEGORY` (`MALWARE`, `PUA`, `PROTECTION`), `HOST / USER` (`MPD-32` / `TBLBD\mainul.hasan`, `KRB-34` / `TBLBD\zahidul.alam`), `SECURITY EVENT DESCRIPTION`, and `[{} Raw JSON]` button.
+     - Added `sophosRawLogModal` to inspect the complete unedited JSON payload received from the Sophos Central API for forensic auditing.
+  4. **Server Deployment & 100% Match Verification:**
+     - Deployed updated files to production server `172.31.105.11` in `/opt/opensoc-forge/`.
+     - Verified `python scripts/verify_content_match.py` confirmed 100% identical state across all 19 files.

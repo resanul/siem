@@ -15,3 +15,5 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+configs/sophos_config.json
+configs/crowdstrike_config.json
