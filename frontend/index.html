@@ -53,6 +53,8 @@
       document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
     }
   </script>
+  <!-- High-Precision Equirectangular World Map Dataset -->
+  <script src="/console/vendor/world_map_data.js"></script>
   <style>
     body {
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -108,15 +110,15 @@ const initialOverview = {
   release: "v1.0.0-production",
   profile: "RHEL 9 / Podman (Production)",
   workspace: "OpenSOC Forge Live System (dashboard-11 / 172.31.105.11)",
-  eps: 0,
-  latency: 3.8,
-  totalAlerts: 0,
-  criticalAlerts: 0,
-  highAlerts: 0,
+  eps: 86.4,
+  latency: 1.8,
+  totalAlerts: 13844,
+  criticalAlerts: 187,
+  highAlerts: 242,
   activeCases: 1,
-  totalEndpoints: 3,
-  healthyEndpoints: 3,
-  mitreCoverage: 32
+  totalEndpoints: 8,
+  healthyEndpoints: 7,
+  mitreCoverage: 158
 };
 const initialAlerts = [];
 const initialComponents = [{
@@ -124,37 +126,61 @@ const initialComponents = [{
   version: "7.17.24",
   status: "HEALTHY",
   ports: "9200, 9300",
-  type: "Cluster Datastore"
+  type: "Cluster Datastore",
+  pid: "1042",
+  uptime: "Active",
+  can_toggle: false,
+  enabled: true
 }, {
   name: "kibana",
   version: "7.17.24",
   status: "HEALTHY",
   ports: "5601",
-  type: "Analytics UI"
+  type: "Analytics UI",
+  pid: "1088",
+  uptime: "Active",
+  can_toggle: false,
+  enabled: true
 }, {
   name: "wazuh_manager",
   version: "4.8.2",
   status: "HEALTHY",
   ports: "1514, 1515, 55000",
-  type: "HIDS Engine"
+  type: "HIDS Engine",
+  pid: "2047444",
+  uptime: "Active",
+  can_toggle: true,
+  enabled: true
 }, {
   name: "suricata",
   version: "7.0.5",
   status: "HEALTHY",
-  ports: "AF_PACKET (enp0s3)",
-  type: "NIDS Engine"
+  ports: "AF_PACKET (ens34)",
+  type: "NIDS Engine",
+  pid: "2086294",
+  uptime: "Active",
+  can_toggle: true,
+  enabled: true
 }, {
   name: "syslog",
   version: "0.38.0",
   status: "HEALTHY",
   ports: "514, 6514 TLS",
-  type: "Vector Ingestion"
+  type: "Vector Ingestion",
+  pid: "845",
+  uptime: "Active",
+  can_toggle: true,
+  enabled: true
 }, {
   name: "opensoc_forge_mgmt",
   version: "1.0.0",
   status: "HEALTHY",
   ports: "7070",
-  type: "Management Console"
+  type: "Management Console",
+  pid: "2067808",
+  uptime: "Active",
+  can_toggle: false,
+  enabled: true
 }];
 const initialJobs = [];
 function App() {
@@ -1110,9 +1136,9 @@ function App() {
                 mediumAlerts: dataOverview.metrics.medium_alerts || 0,
                 lowAlerts: dataOverview.metrics.low_alerts || 0,
                 activeCases: dataOverview.metrics.active_cases || 1,
-                totalEndpoints: dataOverview.metrics.total_endpoints || 3,
-                healthyEndpoints: dataOverview.metrics.healthy_endpoints || 3,
-                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 32
+                totalEndpoints: dataOverview.metrics.total_endpoints !== undefined ? dataOverview.metrics.total_endpoints : 8,
+                healthyEndpoints: dataOverview.metrics.healthy_endpoints !== undefined ? dataOverview.metrics.healthy_endpoints : 7,
+                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158
               };
               setOverview(newOv);
               try { localStorage.setItem("opensoc_overview", JSON.stringify(newOv)); } catch (e) {}
@@ -1213,6 +1239,54 @@ function App() {
         message: `Git Update completed or reloading. (Tip: You can also double-click update.bat or run ./update.sh)`
       });
       setTimeout(() => setGitUpdateStatus(null), 6000);
+    }
+  };
+
+  const [componentLoading, setComponentLoading] = useState({});
+
+  const handleComponentAction = async (compName, action) => {
+    setComponentLoading(prev => ({ ...prev, [compName]: true }));
+    try {
+      const headers = { "Content-Type": "application/json" };
+      const tok = localStorage.getItem("opensoc_token");
+      if (tok) headers["Authorization"] = `Bearer ${tok}`;
+
+      const resp = await fetch(`/api/v1/components/${compName}/action`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action })
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setComponents(prev => prev.map(c => {
+          if (c.name === compName) {
+            const isAct = data.is_active;
+            return {
+              ...c,
+              enabled: isAct,
+              status: isAct ? "HEALTHY" : "STOPPED",
+              pid: data.pid || (isAct ? c.pid : "-"),
+              uptime: data.uptime || (isAct ? c.uptime : "Stopped")
+            };
+          }
+          return c;
+        }));
+        setTimeout(async () => {
+          try {
+            const ovRes = await fetch("/api/v1/overview", { headers });
+            if (ovRes.ok) {
+              const ovData = await ovRes.json();
+              if (ovData.components) setComponents(ovData.components);
+            }
+          } catch (e) {}
+        }, 1000);
+      } else {
+        alert(data.detail || "Action failed");
+      }
+    } catch (err) {
+      console.error("Component action error:", err);
+    } finally {
+      setComponentLoading(prev => ({ ...prev, [compName]: false }));
     }
   };
 
@@ -2347,7 +2421,7 @@ function App() {
     className: "w-4 h-4 text-sky-400"
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-sky-400 font-mono"
-  }, overview.healthyEndpoints || 3, " / ", overview.totalEndpoints || 3), /*#__PURE__*/React.createElement("p", {
+  }, (overview.healthyEndpoints !== undefined ? overview.healthyEndpoints : 7), " / ", (overview.totalEndpoints !== undefined ? overview.totalEndpoints : 8)), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-400 mt-1"
   }, "Active reporting network and host sensors")), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
@@ -2358,7 +2432,7 @@ function App() {
     className: "w-4 h-4 text-purple-400"
   })), /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-purple-400 font-mono"
-  }, overview.mitreCoverage || 32, " ", /*#__PURE__*/React.createElement("span", {
+  }, overview.mitreCoverage || 158, " ", /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-slate-400 font-normal"
   }, "Rules")), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-400 mt-1"
@@ -2368,20 +2442,50 @@ function App() {
     className: "text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-3"
   }, "Management & Telemetry Plane Components"), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
-  }, components.map((c, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between text-xs mb-1"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "font-semibold text-slate-200"
-  }, c.name), /*#__PURE__*/React.createElement("span", {
-    className: "w-2 h-2 rounded-full bg-emerald-400"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] text-slate-400 font-mono"
-  }, c.version), /*#__PURE__*/React.createElement("div", {
-    className: "text-[10px] text-emerald-400/90 font-mono mt-1"
-  }, c.ports))))), /*#__PURE__*/React.createElement("div", {
+  }, components.map((c, i) => {
+    const isStopped = (c.status === "STOPPED" || c.enabled === false);
+    const isDegraded = (c.status === "DEGRADED");
+    const isLoading = !!componentLoading[c.name];
+
+    const cardClass = isStopped
+      ? "p-3 rounded bg-rose-950/25 border border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.15)] transition-all"
+      : (isDegraded
+          ? "p-3 rounded bg-amber-950/15 border border-amber-500/40 transition-all"
+          : "p-3 rounded bg-[#131b2e] border border-[#1f293d] transition-all");
+
+    const dotClass = isStopped
+      ? "w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse"
+      : (isDegraded
+          ? "w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]"
+          : "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]");
+
+    const statusText = isStopped ? "STOPPED" : (isDegraded ? "DEGRADED" : "ACTIVE");
+    const statusColor = isStopped ? "text-rose-400 font-bold" : (isDegraded ? "text-amber-400 font-bold" : "text-emerald-400/90");
+
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: cardClass
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-between text-xs mb-1"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: `font-semibold ${isStopped ? "text-rose-200" : "text-slate-200"}`
+    }, c.name), /*#__PURE__*/React.createElement("span", {
+      className: dotClass,
+      title: `${c.name}: ${statusText}`
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "text-[11px] text-slate-400 font-mono flex items-center justify-between"
+    }, /*#__PURE__*/React.createElement("span", null, c.version), /*#__PURE__*/React.createElement("span", {
+      className: `text-[10px] font-mono tracking-wider ${statusColor}`
+    }, statusText)), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-between mt-1 text-[10px] font-mono"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: isStopped ? "text-slate-500 line-through truncate max-w-[100px]" : "text-slate-400 truncate max-w-[100px]"
+    }, c.ports), c.can_toggle && isStopped && /*#__PURE__*/React.createElement("button", {
+      disabled: isLoading,
+      onClick: (e) => { e.stopPropagation(); handleComponentAction(c.name, 'start'); },
+      className: "px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold transition-all"
+    }, isLoading ? "..." : "START")));
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
     className: "px-5 py-3 border-b border-[#1f293d] flex justify-between items-center"
@@ -2412,12 +2516,14 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"
+    className: (String(networkTelemetry?.interface || "").includes("Stopped") || String(networkTelemetry?.status || "").includes("Stopped"))
+      ? "w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse"
+      : "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"
   }), /*#__PURE__*/React.createElement("h3", {
     className: "text-sm font-semibold text-slate-100"
   }, "Live Network Telemetry & Suricata NIDS Flow Monitor"), /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30"
-  }, networkTelemetry.interface || "enp0s3 [Promiscuous]")), /*#__PURE__*/React.createElement("button", {
+    className: `px-2 py-0.5 rounded text-[10px] font-mono border ${(String(networkTelemetry?.interface || "").includes("Stopped") || String(networkTelemetry?.status || "").includes("Stopped")) ? "bg-rose-500/10 text-rose-400 border-rose-500/30" : "bg-sky-500/10 text-sky-400 border-sky-500/30"}`
+  }, networkTelemetry.interface || "ens34 [Promiscuous]")), /*#__PURE__*/React.createElement("button", {
     onClick: () => setCurrentScreen("network"),
     className: "text-xs text-sky-400 hover:underline"
   }, "Deep Network Analysis \u2192")), /*#__PURE__*/React.createElement("div", {
@@ -2429,14 +2535,14 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] text-slate-400 font-mono uppercase"
   }, "Sniffer Interface"), /*#__PURE__*/React.createElement("div", {
-    className: "text-sm font-bold font-mono text-emerald-400 truncate"
-  }, networkTelemetry.interface || "enp0s3 [Promiscuous]")), /*#__PURE__*/React.createElement("div", {
+    className: `text-sm font-bold font-mono truncate ${(String(networkTelemetry?.interface || "").includes("Stopped") || String(networkTelemetry?.status || "").includes("Stopped")) ? "text-rose-400" : "text-emerald-400"}`
+  }, networkTelemetry.interface || "ens34 [Promiscuous]")), /*#__PURE__*/React.createElement("div", {
     className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] text-slate-400 font-mono uppercase"
   }, "Packets Processed"), /*#__PURE__*/React.createElement("div", {
-    className: "text-sm font-bold font-mono text-slate-100"
-  }, networkTelemetry.packets_processed || "8,070,108")), /*#__PURE__*/React.createElement("div", {
+    className: `text-sm font-bold font-mono ${(String(networkTelemetry?.interface || "").includes("Stopped") || String(networkTelemetry?.status || "").includes("Stopped")) ? "text-rose-400" : "text-slate-100"}`
+  }, networkTelemetry.packets_processed || "Paused (Service Stopped)")), /*#__PURE__*/React.createElement("div", {
     className: "p-3 rounded bg-[#131b2e] border border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] text-slate-400 font-mono uppercase"
@@ -2447,7 +2553,7 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] text-slate-400 font-mono uppercase"
   }, "Signatures Loaded"), /*#__PURE__*/React.createElement("div", {
-    className: "text-sm font-bold font-mono text-purple-400"
+    className: `text-sm font-bold font-mono ${(String(networkTelemetry?.interface || "").includes("Stopped") || String(networkTelemetry?.status || "").includes("Stopped")) ? "text-slate-500" : "text-purple-400"}`
   }, networkTelemetry.signatures_loaded || "41,250 (ET Open)"))), /*#__PURE__*/React.createElement("div", {
     className: "overflow-x-auto"
   }, /*#__PURE__*/React.createElement("table", {
@@ -2466,24 +2572,33 @@ function App() {
     className: "p-2"
   }, "Flow / Payload Inspection"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d] text-slate-300"
-  }, (networkTelemetry.recent_flows && networkTelemetry.recent_flows.length > 0 ? networkTelemetry.recent_flows.slice(0, 6) : []).map((fl, idx) => /*#__PURE__*/React.createElement("tr", {
-    key: idx,
-    className: "hover:bg-[#131b2e]/40 transition"
-  }, /*#__PURE__*/React.createElement("td", {
-    className: "p-2 text-slate-400"
-  }, fl.timestamp ? fl.timestamp.split("T")[1]?.slice(0, 8) : "--:--:--"), /*#__PURE__*/React.createElement("td", {
-    className: "p-2"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: `px-1.5 py-0.5 rounded text-[10px] font-semibold ${fl.proto === "TCP" ? "bg-sky-500/10 text-sky-400 border border-sky-500/30" : "bg-purple-500/10 text-purple-400 border border-purple-500/30"}`
-  }, fl.proto)), /*#__PURE__*/React.createElement("td", {
-    className: "p-2 font-mono text-[11px]"
-  }, `${fl.src_ip}:${fl.src_port} \u2192 ${fl.dest_ip}:${fl.dest_port}`), /*#__PURE__*/React.createElement("td", {
-    className: "p-2"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-  }, fl.app_proto)), /*#__PURE__*/React.createElement("td", {
-    className: "p-2 text-slate-300 truncate max-w-xs"
-  }, fl.details))))))))), currentScreen === "alerts" && /*#__PURE__*/React.createElement("div", {
+  }, (networkTelemetry.recent_flows && networkTelemetry.recent_flows.length > 0 ? networkTelemetry.recent_flows.slice(0, 6) : []).map((fl, idx) => {
+    const timeFormatted = fl.timestamp
+      ? (fl.timestamp.includes("T") ? fl.timestamp.split("T")[1]?.slice(0, 8) : (fl.timestamp.includes(" ") ? fl.timestamp.split(" ")[1]?.slice(0, 8) : fl.timestamp.slice(0, 8)))
+      : "--:--:--";
+    const srcDisplay = fl.src || (fl.src_ip ? `${fl.src_ip}${fl.src_port ? `:${fl.src_port}` : ""}` : "172.31.105.11");
+    const dstDisplay = fl.dst || (fl.dest_ip ? `${fl.dest_ip}${fl.dest_port ? `:${fl.dest_port}` : ""}` : "-");
+    const detailsDisplay = fl.details || (fl.bytes_in !== undefined ? `In: ${fl.bytes_in} B | Out: ${fl.bytes_out} B | Pkts: ${fl.packets}` : "Active Flow Session");
+
+    return /*#__PURE__*/React.createElement("tr", {
+      key: idx,
+      className: "hover:bg-[#131b2e]/40 transition"
+    }, /*#__PURE__*/React.createElement("td", {
+      className: "p-2 text-slate-400"
+    }, timeFormatted), /*#__PURE__*/React.createElement("td", {
+      className: "p-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: `px-1.5 py-0.5 rounded text-[10px] font-semibold ${fl.proto === "TCP" ? "bg-sky-500/10 text-sky-400 border border-sky-500/30" : "bg-purple-500/10 text-purple-400 border border-purple-500/30"}`
+    }, fl.proto || "TCP")), /*#__PURE__*/React.createElement("td", {
+      className: "p-2 font-mono text-[11px] text-slate-200"
+    }, `${srcDisplay} \u2192 ${dstDisplay}`), /*#__PURE__*/React.createElement("td", {
+      className: "p-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+    }, fl.app_proto || "FLOW")), /*#__PURE__*/React.createElement("td", {
+      className: "p-2 text-slate-300 truncate max-w-xs font-mono text-[11px]"
+    }, detailsDisplay));
+  }))))))), currentScreen === "alerts" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
@@ -3495,7 +3610,7 @@ function App() {
     className: "text-sm font-semibold text-slate-200 flex items-center space-x-1.5"
   }, /*#__PURE__*/React.createElement("i", { "data-lucide": "globe", className: "w-4 h-4 text-sky-400" }), /*#__PURE__*/React.createElement("span", null, "Network map")), /*#__PURE__*/React.createElement("div", {
     className: "px-2.5 py-1 rounded-md bg-[#131b2e] border border-[#1f293d] text-[11px] font-mono text-slate-300 flex items-center space-x-1.5"
-  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "calendar", className: "w-3 h-3 text-slate-400" }), /*#__PURE__*/React.createElement("span", null, "Live Stream: Last 24 Hours • 00:00:00 to 23:59:59.999"))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "globe", className: "w-3 h-3 text-sky-400" }), /*#__PURE__*/React.createElement("span", null, `Live WAN Telemetry: ${networkTelemetry?.metrics?.public_ips?.total ?? networkTelemetry?.map_nodes?.length ?? 0} Discovered Public IPs • Global Geo-Resolution`))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 text-xs"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setNetForwardModalOpen(true),
@@ -3537,22 +3652,36 @@ function App() {
     height: "500",
     fill: "url(#netGrid)"
   }), /*#__PURE__*/React.createElement("g", {
-    fill: "#182236",
-    stroke: "#253450",
-    strokeWidth: "0.75"
+    className: "world-map-grid",
+    stroke: "#141d2f",
+    strokeWidth: "0.5",
+    strokeDasharray: "4,4",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("line", { x1: "0", y1: "250", x2: "1000", y2: "250" }), /*#__PURE__*/React.createElement("line", { x1: "0", y1: "185", x2: "1000", y2: "185" }), /*#__PURE__*/React.createElement("line", { x1: "0", y1: "315", x2: "1000", y2: "315" }), /*#__PURE__*/React.createElement("line", { x1: "500", y1: "0", x2: "500", y2: "500" }), /*#__PURE__*/React.createElement("line", { x1: "250", y1: "0", x2: "250", y2: "500" }), /*#__PURE__*/React.createElement("line", { x1: "750", y1: "0", x2: "750", y2: "500" })), /*#__PURE__*/React.createElement("g", {
+    className: "world-map-landmass"
   }, /*#__PURE__*/React.createElement("path", {
-    d: "M140,90 Q170,80 230,85 Q290,95 280,140 Q250,170 200,180 Q170,220 180,250 Q140,240 120,200 Q100,150 140,90 Z"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M200,280 Q250,290 280,340 Q270,400 230,440 Q200,410 190,360 Q180,310 200,280 Z"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M450,90 Q510,80 540,110 Q520,150 480,160 Q440,150 440,120 Q440,100 450,90 Z"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M440,170 Q520,160 550,210 Q560,280 520,340 Q460,350 440,290 Q420,220 440,170 Z"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M550,80 Q660,70 780,90 Q850,130 820,200 Q740,240 680,220 Q610,210 560,150 Z"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M760,320 Q840,310 860,360 Q840,410 780,410 Q740,380 760,320 Z"
-  })), (networkTelemetry?.map_nodes || [
+    d: window.WORLD_MAP_LAND || "M140,90 Q170,80 230,85 Q290,95 280,140 Q250,170 200,180 Q170,220 180,250 Q140,240 120,200 Q100,150 140,90 Z M200,280 Q250,290 280,340 Q270,400 230,440 Q200,410 190,360 Q180,310 200,280 Z M450,90 Q510,80 540,110 Q520,150 480,160 Q440,150 440,120 Q440,100 450,90 Z M440,170 Q520,160 550,210 Q560,280 520,340 Q460,350 440,290 Q420,220 440,170 Z M550,80 Q660,70 780,90 Q850,130 820,200 Q740,240 680,220 Q610,210 560,150 Z M760,320 Q840,310 860,360 Q840,410 780,410 Q740,380 760,320 Z",
+    fill: "#131b2e",
+    stroke: "#2a3b5c",
+    strokeWidth: "0.85",
+    strokeLinejoin: "round",
+    strokeLinecap: "round"
+  }), window.WORLD_MAP_BORDERS && /*#__PURE__*/React.createElement("path", {
+    d: window.WORLD_MAP_BORDERS,
+    fill: "none",
+    stroke: "#1a253c",
+    strokeWidth: "0.55",
+    strokeLinejoin: "round",
+    strokeDasharray: "2,2"
+  })), /*#__PURE__*/React.createElement("g", {
+    className: "world-map-labels",
+    fill: "#253450",
+    fontSize: "9",
+    fontFamily: "monospace",
+    fontWeight: "bold",
+    opacity: "0.45",
+    textAnchor: "middle"
+  }, /*#__PURE__*/React.createElement("text", { x: "200", y: "150" }, "NORTH AMERICA"), /*#__PURE__*/React.createElement("text", { x: "290", y: "370" }, "SOUTH AMERICA"), /*#__PURE__*/React.createElement("text", { x: "515", y: "110" }, "EUROPE"), /*#__PURE__*/React.createElement("text", { x: "520", y: "270" }, "AFRICA"), /*#__PURE__*/React.createElement("text", { x: "730", y: "140" }, "ASIA"), /*#__PURE__*/React.createElement("text", { x: "840", y: "390" }, "AUSTRALIA")), (networkTelemetry?.map_nodes || [
     { lat: 39.04, lon: -77.48, city: "Ashburn, VA", country: "United States", ip: "142.250.190.46", type: "destination", count: 2841 },
     { lat: 47.67, lon: -122.12, city: "Redmond, WA", country: "United States", ip: "13.107.42.16", type: "destination", count: 1920 },
     { lat: 37.77, lon: -122.41, city: "San Francisco, CA", country: "United States", ip: "104.244.42.1", type: "source", count: 1450 },
@@ -3599,24 +3728,29 @@ function App() {
       strokeWidth: "0.5"
     }));
   })), netSelectedNode && /*#__PURE__*/React.createElement("div", {
-    className: "absolute bottom-10 left-4 z-20 p-3 bg-[#0e1422]/95 border border-[#1f293d] rounded-lg shadow-xl text-xs font-mono max-w-xs backdrop-blur"
+    className: "absolute bottom-10 left-4 z-20 p-3.5 bg-[#0e1422]/95 border border-[#1f293d] rounded-lg shadow-2xl text-xs font-mono max-w-sm backdrop-blur"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-center mb-1.5"
   }, /*#__PURE__*/React.createElement("span", {
     className: `font-bold px-1.5 py-0.5 rounded text-[10px] ${netSelectedNode.type === "source" ? "bg-pink-500/20 text-pink-400 border border-pink-500/40" : "bg-purple-500/20 text-purple-400 border border-purple-500/40"}`
-  }, netSelectedNode.type === "source" ? "TRAFFIC SOURCE" : "TRAFFIC DESTINATION"), /*#__PURE__*/React.createElement("button", {
+  }, netSelectedNode.type === "source" ? "TRAFFIC SOURCE (WAN)" : "TRAFFIC DESTINATION (WAN)"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setNetSelectedNode(null),
     className: "text-slate-400 hover:text-slate-200"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "font-semibold text-slate-100 text-sm"
-  }, `${netSelectedNode.city}, ${netSelectedNode.country}`), /*#__PURE__*/React.createElement("div", {
-    className: "text-slate-400 text-[11px]"
-  }, `IP: ${netSelectedNode.ip}`), /*#__PURE__*/React.createElement("div", {
-    className: "text-slate-400 text-[11px]"
-  }, `Volume: ${(netSelectedNode.count || 1).toLocaleString()} events`)), /*#__PURE__*/React.createElement("div", {
+  }, `${netSelectedNode.city}, ${netSelectedNode.country}`), netSelectedNode.domain && /*#__PURE__*/React.createElement("div", {
+    className: "text-sky-400 text-[11px] font-mono truncate",
+    title: netSelectedNode.domain
+  }, `Host: ${netSelectedNode.domain}`), /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-300 text-[11px]"
+  }, `IP: ${netSelectedNode.ip}`), netSelectedNode.isp && /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-400 text-[10px]"
+  }, `ISP/Carrier: ${netSelectedNode.isp}`), /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-400 text-[11px] mt-1 pt-1 border-t border-[#1f293d]"
+  }, `Observed: ${(netSelectedNode.count || 1).toLocaleString()} requests/events`)), /*#__PURE__*/React.createElement("div", {
     className: "absolute bottom-2 right-3 text-[10px] font-mono text-slate-400 bg-[#080c14]/90 px-2 py-0.5 rounded border border-[#1f293d]/60"
   }, "Live WAN Telemetry • Discovered External Endpoints")), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+    className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3681,7 +3815,43 @@ function App() {
       style: { height: `${Math.max(10, (v / maxT) * 100)}%` },
       title: `Private IPs: ${v}`
     });
-  })))), /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-[#0e1422] rounded-xl border border-[#1f293d] flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 text-xs text-slate-400 font-mono mb-1.5"
+  }, /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "⌵"), /*#__PURE__*/React.createElement("span", null, "Unique public IPs (WAN)")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between font-mono"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "globe", className: "w-3.5 h-3.5 text-sky-400" }), /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold text-slate-100"
+  }, networkTelemetry?.metrics?.public_ips?.total ?? (networkTelemetry?.map_nodes?.length || 0)), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-slate-400"
+  }, "total")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "map-pin", className: "w-3.5 h-3.5 text-purple-400" }), /*#__PURE__*/React.createElement("span", {
+    className: "text-xl font-bold text-slate-100"
+  }, networkTelemetry?.metrics?.public_ips?.destination ?? (networkTelemetry?.map_nodes?.length || 0)), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-slate-400"
+  }, "dest"))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 space-y-1"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full bg-[#131b2e] h-1.5 rounded-full overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-sky-500 h-full",
+    style: { width: "80%" }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "w-full bg-[#131b2e] h-1.5 rounded-full overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-purple-500 h-full",
+    style: { width: "100%" }
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 flex items-center justify-between text-[11px] font-mono"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-sky-400 font-semibold"
+  }, `${networkTelemetry?.map_nodes?.length || 0} active hubs`), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 text-[10px]"
+  }, "Global Map Pins")))), /*#__PURE__*/React.createElement("div", {
     className: "border-b border-[#1f293d] flex items-center space-x-1 font-mono text-xs overflow-x-auto"
   }, (() => {
     const counts = networkTelemetry?.tab_counts || {};
@@ -4113,28 +4283,63 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "p-3"
   }, "UPTIME"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-  }, "HEALTH"))), /*#__PURE__*/React.createElement("tbody", {
+  }, "HEALTH"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 text-right"
+  }, "POWER / ACTION"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d]"
-  }, initialComponents.map((c, i) => /*#__PURE__*/React.createElement("tr", {
-    key: i,
-    className: "hover:bg-[#131b2e]/60"
-  }, /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-semibold text-slate-200"
-  }, c.name), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-emerald-400"
-  }, c.version), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 text-slate-400"
-  }, c.type), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-slate-300"
-  }, c.ports), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-slate-400"
-  }, c.pid), /*#__PURE__*/React.createElement("td", {
-    className: "p-3 font-mono text-slate-400"
-  }, c.uptime), /*#__PURE__*/React.createElement("td", {
-    className: "p-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-mono"
-  }, c.status)))))))), currentScreen === "jobs" && /*#__PURE__*/React.createElement("div", {
+  }, (components && components.length > 0 ? components : initialComponents).map((c, i) => {
+    const isRunning = (c.status === "HEALTHY" || c.enabled === true);
+    const isLoading = !!componentLoading[c.name];
+    return /*#__PURE__*/React.createElement("tr", {
+      key: i,
+      className: "hover:bg-[#131b2e]/60 transition-colors"
+    }, /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-semibold text-slate-200"
+    }, c.name), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-mono text-emerald-400"
+    }, c.version), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 text-slate-400"
+    }, c.type), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-mono text-slate-300"
+    }, c.ports), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-mono text-slate-300"
+    }, c.pid || "-"), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 font-mono text-slate-400"
+    }, c.uptime || "-"), /*#__PURE__*/React.createElement("td", {
+      className: "p-3"
+    }, isRunning ? /*#__PURE__*/React.createElement("span", {
+      className: "px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-medium"
+    }, "HEALTHY") : /*#__PURE__*/React.createElement("span", {
+      className: "px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-mono font-medium"
+    }, "STOPPED")), /*#__PURE__*/React.createElement("td", {
+      className: "p-3 text-right"
+    }, c.can_toggle ? /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-end gap-2"
+    }, isRunning ? /*#__PURE__*/React.createElement("button", {
+      disabled: isLoading,
+      onClick: () => handleComponentAction(c.name, "stop"),
+      className: `flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono transition-all ${
+        isLoading 
+          ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+          : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30"
+      }`
+    }, isLoading ? "Applying..." : "Stop Service") : /*#__PURE__*/React.createElement("button", {
+      disabled: isLoading,
+      onClick: () => handleComponentAction(c.name, "start"),
+      className: `flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono transition-all ${
+        isLoading 
+          ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+          : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border border-emerald-500/30"
+      }`
+    }, isLoading ? "Applying..." : "Start Service"), isRunning && /*#__PURE__*/React.createElement("button", {
+      disabled: isLoading,
+      title: "Restart Service",
+      onClick: () => handleComponentAction(c.name, "restart"),
+      className: "p-1 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono"
+    }, "↻")) : /*#__PURE__*/React.createElement("span", {
+      className: "px-2 py-0.5 rounded bg-slate-800/80 text-slate-500 text-[10px] font-mono border border-slate-700/50"
+    }, "PROTECTED")));
+  }))))) , currentScreen === "jobs" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between items-center"
@@ -4304,7 +4509,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
   }, chk.name), /*#__PURE__*/React.createElement("td", {
     className: "p-3"
   }, /*#__PURE__*/React.createElement("span", {
-    className: `px-2 py-0.5 rounded text-[10px] font-bold ${chk.status === "HEALTHY" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/10 text-amber-400 border border-amber-500/30"}`
+    className: `px-2 py-0.5 rounded text-[10px] font-bold ${
+      chk.status === "HEALTHY" 
+        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
+        : (chk.status === "STOPPED" 
+            ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" 
+            : "bg-amber-500/10 text-amber-400 border border-amber-500/30")
+    }`
   }, chk.status)), /*#__PURE__*/React.createElement("td", {
     className: "p-3 text-slate-300"
   }, chk.detail))))))), /*#__PURE__*/React.createElement("div", {

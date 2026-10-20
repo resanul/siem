@@ -12,3 +12,6 @@ node_modules/
 *.log
 backups/
 temp/
+*.db
+*.sqlite
+*.sqlite3

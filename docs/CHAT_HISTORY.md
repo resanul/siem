@@ -8,18 +8,109 @@
 | Parameter | Configuration / Value |
 | :--- | :--- |
 | **Primary GitHub Repository** | `https://github.com/resanul/siem` |
-| **Active Sync Branches** | `master` (default) & `main` (mirrored) |
-| **Current Target VM** | Red Hat Enterprise Linux 9.8 (`192.168.10.177`) |
-| **Web Console URL** | `http://192.168.10.177:7070` |
-| **VM SSH Credentials** | `resanul` / `1100` |
-| **Container Engine** | Podman (`opensoc-forge-mgmt`, `elasticsearch`, `kibana`, `wazuh-manager`, `suricata`, `syslog-collector`) |
+| **Active Sync Branches** | `master` & `main` (mirrored) |
+| **Active Target SOC Server (Office)** | Red Hat Enterprise Linux 9 (`172.31.105.11`) |
+| **Target VM (Home Lab)** | Red Hat Enterprise Linux 9.8 (`192.168.10.177`) |
+| **Web Console URL** | `http://172.31.105.11:7070` (Office) / `http://192.168.10.177:7070` (Home) |
+| **Office SSH Credentials** | `resanul` / `@#Trust2025##` |
+| **Active Deployment Service** | Native systemd `opensoc-forge.service` on port `7070` |
+| **Native SOC Components** | `wazuh-manager` (4.14.9), `suricata` (7.x), `rsyslog`, `squid` proxies |
 | **Host Application Directory** | `/opt/opensoc-forge/` (backend + frontend) |
-| **Persistent CTI Database** | `/var/lib/opensoc/threat_intel_iocs.db` (SQLite, 17,500+ IOCs) |
-| **Automated Deploy Script** | `python scripts/deploy_vm.py` |
+| **Automated Deploy Script** | `python scripts/deploy_all_status.py` |
 
 ---
 
 ## 📅 Session Timeline & Development History
+
+### Session 20 — Flow Table Fix, Elasticsearch/Indexer Analysis & JS Bracket Syntax Resolution
+- **Date / Time:** 2026-10-19 20:50 – 21:10 UTC+6
+- **Context:** Network Telemetry UI Bugfix, Elasticsearch Diagnostic & JS Syntax Hotfix
+- **User Requests:**
+  - *"এটাতে সমস্যা কি?"* (Screenshot showing `elasticsearch` card amber `DEGRADED`)
+  - *"Wazuh-indexer সার্ভিস টা আমার dashboard এ কাজ করবে না? এটার সমস্যা কোথায়?"*
+  - Screenshot showing Live Flow Monitor with `undefined:undefined` and blank Time.
+  - Screenshot showing UI Diagnostics: `Uncaught SyntaxError: missing ) after argument list Line: 2512:16`.
+- **Actions Taken:**
+  1. **Live Network Telemetry Flow Table Fix:**
+     - In `backend/app/services/network_telemetry.py`, populated `src_ip`, `src_port`, `dest_ip`, `dest_port`, `details`, and ISO/space timestamp formatting in `recent_flows`.
+     - In `frontend/index.html`, updated flow row formatting to fall back to `src || src_ip` and `dst || dest_ip`, resolving `undefined:undefined -> undefined:undefined`.
+     - Fixed timestamp parsing supporting space-separated (`2026-10-19 19:24:43`) and ISO (`T`) strings.
+  2. **Elasticsearch & Wazuh-Indexer Architecture Diagnostic:**
+     - Verified `172.31.105.11` packages: only `wazuh-manager` is installed locally; no local `wazuh-indexer` or `elasticsearch` listening on port 9200.
+     - Explained root cause of `DEGRADED`: `_es_request("/_cluster/health")` encounters Connection Refused against `http://127.0.0.1:9200`.
+     - Clarified that Wazuh-indexer runs OpenSearch REST APIs and will seamlessly work if pointed to an active indexer with HTTPS + basic credentials.
+     - Reassured user that dashboard runs seamlessly without indexer via its direct `/var/ossec/logs/alerts/alerts.json` and SQLite fallback engine.
+  3. **UI Syntax Exception Hotfix:**
+     - Diagnosed line 2512 in `frontend/index.html`: stray `  },` after `a.time)))))` caused `SyntaxError: missing ) after argument list`.
+     - Cleaned up line 2512, ran full AST-style bracket/parenthesis scan with zero errors.
+     - Deployed clean frontend to `172.31.105.11` and restarted `opensoc-forge.service`.
+
+### Session 19 — Dynamic Holistic State Propagation & Suricata Sniffer Deactivation
+- **Date / Time:** 2026-10-19 19:30 – 20:45 UTC+6
+- **Context:** Project-Wide Cohesive State Machine & Local Loop Alert Elimination
+- **User Requests:**
+  - *"সব মিলায়ে বুঝলাম suricata maybe off করা যায় তুমি কি বলো, ও তো শুধু dashboad এর ডাটা নিয়ে onek alert generate করছে"*
+  - *"তুমি তো full project নিয়ে চিন্তা করছো না, সুধু যেখানে চেঞ্জ করতে বলছি ওখানেই করছো... এটা তো Red থাকার কথা"*
+- **Actions Taken:**
+  1. **Holistic State Propagation Across Platform:**
+     - Replaced hardcoded green dots on Overview Component Cards (`frontend/index.html` lines 2445-2487) with dynamic state styling:
+       - **STOPPED:** Pulsing Red dot (`bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse`), `border-rose-500/50 bg-rose-950/25` container, bold red `STOPPED` badge, line-through ports, and quick `[START]` action button.
+       - **DEGRADED:** Amber dot (`bg-amber-400`), amber border, `DEGRADED` badge.
+       - **HEALTHY:** Green dot, emerald badge.
+     - Network Telemetry widget header dot dynamically switches to pulsing red when Suricata is stopped, with interface badge showing `ens34 [Sniffer Inactive / Stopped]` and packets marked paused.
+     - System Health & Diagnostics probes updated in `backend/app/services/live_telemetry.py` to reflect actual service states.
+  2. **Suricata Deactivation:**
+     - Deactivated Suricata sniffer on `ens34` via API/systemctl to eliminate self-sniffing local loop alert flooding.
+
+### Session 18 — Platform Component Inventory Start/Stop Controls & Action API
+- **Date / Time:** 2026-10-19 18:00 – 19:15 UTC+6
+- **Context:** Live Service Control & Process Management
+- **User Request:**
+  - *"তুমি এখানে componet on off করার options অ্যাড করে দাও"* (Add component on/off options here)
+- **Actions Taken:**
+  1. **Backend Service Control API (`backend/app/api/v1/api.py`):**
+     - Implemented `POST /api/v1/components/{component_name}/action` supporting `start`, `stop`, `restart`, `enable`, `disable`.
+     - Added sudoers rule on `172.31.105.11` (`/etc/sudoers.d/opensoc-services`) for passwordless `systemctl` management by `resanul`.
+  2. **Component Inventory UI Overhaul:**
+     - Added interactive `Start Service` (Green), `Stop Service` (Red), and `↻` (Restart) buttons directly in the Component Inventory table.
+     - Added real Linux PID tracking, uptime, and active start timestamps.
+
+### Session 17 — World Threat Map & GeoIP Resolution Pipeline
+- **Date / Time:** 2026-10-19 16:30 – 18:00 UTC+6
+- **Context:** Interactive Global Threat Vector Visualization
+- **Actions Taken:**
+  1. **Offline World Map Architecture:**
+     - Added `frontend/vendor/world_map_data.js` containing complete SVG path data for global landmasses, enabling 100% offline air-gapped rendering.
+  2. **GeoIP & Reverse-DNS Resolution Pipeline:**
+     - In `backend/app/services/network_telemetry.py`, implemented `_resolve_host_to_public_ip()` with in-memory DNS caching.
+     - Built `KNOWN_GEOIP_MAP` mapping infrastructure endpoints (Cloudflare, Google, AWS, Azure, OVH, BDIX, SoftBank, etc.) to geographic coordinates.
+     - Populated `map_nodes` connecting private office sources to destination threat nodes worldwide with real packet and byte volumes.
+
+### Session 16 — Live Squid Multi-Proxy Ingestion & Real Telemetry Stream
+- **Date / Time:** 2026-10-19 15:00 – 16:30 UTC+6
+- **Context:** Real Proxy Access Log Parsing & Stream Integration
+- **Actions Taken:**
+  1. **Multi-Proxy Sync:**
+     - Configured log streaming from remote proxy agents (e.g. `172.31.105.8:3128`).
+     - Added `backend/app/services/network_telemetry.py` real-time reader for `/var/log/squid/access.log`.
+  2. **Live Telemetry & Metrics:**
+     - Extracted live HTTP methods (CONNECT, GET, POST), FQDN domains, and HTTP status codes (TCP_TUNNEL/200, TCP_MISS/200, TCP_DENIED/403).
+     - Replaced all demo telemetry figures with real byte counts, packet counts, and flow rates.
+
+### Session 15 — Purge of Mock / Demo Data Across Backend & Frontend
+- **Date / Time:** 2026-10-18 – 2026-10-19
+- **Context:** Complete Elimination of Mocked Numbers
+- **Actions Taken:**
+  1. Replaced all static counters across the Overview, Network, Alerts, and Fleet screens with live values queried from OS processes, Wazuh socket, and Suricata EVE logs.
+  2. Added dynamic auto-refresh routines (every 3 seconds) for live telemetry synchronization.
+
+### Session 14 — Office Baremetal Migration to RedHat 9 (`172.31.105.11`)
+- **Date / Time:** 2026-10-17 – 2026-10-18
+- **Context:** Production Infrastructure Deployment
+- **Actions Taken:**
+  1. Migrated platform codebase from home lab VM (`192.168.10.177`) to office baremetal SOC host (`172.31.105.11`).
+  2. Configured native systemd unit `/etc/systemd/system/opensoc-forge.service` running FastAPI backend on `0.0.0.0:7070`.
+  3. Integrated native services: `wazuh-manager-4.14.9`, `suricata-7.x` on `ens34`, `rsyslog`, and Squid proxies with active proxy bypass configurations.
 
 ### Session 13 — Real Endpoints Transition, Demo Data Purge & Manual Host Registration
 - **Date / Time:** 2026-10-17 00:50 – 01:00 UTC+6

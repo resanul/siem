@@ -1,0 +1,82 @@
+diff --git a/backend/app/models/schemas.py b/backend/app/models/schemas.py
+index 70ab736..e3ba7a5 100644
+--- a/backend/app/models/schemas.py
++++ b/backend/app/models/schemas.py
+@@ -179,12 +179,15 @@ class EventSearchRequest(BaseModel):
+     @field_validator("limit", mode="before")
+     @classmethod
+     def validate_limit(cls, v: Any) -> int:
+         if v is None:
+             return 50
++        if isinstance(v, (bool, list, dict, tuple, set, float)):
++            raise ValueError("limit must be an integer between 1 and 200")
+         try:
+             val = int(v)
+-            if val < 1:
+-                return 1
+-            if val > 200:
+-                raise ValueError("limit must not exceed 200")
+-            return val
+-        except ValueError:
+-            raise
++        except (ValueError, TypeError):
++            raise ValueError("limit must be an integer between 1 and 200")
++        if val < 1:
++            raise ValueError("limit must be at least 1")
++        if val > 200:
++            raise ValueError("limit must not exceed 200")
++        return val
+diff --git a/backend/app/services/event_search.py b/backend/app/services/event_search.py
+index b5462cf..54f59c8 100644
+--- a/backend/app/services/event_search.py
++++ b/backend/app/services/event_search.py
+@@ -74,23 +74,26 @@ def _parse_time_cutoff(time_range: str) -> Optional[datetime]:
+     """Computes UTC cutoff datetime from time range token (e.g. 15m, 1h, 24h, 7d)."""
+-    tr = (time_range or "24h").strip().lower()
+-    if tr in ("all", "*"):
+-        return None
+-
+-    m = re.match(r"^(\d+)([smhd])$", tr)
+-    if m:
+-        val, unit = int(m.group(1)), m.group(2)
+-        if unit == "s":
+-            delta = timedelta(seconds=val)
+-        elif unit == "m":
+-            delta = timedelta(minutes=val)
+-        elif unit == "h":
+-            delta = timedelta(hours=val)
+-        elif unit == "d":
+-            delta = timedelta(days=val)
+-        else:
+-            delta = timedelta(hours=24)
+-    else:
+-        delta = timedelta(hours=24)
+-
+-    return datetime.now(timezone.utc) - delta
++    try:
++        tr = (time_range or "24h").strip().lower()
++        if tr in ("all", "*"):
++            return None
++
++        m = re.match(r"^(\d+)([smhd])$", tr)
++        if m:
++            val, unit = int(m.group(1)), m.group(2)
++            if unit == "s":
++                delta = timedelta(seconds=val)
++            elif unit == "m":
++                delta = timedelta(minutes=val)
++            elif unit == "h":
++                delta = timedelta(hours=val)
++            elif unit == "d":
++                delta = timedelta(days=val)
++            else:
++                delta = timedelta(hours=24)
++        else:
++            delta = timedelta(hours=24)
++
++        return datetime.now(timezone.utc) - delta
++    except (OverflowError, ValueError):
++        return None
+@@ -459,3 +462,3 @@ def _query_elasticsearch(
+-            if time_range and time_range.lower() != "all":
++            if time_range and time_range.lower() not in ("all", "*"):

@@ -56,3 +56,69 @@ Provide a unified management CLI (`bin/opensoc-ctl`):
 - [ ] `curl -k https://localhost:9200/_cluster/health` returns status `green` or `yellow`.
 - [ ] Wazuh manager API (`https://localhost:55000`) and Suricata EVE log stream are active and indexed.
 - [ ] `opensoc-ctl test` generates a synthetic alert that successfully renders in the Web Console within 5 seconds.
+
+
+## 2026-10-18T13:37:03Z
+
+Implement end-to-end event querying and search functionality for the "Event Investigation & Query Console" in OpenSOC Forge, replacing the static mockup with real backend query execution against Elasticsearch, Suricata logs, Wazuh alerts, and local telemetry, paired with an interactive frontend console.
+
+Working directory: d:/AI/siem
+Integrity mode: development
+
+## Requirements
+
+### R1. Backend Event Search API Endpoint
+Implement an endpoint `POST /api/v1/events/search` (and matching `GET /api/v1/events/search`) in `backend/app/api/v1/api.py`.
+- Accept query parameters/payload: `query` (string, supporting Lucene/KQL syntax, key:value filters, or substring text), `indices` (list of index patterns such as `["suricata-*", "wazuh-alerts-*", "syslog-*"]` or `["*"]`), `time_range` (e.g., "15m", "1h", "24h", "7d", "all"), and `limit` (default 50, max 200).
+- When Elasticsearch is reachable (`ELASTICSEARCH_URL`), dispatch query via `query_string` or multi-index search with authentication.
+- Resilient fallback: When Elasticsearch is offline or returns no hits, parse and search across local Suricata EVE logs (`eve.json`), Wazuh alerts, syslog, in-memory `LIVE_SIMULATION_ALERTS`, persisted alerts, and threat indicators matching the query terms.
+- Return structured JSON response:
+  ```json
+  {
+    "total_hits": 12,
+    "took_ms": 14,
+    "indices_searched": ["suricata-*", "wazuh-alerts-*", "syslog-*"],
+    "events": [
+      {
+        "id": "evt-...",
+        "timestamp": "2026-10-18T19:20:00Z",
+        "index": "suricata-eve",
+        "source_type": "suricata.eve.alert",
+        "host": "web-app-dmz-01",
+        "severity": "CRITICAL",
+        "summary": "...",
+        "raw": { ... }
+      }
+    ]
+  }
+  ```
+
+### R2. Interactive Event Investigation UI Console
+Update the "Event Investigation & Query Console" in `frontend/index.html` (`currentScreen === "search"`):
+- Bind the query input to state (`queryText`), enabling execution on button click or Enter key.
+- Provide responsive execution status, displaying real query execution time (`Query Results: X hits in Yms`) and time range filter selector.
+- Add quick filter chips/presets for common indices and syntax examples (e.g., `suricata-*`, `wazuh-alerts-*`, `event.category:network`, `host.name:*`).
+- Render event results dynamically with timestamp, color-coded source badge, host name, and summary.
+- Clicking on an event expands or opens a modal displaying the formatted raw JSON payload and metadata with a one-click copy button.
+- Provide a clean empty state with actionable suggestions when no events match.
+- Auto-load recent events upon entering the screen or mounting the view.
+
+### R3. Automated Test Verification
+Add unit and integration tests (e.g., in `tests/test_event_search.py`) verifying:
+- Search API response status 200 and schema compliance.
+- Query parsing and execution across live or fallback data sources.
+- Resilient operation when Elasticsearch is unreachable.
+
+## Acceptance Criteria
+
+### API Verification
+- [ ] `POST /api/v1/events/search` responds with HTTP 200 and schema containing `total_hits`, `took_ms`, `indices_searched`, and `events`.
+- [ ] Wildcard `*` or empty query returns the most recent telemetry events.
+- [ ] Filter queries by host or event type properly filter returned events.
+- [ ] Fallback mechanism functions seamlessly when Elasticsearch is unavailable.
+
+### UI Console Verification
+- [ ] Navigating to "Event Investigation" displays live or recent events instead of hardcoded static data.
+- [ ] Entering a query and clicking "Execute Query" (or pressing Enter) triggers real search and updates the result list and hit counter.
+- [ ] Clicking any result item reveals detailed event JSON payload.
+- [ ] Quick index filters or time range selectors update the query results accordingly.

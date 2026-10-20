@@ -288,6 +288,24 @@ def get_overview(current_user: Dict[str, Any] = Depends(require_permission("aler
     return get_live_overview_data()
 
 
+@api_router.post("/components/{component_name}/action")
+def post_component_action(
+    component_name: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Starts, stops, or restarts a platform component service."""
+    action = payload.get("action", "restart")
+    try:
+        from backend.app.services.live_telemetry import control_service_action
+        return control_service_action(component_name, action)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 # ===================== NETWORK TELEMETRY =====================
 @api_router.get("/network/telemetry")
 def get_network_telemetry(current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))):
@@ -898,6 +916,17 @@ def delete_threat_ioc(
     if not success:
         raise HTTPException(status_code=404, detail="Indicator not found or could not be deleted.")
     return {"status": "success", "indicator": indicator, "total": get_total_ioc_count()}
+
+
+@api_router.post("/threat-intel/import-snapshot")
+def import_threat_snapshot(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Imports latest threat intelligence indicators from data/threat_intel_iocs.json into SQLite."""
+    from backend.app.services.ioc_storage import import_iocs_from_json, get_offline_db_stats
+    res = import_iocs_from_json()
+    stats = get_offline_db_stats()
+    return {"import_result": res, "db_stats": stats}
 
 
 @api_router.post("/threat-intel/talos/update")
