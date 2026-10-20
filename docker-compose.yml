@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend:/opt/opensoc-forge/backend:ro,z
       - ./frontend:/opt/opensoc-forge/frontend:ro,z
+      - ./data:/opt/opensoc-forge/data:rw,z
       - ${SURICATA_LOG_DIR:-/var/log/suricata}:/var/log/suricata:ro,z
       - ${OPENSOC_DATA_DIR:-/var/lib/opensoc}:/var/lib/opensoc:rw,z
       - ${OPENSOC_CERTS_DIR:-/etc/opensoc/certs}:/etc/opensoc/certs:ro,z
