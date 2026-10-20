@@ -841,6 +841,17 @@ def delete_threat_ioc(
     return {"status": "success", "indicator": indicator, "total": get_total_ioc_count()}
 
 
+@api_router.post("/threat-intel/import-snapshot")
+def import_threat_snapshot(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
+):
+    """Imports latest threat intelligence indicators from data/threat_intel_iocs.json into SQLite."""
+    from backend.app.services.ioc_storage import import_iocs_from_json, get_offline_db_stats
+    res = import_iocs_from_json()
+    stats = get_offline_db_stats()
+    return {"import_result": res, "db_stats": stats}
+
+
 @api_router.post("/threat-intel/talos/update")
 def update_talos_intel(
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),

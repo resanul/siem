@@ -36,10 +36,12 @@ if [ -d "/opt/opensoc-forge" ] && [ "${REPO_DIR}" != "/opt/opensoc-forge" ]; the
     if [ "$(id -u)" -eq 0 ]; then
         cp -rf "${REPO_DIR}/backend" /opt/opensoc-forge/
         cp -rf "${REPO_DIR}/frontend" /opt/opensoc-forge/
-        chown -R resanul:resanul /opt/opensoc-forge/backend /opt/opensoc-forge/frontend 2>/dev/null || true
+        cp -rf "${REPO_DIR}/data" /opt/opensoc-forge/
+        chown -R resanul:resanul /opt/opensoc-forge/backend /opt/opensoc-forge/frontend /opt/opensoc-forge/data 2>/dev/null || true
     else
         sudo cp -rf "${REPO_DIR}/backend" /opt/opensoc-forge/
         sudo cp -rf "${REPO_DIR}/frontend" /opt/opensoc-forge/
+        sudo cp -rf "${REPO_DIR}/data" /opt/opensoc-forge/
     fi
     echo -e "${GREEN}[OK] Files synchronized to /opt/opensoc-forge/${NC}"
 else

@@ -80,7 +80,79 @@ def init_ioc_database() -> str:
         """)
         conn.commit()
 
-        # Seed initial Talos data if database is empty
+        # Auto-import latest threat intelligence dataset from Git if database has fewer IOCs
+        c.execute("SELECT COUNT(*) FROM iocs")
+        count = c.fetchone()[0]
+
+        dataset_candidates = [
+            EXPORT_JSON_FILE,
+            BACKEND_DATA_JSON,
+            os.path.join(REPO_ROOT, "data", "threat_intel_iocs.json"),
+            "/opt/opensoc-forge/data/threat_intel_iocs.json",
+            "/home/resanul/siem/data/threat_intel_iocs.json",
+            "data/threat_intel_iocs.json"
+        ]
+        target_dataset = next((p for p in dataset_candidates if p and os.path.exists(p)), None)
+
+        if target_dataset:
+            try:
+                with open(target_dataset, "r", encoding="utf-8") as f:
+                    header = f.read(1024)
+                    import re
+                    m = re.search(r'"total_indicators":\s*(\d+)', header)
+                    expected_total = int(m.group(1)) if m else 0
+                    if expected_total > count or count == 0:
+                        f.seek(0)
+                        ds = json.load(f)
+                        raw_items = ds.get("indicators", [])
+                        if raw_items:
+                            now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                            records = []
+                            for item in raw_items:
+                                ind = item.get("indicator")
+                                if not ind:
+                                    continue
+                                records.append((
+                                    str(ind).strip(),
+                                    str(item.get("type", "IOC")),
+                                    str(item.get("reputation", "MALICIOUS")),
+                                    int(item.get("confidence", 90) or 90),
+                                    str(item.get("threat_actor", "") or "Unknown"),
+                                    str(item.get("malware_family", "") or "Unknown Malware"),
+                                    str(item.get("source", "Threat Feed")),
+                                    str(item.get("first_seen", "") or now_str),
+                                    str(item.get("last_seen", "") or now_str),
+                                    str(item.get("ransomware_use", "Unknown")),
+                                    str(item.get("cvss_score", "MALICIOUS")),
+                                    str(item.get("status", "ACTIVE")),
+                                    str(item.get("description", "")),
+                                    now_str
+                                ))
+                            c.executemany("""
+                                INSERT INTO iocs (
+                                    indicator, type, reputation, confidence, threat_actor, malware_family,
+                                    source, first_seen, last_seen, ransomware_use, cvss_score, status,
+                                    description, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ON CONFLICT(indicator) DO UPDATE SET
+                                    type=excluded.type,
+                                    reputation=excluded.reputation,
+                                    confidence=excluded.confidence,
+                                    threat_actor=excluded.threat_actor,
+                                    malware_family=excluded.malware_family,
+                                    source=excluded.source,
+                                    last_seen=excluded.last_seen,
+                                    ransomware_use=excluded.ransomware_use,
+                                    cvss_score=excluded.cvss_score,
+                                    status=excluded.status,
+                                    description=excluded.description,
+                                    updated_at=excluded.updated_at
+                            """, records)
+                            conn.commit()
+            except Exception as e:
+                print(f"Error auto-syncing dataset: {e}")
+
+        # Seed initial Talos data if database is empty and no dataset found
         c.execute("SELECT COUNT(*) FROM iocs")
         count = c.fetchone()[0]
         if count == 0 and os.path.exists(TALOS_SEED_FILE):
@@ -426,3 +498,94 @@ def delete_ioc(indicator: str) -> bool:
     except Exception as e:
         print(f"Error deleting IOC: {e}")
         return False
+
+
+def import_iocs_from_json(json_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Explicitly imports threat indicators from the Git dataset JSON file into SQLite.
+    Updates existing indicators and inserts new ones.
+    """
+    candidates = [
+        json_path,
+        EXPORT_JSON_FILE,
+        BACKEND_DATA_JSON,
+        os.path.join(REPO_ROOT, "data", "threat_intel_iocs.json"),
+        "/opt/opensoc-forge/data/threat_intel_iocs.json",
+        "/home/resanul/siem/data/threat_intel_iocs.json",
+        "data/threat_intel_iocs.json"
+    ]
+    target_file = next((p for p in candidates if p and os.path.exists(p)), None)
+
+    if not target_file:
+        return {"status": "error", "message": "threat_intel_iocs.json not found", "imported": 0}
+
+    try:
+        with open(target_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        indicators = data.get("indicators", [])
+        if not indicators:
+            return {"status": "empty", "message": "No indicators in file", "imported": 0}
+
+        db_path = init_ioc_database()
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        records = []
+        for item in indicators:
+            ind = item.get("indicator")
+            if not ind:
+                continue
+            records.append((
+                str(ind).strip(),
+                str(item.get("type", "IOC")),
+                str(item.get("reputation", "MALICIOUS")),
+                int(item.get("confidence", 90) or 90),
+                str(item.get("threat_actor", "") or "Unknown"),
+                str(item.get("malware_family", "") or "Unknown Malware"),
+                str(item.get("source", "Threat Feed")),
+                str(item.get("first_seen", "") or now_str),
+                str(item.get("last_seen", "") or now_str),
+                str(item.get("ransomware_use", "Unknown")),
+                str(item.get("cvss_score", "MALICIOUS")),
+                str(item.get("status", "ACTIVE")),
+                str(item.get("description", "")),
+                now_str
+            ))
+
+        conn = sqlite3.connect(db_path, timeout=30)
+        c = conn.cursor()
+        c.executemany("""
+            INSERT INTO iocs (
+                indicator, type, reputation, confidence, threat_actor, malware_family,
+                source, first_seen, last_seen, ransomware_use, cvss_score, status,
+                description, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(indicator) DO UPDATE SET
+                type=excluded.type,
+                reputation=excluded.reputation,
+                confidence=excluded.confidence,
+                threat_actor=excluded.threat_actor,
+                malware_family=excluded.malware_family,
+                source=excluded.source,
+                last_seen=excluded.last_seen,
+                ransomware_use=excluded.ransomware_use,
+                cvss_score=excluded.cvss_score,
+                status=excluded.status,
+                description=excluded.description,
+                updated_at=excluded.updated_at
+        """, records)
+        conn.commit()
+
+        c.execute("SELECT COUNT(*) FROM iocs")
+        total_count = c.fetchone()[0]
+        conn.close()
+
+        return {
+            "status": "success",
+            "imported": len(records),
+            "total_iocs": total_count,
+            "source_file": target_file
+        }
+    except Exception as e:
+        print(f"Error importing IOCs from JSON: {e}")
+        return {"status": "error", "message": str(e), "imported": 0}
+
