@@ -885,3 +885,40 @@ When continuing work from either **Home** or **Office**:
      - AST bracket & parentheses balance check passed 100%.
      - Deployed to target production server `172.31.105.11` at `/opt/opensoc-forge/` and restarted `opensoc-forge.service`.
      - Live `/api/v1/sophos/telemetry` verified: 2,675 endpoints, 120 notables, 186 online, 100% tamper protection, 93.6% healthy fleet.
+
+
+---
+
+## 📌 Session 27 — Sophos XDR Forensics Drawer Redesign & Deep Threat/Endpoint Telemetry Enrichment
+- **Date / Time:** 2026-10-21 18:00 – 18:15 UTC+6
+- **Context:** Endpoint Forensics Modal & Notable Events UI/UX Beauty, Readability & Real IP/Artifact Attribution
+- **User Request:**
+  > "এখানে মোর beautiful/ সুন্দির ভাবে readble data এনে দাও"
+- **Issues in Previous Forensics Modal:**
+  1. Header displayed a massive 200+ character raw sentence instead of a clean, structured threat title.
+  2. Endpoint IP was showing a hardcoded placeholder (`172.31.x.x`) despite the fleet containing real device IPs.
+  3. Base64 Sophos detection token (`groupKey`) was mistakenly labeled as "SHA256 Hash".
+  4. File path was duplicated verbatim under "Process Path", without extracting the malicious file name (`Pokemon_Light_Platinum.zip.lnk`), extension (`.lnk`), or network share location (`\\172.22.106.2`).
+  5. Lack of analyst workflow actions (Copy Path, Threat Hunting, Pivot to Endpoint, Raw JSON toggle).
+- **Key Enhancements Implemented:**
+  1. **Intelligent Threat & Path Parsing Backend (`backend/app/services/sophos_xdr.py`):**
+     - Added `_parse_sophos_threat_details` regex & base64 parsing engine:
+       - Categorizes into: `Malware (Network Share Threat)`, `Local Disk Cleanup`, `Protection Failure`, `Azure Signing Missing`, `License Limit Exceeded`, `Duplicate Cloned Image`.
+       - Extracts clean threat title (e.g. `Malware Detected: Mal/DorkLnk-A`), threat name (`Mal/DorkLnk-A`), file name (`Pokemon_Light_Platinum.zip.lnk`), file extension (`.lnk`), UNC network share (`\\172.22.106.2\File Server`), and share host IP (`172.22.106.2`).
+       - Decodes base64 `groupKey` to extract internal Sophos detection signature (`CoreRemoteDetection`).
+     - **Real Endpoint Fleet Cross-Reference:**
+       - Resolves `host` (e.g. `MPD-32`) against all 2,675 endpoints:
+       - Resolves real IPv4: `172.22.106.32` (instead of placeholder `172.31.x.x`), MAC `8C:EC:4B:C8:09:93`, OS `Windows 11 Pro (Build 26200)`, and assigned user `TBLBD\mainul.hasan`.
+  2. **Upgraded Forensics Drawer & Table UI/UX (`frontend/index.html`):**
+     - **Notable Events Table:** Replaced raw sentence overflow with colored threat badge (`[Mal/DorkLnk-A]`), clean title, file name badge (`📄 Pokemon_Light_Platinum.zip.lnk`), network share tag, and real IP badge.
+     - **SOC Forensics Drawer (Modal):**
+       - **Header:** Urgency tag (`HIGH NOTABLE`), threat category badge (`MALWARE DETECTION`), active status, and clean title.
+       - **Action Bar:** `[📋 Copy Path]` (with live feedback), `[🔍 Hunt in IOC Hunter ↗]`, `[💻 View in Endpoints]`, and `[🔽 View Raw JSON]`.
+       - **Card 1 (Artifact & Location):** Threat family, malicious file name, file type, location type, and styled scrollable UNC path container.
+       - **Card 2 (Endpoint Attribution):** Hostname, online/offline status, resolved real IP (`172.22.106.32`), MAC address, OS & Build, and assigned user.
+       - **Card 3 (MITRE ATT&CK & Defense):** Tactic, Technique, Sophos engine event, mitigation action (`Clean / Neutralize Threat`), and detection signature.
+       - **Accordion Raw JSON Inspector:** Full formatted JSON payload viewable and copyable on demand.
+  3. **Validation & Synchronization:**
+     - Headless Chrome verified zero JavaScript errors or diagnostics.
+     - Target production server `172.31.105.11` updated and verified live.
+     - `verify_content_match.py` confirmed 100% synchronization across all tracked files.

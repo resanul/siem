@@ -9,6 +9,8 @@ import os
 import json
 import time
 import ssl
+import base64
+import re
 import urllib.request
 import urllib.parse
 from datetime import datetime
@@ -336,6 +338,127 @@ def toggle_endpoint_isolation(endpoint_id: str, isolate: bool) -> Dict[str, Any]
     }
 
 
+def _parse_sophos_threat_details(desc: str, cat: str, group_key: str, alert_raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Extracts structured threat attributes, network paths, and clean titles from raw alert text."""
+    threat_info: Dict[str, Any] = {
+        "threat_name": "",
+        "clean_title": "",
+        "threat_type": "Security Alert",
+        "file_name": "",
+        "file_path": "",
+        "file_ext": "",
+        "location_type": "Local Endpoint Disk",
+        "network_share": "",
+        "share_ip": "",
+        "share_folder": "",
+        "decoded_signature": "",
+        "engine_event": "",
+        "recommended_action": "Investigate alert details and review host activity."
+    }
+
+    if group_key:
+        try:
+            padded = group_key + "=" * ((4 - len(group_key) % 4) % 4)
+            dec = base64.b64decode(padded).decode("utf-8", errors="ignore")
+            threat_info["decoded_signature"] = dec
+            parts = dec.split(",")
+            for p in parts:
+                if "Event::" in p:
+                    threat_info["engine_event"] = p.replace("Event::", "")
+                if "%2F" in p or "/" in p:
+                    urllib_dec = urllib.parse.unquote(p)
+                    if not threat_info["threat_name"]:
+                        threat_info["threat_name"] = urllib_dec
+        except Exception:
+            threat_info["decoded_signature"] = group_key
+
+    # 1. Pattern: Malware 'NAME' detected in network location 'PATH' [requires attention]
+    m_net = re.search(r"(?:Malware|PUA)\s+'([^']+)'\s+detected\s+in\s+network\s+location\s+'([^']+)'", desc, re.IGNORECASE)
+    if m_net:
+        threat_name, path = m_net.group(1), m_net.group(2)
+        threat_info["threat_name"] = threat_name
+        threat_info["file_path"] = path
+        is_mal = "malware" in desc.lower()
+        threat_info["threat_type"] = "Malware (Network Share Threat)" if is_mal else "PUA (Network Share)"
+        threat_info["clean_title"] = f"{'Malware' if is_mal else 'PUA'} Detected: {threat_name}"
+        threat_info["location_type"] = "Network Location (SMB / UNC Share)"
+        threat_info["recommended_action"] = "Quarantine or purge malicious payload from network share and inspect connecting workstation."
+        
+        unc_m = re.match(r"^\\\\([^\\]+)\\(.+)$", path)
+        if unc_m:
+            threat_info["share_ip"] = unc_m.group(1)
+            rem = unc_m.group(2)
+            parts = rem.split("\\")
+            threat_info["file_name"] = parts[-1]
+            threat_info["network_share"] = f"\\\\{unc_m.group(1)}\\{parts[0]}" if parts else f"\\\\{unc_m.group(1)}"
+            threat_info["share_folder"] = "\\".join(parts[:-1]) if len(parts) > 1 else parts[0]
+            if "." in threat_info["file_name"]:
+                threat_info["file_ext"] = threat_info["file_name"].rsplit(".", 1)[-1].lower()
+        return threat_info
+
+    # 2. Pattern: Manual (malware|PUA) cleanup required: 'NAME' at 'PATH'
+    m_cleanup = re.search(r"Manual\s+(?:malware|PUA)\s+cleanup\s+required:\s+'([^']+)'\s+at\s+'([^']+)'", desc, re.IGNORECASE)
+    if m_cleanup:
+        threat_name, path = m_cleanup.group(1), m_cleanup.group(2)
+        threat_info["threat_name"] = threat_name
+        threat_info["file_path"] = path
+        is_mal = "malware" in desc.lower()
+        threat_info["threat_type"] = "Malware Cleanup Required" if is_mal else "PUA Cleanup Required"
+        threat_info["clean_title"] = f"{'Malware' if is_mal else 'PUA'} Cleanup: {threat_name}"
+        threat_info["location_type"] = "Local Endpoint Disk"
+        threat_info["recommended_action"] = "Isolate host and execute Intercept X manual cleanup or run offline scan."
+        if "\\" in path:
+            threat_info["file_name"] = path.rsplit("\\", 1)[-1]
+        elif "/" in path:
+            threat_info["file_name"] = path.rsplit("/", 1)[-1]
+        else:
+            threat_info["file_name"] = path
+        if "." in threat_info["file_name"]:
+            threat_info["file_ext"] = threat_info["file_name"].rsplit(".", 1)[-1].lower()
+        return threat_info
+
+    # 3. Pattern: Failed to protect (computer|server): NAME
+    m_prot = re.search(r"Failed to protect (?:computer|server):\s*([^\s,]+)", desc, re.IGNORECASE)
+    if m_prot:
+        hname = m_prot.group(1)
+        threat_info["threat_type"] = "Endpoint Protection Failure"
+        threat_info["clean_title"] = f"Protection Failed: {hname}"
+        threat_info["recommended_action"] = f"Verify network connectivity and reinstall Sophos Central Agent on {hname}."
+        return threat_info
+
+    # 4. Pattern: Azure Code Signing
+    if "azure code signing" in desc.lower():
+        threat_info["threat_type"] = "OS Compatibility / Security Update"
+        threat_info["clean_title"] = "Windows Azure Code Signing (KB5022661) Missing"
+        threat_info["recommended_action"] = "Deploy Microsoft Security Update KB5022661 / KB5022665 to enable Azure Code Signing."
+        return threat_info
+
+    # 5. Pattern: Duplicate device
+    if "duplicate" in desc.lower():
+        threat_info["threat_type"] = "Device Identity Conflict"
+        threat_info["clean_title"] = "Duplicate Device Detected (Cloned Image)"
+        threat_info["recommended_action"] = "Re-register endpoint or run Sophos re-imaging utility to generate a unique machine ID."
+        return threat_info
+
+    # 6. Pattern: Registration High Limit Exceeded
+    if "maximum number of endpoints" in desc.lower():
+        threat_info["threat_type"] = "License Limit Notification"
+        threat_info["clean_title"] = "Endpoint License Limit Reached"
+        threat_info["recommended_action"] = "Upgrade Sophos Central subscription license count or deactivate decommissioned machines."
+        return threat_info
+
+    # 7. Pattern: Real time protection disabled
+    if "real time protection disabled" in desc.lower():
+        threat_info["threat_type"] = "Defense Evasion / Protection Disabled"
+        threat_info["clean_title"] = "Real-Time Protection Disabled"
+        threat_info["recommended_action"] = "Enable Tamper Protection and turn on Real-Time Antivirus in Sophos Central Policy."
+        return threat_info
+
+    # Fallback clean title
+    threat_info["clean_title"] = desc[:70] + ("..." if len(desc) > 70 else "")
+    return threat_info
+
+
 def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
     """
     Enterprise Endpoint Security Posture (XDR) Aggregator.
@@ -555,6 +678,10 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
         high_threat_count = 0
         urgency_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
 
+        # Build fast lookup indexes for endpoints by ID and by hostname
+        ep_by_id = {ep["id"]: ep for ep in transformed_endpoints if ep.get("id")}
+        ep_by_name = {ep["hostname"].strip().lower(): ep for ep in transformed_endpoints if ep.get("hostname")}
+
         for al in alerts_raw:
             aid = al.get("id", "")
             desc = al.get("description", "Security Alert")
@@ -567,11 +694,55 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
 
             agent = al.get("managedAgent", {})
             host = agent.get("name") or "Network / Infrastructure"
+            agent_id = agent.get("id", "")
             person = al.get("person", {})
             user = person.get("name") or "System"
             cat = al.get("category", "protection").upper()
             raised_at = al.get("raisedAt", "")
             actions = al.get("allowedActions", ["detected"])
+            group_key = al.get("groupKey", "")
+
+            # Parse rich threat details
+            threat_details = _parse_sophos_threat_details(desc, cat, group_key, al)
+
+            # Match real endpoint in fleet
+            matched_ep = ep_by_id.get(agent_id) or ep_by_name.get(host.strip().lower())
+            if matched_ep:
+                real_ip = matched_ep.get("ip") or "172.31.x.x"
+                real_mac = matched_ep.get("mac", "")
+                real_os = matched_ep.get("os", "")
+                real_os_build = matched_ep.get("os_build", "")
+                real_type = matched_ep.get("type", "Computer")
+                if user in ["System", "n/a", ""] and matched_ep.get("assigned_user") and matched_ep.get("assigned_user") != "-":
+                    user = matched_ep["assigned_user"]
+                endpoint_meta = {
+                    "id": matched_ep.get("id", ""),
+                    "hostname": matched_ep.get("hostname", host),
+                    "ip": real_ip,
+                    "mac": real_mac,
+                    "os": real_os,
+                    "os_build": real_os_build,
+                    "type": real_type,
+                    "online": matched_ep.get("online", False),
+                    "tamper_protection": matched_ep.get("tamper_protection", True),
+                    "health": matched_ep.get("health", "GOOD"),
+                    "isolation_status": matched_ep.get("isolation_status", "CONNECTED")
+                }
+            else:
+                real_ip = threat_details.get("share_ip") or "172.31.x.x"
+                endpoint_meta = {
+                    "id": agent_id,
+                    "hostname": host,
+                    "ip": real_ip,
+                    "mac": "",
+                    "os": "",
+                    "os_build": "",
+                    "type": agent.get("type", "computer").capitalize(),
+                    "online": False,
+                    "tamper_protection": True,
+                    "health": "UNKNOWN",
+                    "isolation_status": "CONNECTED"
+                }
 
             mitre_tac = "Defense Evasion"
             mitre_tech = "T1562 (Impair Defenses)"
@@ -588,22 +759,37 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
                 mitre_tac = "Initial Access"
                 mitre_tech = "T1190 (Exploit Public-Facing Application)"
 
+            clean_action = ", ".join(
+                "Clean / Neutralize Threat" if a == "clearThreat" else ("Acknowledge Alert" if a == "acknowledge" else a.capitalize())
+                for a in actions
+            )
+
             notable_item = {
                 "id": aid,
                 "rule_name": desc,
+                "clean_title": threat_details["clean_title"],
+                "threat_name": threat_details["threat_name"],
+                "threat_type": threat_details["threat_type"],
                 "urgency": sev,
                 "host": host,
                 "user": user,
-                "src_ip": "172.31.x.x",
+                "src_ip": real_ip,
                 "mitre_tactic": mitre_tac,
                 "mitre_technique": mitre_tech,
-                "process_path": desc,
-                "sha256": al.get("groupKey", "SHA256: 7f8a9..."),
-                "action": ", ".join(actions).capitalize(),
+                "process_path": threat_details["file_path"] or desc,
+                "file_name": threat_details["file_name"],
+                "file_ext": threat_details["file_ext"],
+                "network_share": threat_details["network_share"],
+                "location_type": threat_details["location_type"],
+                "sha256": threat_details["decoded_signature"] or group_key,
+                "signature_token": threat_details["decoded_signature"] or group_key,
+                "action": clean_action,
                 "status": al.get("status", "open").upper(),
                 "sparkline": [1, 2, 0, 3, 1, 4, al.get("eventCount", 1)],
                 "count": al.get("eventCount", 1),
                 "timestamp": raised_at,
+                "threat_details": threat_details,
+                "endpoint_details": endpoint_meta,
                 "raw_json": al
             }
             notable_events.append(notable_item)
@@ -615,8 +801,13 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
                 "category": cat,
                 "host": host,
                 "user": user,
+                "src_ip": real_ip,
+                "clean_title": threat_details["clean_title"],
+                "file_name": threat_details["file_name"],
                 "description": desc,
                 "product": al.get("product", "endpoint"),
+                "threat_details": threat_details,
+                "endpoint_details": endpoint_meta,
                 "raw": al
             })
 
