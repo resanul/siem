@@ -960,3 +960,53 @@ When continuing work from either **Home** or **Office**:
      - Headless Google Chrome confirmed 0 JavaScript errors and 100% clean DOM rendering.
      - Deployed to target production server `172.31.105.11` and confirmed `active` service.
      - Synced `CHAT_HISTORY.md` and verified 100% content match across all 20 tracked files.
+
+
+---
+
+## 📌 Session 29 — 100% Real Urgency Analytics & Chronological Surge Timeline Architecture
+- **Date / Time:** 2026-10-21 18:45 – 19:00 UTC+6
+- **Context:** Eradication of Mock Metrics in Endpoint Security Posture (XDR) Dashboard & Integration of Live Sophos Central Telemetry
+- **User Request:**
+  > "egulo to mone hoi right data disse na"
+  - The user noticed that the two top analytical panels (`NOTABLE EVENTS BY URGENCY` and `NOTABLE EVENTS OVER TIME (24H TREND)`) showed incongruent and inaccurate data:
+    1. The urgency panel displayed `Total: 120 Notables`, but listed static mock percentages: `CRITICAL: 8 (33.3%)`, `HIGH: 19 (39.5%)`, `MEDIUM: 12 (18.8%)`, `LOW: 5 (8.4%)` which summed to 44 (not 120!) with a hardcoded `Primary vector: Ransomware & Memory exploit`.
+    2. The 24-hour trend panel displayed hardcoded hourly intervals (`12:00` to `18:00`) with mock category counts and a fake peak timestamp (`Peak Burst: 18:00 UTC (34 Combined Notables)`).
+- **Backend Analytics Engine Overhaul (`backend/app/services/sophos_xdr.py`):**
+  1. **Live Mathematical Urgency Breakdown:**
+     - Computed dynamic percentages and counts directly from the 120 live notable events:
+       - `CRITICAL`: 0 (0.0%)
+       - `HIGH`: 47 (39.2%)
+       - `MEDIUM`: 73 (60.8%)
+       - `LOW`: 0 (0.0%)
+       - Total: 47 + 73 = 120 notables (100.0% mathematically exact).
+  2. **Dynamic Primary Attack & Health Vector Analysis:**
+     - Evaluated live alert categories:
+       - Agent Protection & Health Failures: 71 events (59.2%)
+       - Malware Detections: 25 events (20.8%)
+       - PUA & Unwanted Applications: 24 events (20.0%)
+     - Auto-generated authentic vector summary: `Agent Health & Protection Policy (71 events, 59.2%)`.
+  3. **Chronological Historical Surge Buckets (Jul 25 – Oct 19, 2026):**
+     - Grouped all 120 live notables into 7 chronological date windows:
+       - `Jul 25-31`: 10 alerts (Malware: 0, PUA: 1, Protection: 9)
+       - `Aug 01-07`: 9 alerts (Malware: 4, PUA: 1, Protection: 4)
+       - `Aug 08-14`: 36 alerts (Malware: 8, PUA: 13, Protection: 15) -> `Peak Surge: Aug 08-14 (36 combined notables)`
+       - `Aug 15-21`: 28 alerts (Malware: 0, PUA: 5, Protection: 23)
+       - `Aug 22-31`: 11 alerts (Malware: 4, PUA: 0, Protection: 7)
+       - `Sep 2026`: 21 alerts (Malware: 5, PUA: 4, Protection: 12)
+       - `Oct (Recent)`: 5 alerts (Malware: 4, PUA: 0, Protection: 1)
+     - Total alerts across timeline: exactly 120.
+  4. **Dynamic KPI Metrics:**
+     - `ransomware_blocked` updated from static fallback to live `real_malware + real_pua = 49`.
+     - `timeline_peak` dynamically calculated from peak bucket.
+- **Frontend Live SOC Visualization (`frontend/index.html`):**
+  1. Replaced static urgency blocks with dynamic `realUrgencyList` mapped from live telemetry.
+  2. Made Urgency cards fully interactive: clicking `HIGH` or `MEDIUM` filters the Notable Events table instantly to matching alerts, with a visual filter badge and clear button.
+  3. Replaced fake hourly bars with `Notable Events Timeline & Surge Analysis` showing 7 real chronological buckets, categorized multi-bars (Malware [rose], PUA [amber], Protection [sky]), and comprehensive hover tooltips.
+  4. Dynamic peak surge banner (`Peak Surge: Aug 08-14 (36 Combined Notables)`) and `Live Sophos Central Telemetry` live pulse indicator.
+- **Deployment & Production Validation:**
+  - Automated headless Edge browser verification passed with 0 runtime errors and flawless DOM mount.
+  - Deployed to remote production host `172.31.105.11` at `/opt/opensoc-forge/`.
+  - Cleared `/tmp/sophos_telemetry_cache.json` and restarted `opensoc-forge.service`.
+  - Verified telemetry API: 120 alerts, 47 High, 73 Medium, 7 timeline buckets with Aug 08-14 peak surge.
+  - Confirmed 100% file synchronization across all 20 tracked files via `verify_content_match.py`.
