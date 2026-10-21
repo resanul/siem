@@ -4502,6 +4502,38 @@ function App() {
 
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
+      const res = await fetch("/api/v1/sophos/config", { method: "DELETE", headers });
+
+      if (res.ok) {
+
+        setSophosClientId("");
+
+        setSophosClientSecret("");
+
+        setSophosTenantId("");
+
+        setSophosFeedback({ type: "success", message: "Sophos Central API removed." });
+
+        fetchOverview();
+
+        setTimeout(() => {
+
+          setSophosConfigModalOpen(false);
+
+          setSophosFeedback(null);
+
+        }, 1200);
+
+      }
+
+    } catch (e) {
+
+      setSophosFeedback({ type: "error", message: `\u2715 Delete error: ${e.message}` });
+
+    }
+
+  };
+
 
 
   const loadCybleConfig = async () => {
@@ -4701,38 +4733,6 @@ function App() {
     } catch (e) {} finally {
 
       setCybleLoading(false);
-
-    }
-
-  };
-
-      const res = await fetch("/api/v1/sophos/config", { method: "DELETE", headers });
-
-      if (res.ok) {
-
-        setSophosClientId("");
-
-        setSophosClientSecret("");
-
-        setSophosTenantId("");
-
-        setSophosFeedback({ type: "success", message: "Sophos Central API removed." });
-
-        fetchOverview();
-
-        setTimeout(() => {
-
-          setSophosConfigModalOpen(false);
-
-          setSophosFeedback(null);
-
-        }, 1200);
-
-      }
-
-    } catch (e) {
-
-      setSophosFeedback({ type: "error", message: `✕ Delete error: ${e.message}` });
 
     }
 
