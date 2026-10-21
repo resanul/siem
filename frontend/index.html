@@ -644,6 +644,18 @@ function App() {
 
   const [sophosActiveFilter, setSophosActiveFilter] = useState(null);
 
+  const [sophosEndpointSortField, setSophosEndpointSortField] = useState("hostname");
+
+  const [sophosEndpointSortOrder, setSophosEndpointSortOrder] = useState("asc");
+
+  const [sophosLogSortField, setSophosLogSortField] = useState("timestamp");
+
+  const [sophosLogSortOrder, setSophosLogSortOrder] = useState("desc");
+
+  const [sophosEpPage, setSophosEpPage] = useState(1);
+
+  const [sophosEpPageSize, setSophosEpPageSize] = useState(50);
+
   const [cybleConfigModalOpen, setCybleConfigModalOpen] = useState(false);
 
   const [cybleApiKey, setCybleApiKey] = useState("");
@@ -5587,11 +5599,85 @@ function App() {
     if (sophosActiveFilter === "TAMPER" && !ep.tamper_protection) return false;
     if (sophosSearch) {
       const q = sophosSearch.toLowerCase();
-      const match = (ep.hostname || "").toLowerCase().includes(q) || (ep.ip || "").includes(q) || (ep.os || "").toLowerCase().includes(q);
+      const match = (ep.hostname || "").toLowerCase().includes(q) ||
+                    (ep.ip || "").includes(q) ||
+                    (ep.mac || "").toLowerCase().includes(q) ||
+                    (ep.os || "").toLowerCase().includes(q) ||
+                    (ep.assigned_user || "").toLowerCase().includes(q) ||
+                    (ep.type || "").toLowerCase().includes(q);
       if (!match) return false;
     }
     return true;
   });
+
+  const handleSortEndpoints = (field) => {
+    if (sophosEndpointSortField === field) {
+      setSophosEndpointSortOrder(sophosEndpointSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSophosEndpointSortField(field);
+      setSophosEndpointSortOrder("asc");
+    }
+  };
+
+  const handleSortLogs = (field) => {
+    if (sophosLogSortField === field) {
+      setSophosLogSortOrder(sophosLogSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSophosLogSortField(field);
+      setSophosLogSortOrder("desc");
+    }
+  };
+
+  const sortedSophosEndpoints = [...filteredSophosEndpoints].sort((a, b) => {
+    let valA = a[sophosEndpointSortField];
+    let valB = b[sophosEndpointSortField];
+    if (valA === undefined || valA === null) valA = "";
+    if (valB === undefined || valB === null) valB = "";
+    if (typeof valA === "boolean") {
+      valA = valA ? 1 : 0;
+      valB = valB ? 1 : 0;
+    } else if (typeof valA === "string") {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+    if (valA < valB) return sophosEndpointSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sophosEndpointSortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const sortedSophosNotables = [...filteredSophosNotables].sort((a, b) => {
+    let valA = a[sophosLogSortField];
+    let valB = b[sophosLogSortField];
+    if (valA === undefined || valA === null) valA = "";
+    if (valB === undefined || valB === null) valB = "";
+    if (typeof valA === "string") {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+    if (valA < valB) return sophosLogSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sophosLogSortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const sortedSophosRealLogs = [...filteredSophosRealLogs].sort((a, b) => {
+    let valA = a[sophosLogSortField];
+    let valB = b[sophosLogSortField];
+    if (valA === undefined || valA === null) valA = "";
+    if (valB === undefined || valB === null) valB = "";
+    if (typeof valA === "string") {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+    if (valA < valB) return sophosLogSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sophosLogSortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalEpPages = sophosEpPageSize === "ALL" ? 1 : Math.max(1, Math.ceil(sortedSophosEndpoints.length / sophosEpPageSize));
+  const currentEpPage = Math.min(sophosEpPage, totalEpPages);
+  const displayedSophosEndpoints = sophosEpPageSize === "ALL"
+    ? sortedSophosEndpoints
+    : sortedSophosEndpoints.slice((currentEpPage - 1) * sophosEpPageSize, currentEpPage * sophosEpPageSize);
 
   const cybleRawDarkWebAlerts = cybleTelemetry && cybleTelemetry.dark_web_alerts ? cybleTelemetry.dark_web_alerts : [];
 
@@ -11204,25 +11290,33 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("thead", {
 
-    className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
+    className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d] select-none"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3"
+    onClick: () => handleSortLogs("rule_name"),
 
-  }, "RULE / THREAT IDENTIFIER"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-    className: "p-3"
+  }, "RULE / THREAT IDENTIFIER", sophosLogSortField === "rule_name" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-  }, "URGENCY"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortLogs("urgency"),
 
-    className: "p-3"
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-  }, "TARGET ENDPOINT"), /*#__PURE__*/React.createElement("th", {
+  }, "URGENCY", sophosLogSortField === "urgency" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3"
+    onClick: () => handleSortLogs("host"),
 
-  }, "MITRE ATT&CK"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "TARGET ENDPOINT", sophosLogSortField === "host" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortLogs("mitre_tactic"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "MITRE ATT&CK", sophosLogSortField === "mitre_tactic" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
     className: "p-3"
 
@@ -11232,9 +11326,11 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, "24H TREND"), /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3 text-right"
+    onClick: () => handleSortLogs("count"),
 
-  }, "COUNT"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 text-right cursor-pointer hover:text-slate-200 transition"
+
+  }, "COUNT", sophosLogSortField === "count" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
     className: "p-3 text-right"
 
@@ -11242,7 +11338,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "divide-y divide-[#1f293d]"
 
-  }, filteredSophosNotables.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 8, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No notable events matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : filteredSophosNotables.map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
+  }, sortedSophosNotables.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 8, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No notable events matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : sortedSophosNotables.map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
 
     key: idx,
 
@@ -11332,33 +11428,63 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("thead", {
 
-    className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
+    className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d] select-none"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3"
+    onClick: () => handleSortEndpoints("online"),
 
-  }, "HOSTNAME & OS"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-    className: "p-3"
+  }, "STATUS", sophosEndpointSortField === "online" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-  }, "IP ADDRESS"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortEndpoints("hostname"),
 
-    className: "p-3"
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-  }, "AGENT & INTERCEPT X"), /*#__PURE__*/React.createElement("th", {
+  }, "HOSTNAME & ROLE", sophosEndpointSortField === "hostname" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3"
+    onClick: () => handleSortEndpoints("ip"),
 
-  }, "TAMPER PROTECTION"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-    className: "p-3"
+  }, "IP & MAC", sophosEndpointSortField === "ip" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-  }, "HEALTH"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortEndpoints("assigned_user"),
 
-    className: "p-3"
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-  }, "ISOLATION STATUS"), /*#__PURE__*/React.createElement("th", {
+  }, "ASSIGNED USER", sophosEndpointSortField === "assigned_user" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortEndpoints("os"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "OPERATING SYSTEM", sophosEndpointSortField === "os" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortEndpoints("tamper_protection"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "PROTECTION", sophosEndpointSortField === "tamper_protection" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortEndpoints("health"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "HEALTH", sophosEndpointSortField === "health" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortEndpoints("isolation_status"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "ISOLATION", sophosEndpointSortField === "isolation_status" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortEndpoints("last_seen"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "LAST SEEN", sophosEndpointSortField === "last_seen" ? (sophosEndpointSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
     className: "p-3 text-right"
 
@@ -11366,7 +11492,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "divide-y divide-[#1f293d]"
 
-  }, filteredSophosEndpoints.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 7, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No managed endpoints matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : filteredSophosEndpoints.map((ep, idx) => {
+  }, displayedSophosEndpoints.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 7, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No managed endpoints matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : displayedSophosEndpoints.map((ep, idx) => {
 
     const isIso = ep.isolation_status === "ISOLATED";
 
@@ -11382,37 +11508,81 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
       className: "p-3"
 
+    }, ep.online ? /*#__PURE__*/React.createElement("span", {
+
+      className: "px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center space-x-1.5 w-max"
+
+    }, /*#__PURE__*/React.createElement("span", {
+
+      className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+
+    }), /*#__PURE__*/React.createElement("span", null, "ONLINE")) : /*#__PURE__*/React.createElement("span", {
+
+      className: "px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-mono flex items-center space-x-1.5 w-max"
+
+    }, /*#__PURE__*/React.createElement("span", {
+
+      className: "w-1.5 h-1.5 rounded-full bg-slate-500"
+
+    }), /*#__PURE__*/React.createElement("span", null, "OFFLINE"))), /*#__PURE__*/React.createElement("td", {
+
+      className: "p-3"
+
     }, /*#__PURE__*/React.createElement("div", {
 
       className: "font-mono font-bold text-slate-100 flex items-center space-x-1.5"
 
     }, /*#__PURE__*/React.createElement("i", {
 
-      "data-lucide": ep.os.includes("Server") ? "server" : (ep.os.includes("macOS") ? "laptop" : "monitor"),
+      "data-lucide": ep.type === "Server" ? "server" : "monitor",
 
-      className: "w-3.5 h-3.5 text-slate-400"
+      className: `w-3.5 h-3.5 ${ep.type === "Server" ? "text-purple-400" : "text-sky-400"}`
 
-    }), /*#__PURE__*/React.createElement("span", null, ep.hostname)), /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement("span", null, ep.hostname), /*#__PURE__*/React.createElement("span", {
+
+      className: `px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${ep.type === "Server" ? "bg-purple-500/20 text-purple-300" : "bg-sky-500/20 text-sky-300"}`
+
+    }, ep.type)), /*#__PURE__*/React.createElement("div", {
 
       className: "text-[10px] text-slate-400 font-mono"
 
-    }, ep.os)), /*#__PURE__*/React.createElement("td", {
+    }, ep.agent_type || "Sophos Central")), /*#__PURE__*/React.createElement("td", {
 
-      className: "p-3 font-mono text-slate-300"
+      className: "p-3 font-mono"
 
-    }, ep.ip), /*#__PURE__*/React.createElement("td", {
+    }, /*#__PURE__*/React.createElement("div", {
+
+      className: "text-slate-200 font-bold"
+
+    }, ep.ip), /*#__PURE__*/React.createElement("div", {
+
+      className: "text-[10px] text-slate-400 font-mono"
+
+    }, ep.mac || "-")), /*#__PURE__*/React.createElement("td", {
+
+      className: "p-3 font-mono text-slate-300 text-xs"
+
+    }, ep.assigned_user && ep.assigned_user !== "-" ? /*#__PURE__*/React.createElement("span", {
+
+      className: "px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+
+    }, ep.assigned_user) : /*#__PURE__*/React.createElement("span", {
+
+      className: "text-slate-500"
+
+    }, "Unassigned")), /*#__PURE__*/React.createElement("td", {
 
       className: "p-3 font-mono text-[11px]"
 
     }, /*#__PURE__*/React.createElement("div", {
 
-      className: "text-emerald-400 font-bold"
+      className: "text-slate-200"
 
-    }, ep.intercept_x), /*#__PURE__*/React.createElement("div", {
+    }, ep.os), ep.os_build && /*#__PURE__*/React.createElement("div", {
 
-      className: "text-slate-400 text-[10px]"
+      className: "text-[10px] text-slate-400 font-mono"
 
-    }, "v", ep.agent_version)), /*#__PURE__*/React.createElement("td", {
+    }, `Build: ${ep.os_build}`)), /*#__PURE__*/React.createElement("td", {
 
       className: "p-3 font-mono text-xs"
 
@@ -11420,11 +11590,11 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
       className: "text-emerald-400 font-bold"
 
-    }, "\u2713 ENFORCED") : /*#__PURE__*/React.createElement("span", {
+    }, "✓ ENFORCED") : /*#__PURE__*/React.createElement("span", {
 
       className: "text-amber-400 font-bold"
 
-    }, "\u26A0 DISABLED")), /*#__PURE__*/React.createElement("td", {
+    }, "⚠ DISABLED")), /*#__PURE__*/React.createElement("td", {
 
       className: "p-3"
 
@@ -11458,6 +11628,10 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     }, "CONNECTED")), /*#__PURE__*/React.createElement("td", {
 
+      className: "p-3 font-mono text-[11px] text-slate-400 whitespace-nowrap"
+
+    }, ep.last_seen ? ep.last_seen.replace("T", " ").replace("Z", "").slice(0, 19) : "-"), /*#__PURE__*/React.createElement("td", {
+
       className: "p-3 text-right"
 
     }, isIso ? /*#__PURE__*/React.createElement("button", {
@@ -11468,7 +11642,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
       className: "px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition"
 
-    }, isWorking ? "Restoring..." : "\uD83D\uDD13 Reconnect Host") : /*#__PURE__*/React.createElement("button", {
+    }, isWorking ? "Restoring..." : "������ Reconnect Host") : /*#__PURE__*/React.createElement("button", {
 
       disabled: isWorking,
 
@@ -11476,9 +11650,83 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
       className: "px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-mono font-bold transition"
 
-    }, isWorking ? "Isolating..." : "\u26A1 Isolate Host")));
+    }, isWorking ? "Isolating..." : "⚡ Isolate Host")));
 
-  })))) : /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", {
+
+    className: "p-3 bg-[#131b2e] border-t border-[#1f293d] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-300"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center space-x-2.5 flex-wrap"
+
+  }, /*#__PURE__*/React.createElement("span", {
+
+    className: "text-slate-400"
+
+  }, `Showing ${sortedSophosEndpoints.length === 0 ? 0 : (currentEpPage - 1) * (sophosEpPageSize === "ALL" ? sortedSophosEndpoints.length : sophosEpPageSize) + 1} to ${Math.min(currentEpPage * (sophosEpPageSize === "ALL" ? sortedSophosEndpoints.length : sophosEpPageSize), sortedSophosEndpoints.length)} of ${sortedSophosEndpoints.length.toLocaleString()} endpoints`), /*#__PURE__*/React.createElement("span", {
+
+    className: "text-slate-600"
+
+  }, "|"), /*#__PURE__*/React.createElement("span", {
+
+    className: "text-slate-400 text-[11px]"
+
+  }, "Rows per page:"), /*#__PURE__*/React.createElement("select", {
+
+    value: sophosEpPageSize,
+
+    onChange: e => {
+
+      setSophosEpPageSize(e.target.value === "ALL" ? "ALL" : Number(e.target.value));
+
+      setSophosEpPage(1);
+
+    },
+
+    className: "bg-[#080c14] border border-[#1f293d] text-slate-200 rounded px-2 py-0.5 text-xs font-mono focus:outline-none focus:border-indigo-500 cursor-pointer"
+
+  }, /*#__PURE__*/React.createElement("option", { value: 50 }, "50"), /*#__PURE__*/React.createElement("option", { value: 100 }, "100"), /*#__PURE__*/React.createElement("option", { value: 250 }, "250"), /*#__PURE__*/React.createElement("option", { value: 500 }, "500"), /*#__PURE__*/React.createElement("option", { value: "ALL" }, `All (${sortedSophosEndpoints.length.toLocaleString()})`))), sophosEpPageSize !== "ALL" && totalEpPages > 1 && /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center space-x-1"
+
+  }, /*#__PURE__*/React.createElement("button", {
+
+    disabled: currentEpPage <= 1,
+
+    onClick: () => setSophosEpPage(1),
+
+    className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-slate-300 hover:bg-[#1a253e] disabled:opacity-30 disabled:cursor-not-allowed"
+
+  }, "⏮ First"), /*#__PURE__*/React.createElement("button", {
+
+    disabled: currentEpPage <= 1,
+
+    onClick: () => setSophosEpPage(Math.max(1, currentEpPage - 1)),
+
+    className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-slate-300 hover:bg-[#1a253e] disabled:opacity-30 disabled:cursor-not-allowed"
+
+  }, "◀ Prev"), /*#__PURE__*/React.createElement("span", {
+
+    className: "px-2.5 text-indigo-400 font-bold"
+
+  }, `Page ${currentEpPage} of ${totalEpPages}`), /*#__PURE__*/React.createElement("button", {
+
+    disabled: currentEpPage >= totalEpPages,
+
+    onClick: () => setSophosEpPage(Math.min(totalEpPages, currentEpPage + 1)),
+
+    className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-slate-300 hover:bg-[#1a253e] disabled:opacity-30 disabled:cursor-not-allowed"
+
+  }, "Next ▶"), /*#__PURE__*/React.createElement("button", {
+
+    disabled: currentEpPage >= totalEpPages,
+
+    onClick: () => setSophosEpPage(totalEpPages),
+
+    className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-slate-300 hover:bg-[#1a253e] disabled:opacity-30 disabled:cursor-not-allowed"
+
+  }, "Last ⏭")))) : /*#__PURE__*/React.createElement("div", {
 
     className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
 
@@ -11516,29 +11764,39 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("thead", {
 
-    className: "bg-[#0b101b] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
+    className: "bg-[#0b101b] text-slate-400 font-mono text-[11px] border-b border-[#1f293d] select-none"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3"
+    onClick: () => handleSortLogs("timestamp"),
 
-  }, "TIMESTAMP (UTC)"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-    className: "p-3"
+  }, "TIMESTAMP (UTC)", sophosLogSortField === "timestamp" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-  }, "SEVERITY"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortLogs("severity"),
 
-    className: "p-3"
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-  }, "CATEGORY"), /*#__PURE__*/React.createElement("th", {
+  }, "SEVERITY", sophosLogSortField === "severity" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-    className: "p-3"
+    onClick: () => handleSortLogs("category"),
 
-  }, "HOST / USER"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
 
-    className: "p-3"
+  }, "CATEGORY", sophosLogSortField === "category" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
-  }, "SECURITY EVENT DESCRIPTION"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortLogs("host"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "HOST / USER", sophosLogSortField === "host" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
+    onClick: () => handleSortLogs("description"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition"
+
+  }, "SECURITY EVENT DESCRIPTION", sophosLogSortField === "description" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
 
     className: "p-3 text-right"
 
@@ -11546,7 +11804,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "divide-y divide-[#1f293d]"
 
-  }, filteredSophosRealLogs.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 6, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No real audit logs matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : filteredSophosRealLogs.map((logItem, idx) => /*#__PURE__*/React.createElement("tr", {
+  }, sortedSophosRealLogs.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 6, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No real audit logs matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : sortedSophosRealLogs.map((logItem, idx) => /*#__PURE__*/React.createElement("tr", {
 
     key: idx,
 

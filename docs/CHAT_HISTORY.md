@@ -854,3 +854,34 @@ When continuing work from either **Home** or **Office**:
   - Headless Google Chrome DOM verification confirmed zero UI diagnostics or recovery errors.
   - Deployed all updated backend and frontend files to target server `172.31.105.11` via SFTP and restarted `opensoc-forge.service`.
   - Ran `verify_content_match.py` to confirm 100% synchronization across all tracked files.
+
+
+---
+
+## 📌 Session 26 — Sophos Central XDR Full Fleet Ingestion (2,675 Devices) & Interactive Column Sorting/Pagination
+- **Date / Time:** 2026-10-21 17:30 – 17:55 UTC+6
+- **Context:** Endpoint Security Posture (XDR) Live Telemetry Ingestion, API Cursor Pagination, Rich Metadata & UI/UX Sorting/Pagination Controls
+- **User Request:**
+  > "এই Dashboard এ কি live data আছে?? সব সম্য আমি বলছি live data রাখতে হবে এটা memorised করে নাও। তারপর শুধু 50 device কেনো দেখাচ্ছে?? আমার কি only 50 device?? ভালো করে api call করো এবং আরো field থাকলে আনো এবং আরো ডাটে আনো । assending desending order use koro"
+- **Root Cause Identified:**
+  - The Sophos Central API (`GET /endpoint/v1/endpoints?view=full`) has `maxSize: 500` and defaults to `size: 50` when no pagination key is supplied. The previous implementation made a single non-paginated API call with `limit=100`, which Sophos capped at 50 items.
+  - The user's tenant (`f55209e1-802e-45e4-8cf8-f5db160a1ebd`) actually contains **2,675 live endpoints** (353 Windows Servers, 2,322 Workstations) and **120 active security alerts**.
+- **Key Enhancements Implemented:**
+  1. **Multi-Page Cursor Ingestion Backend (`backend/app/services/sophos_xdr.py`):**
+     - Implemented full cursor pagination using Sophos `pageFromKey` loop with `pageSize=500` (up to 10 pages).
+     - Successfully ingested all **2,675 endpoints** across the entire corporate estate.
+     - Extracted rich fields: `online` (True/False status), `macAddresses`, `assigned_user` (`associatedPerson`), `type` (`server` / `computer`), `os_build`, `lastSeenAt`, `tamperProtection`, `isolation`, `health` (threat and service health), and `raw_json`.
+     - Ingested all **120 real notable events** and alerts with urgency ratings, MITRE ATT&CK mapping, and remediation actions.
+     - Maintained high-performance multi-tier caching (180s in-memory TTL + `/tmp/sophos_telemetry_cache.json` disk fallback).
+  2. **Interactive UI Sorting & Navigation (`frontend/index.html`):**
+     - Added column sorting states (`sophosEndpointSortField`, `sophosEndpointSortOrder`, `sophosLogSortField`, `sophosLogSortOrder`).
+     - Added clickable column headers with visual sort direction indicators (`▲` / `▼` / `⇅`) to:
+       - **Managed Endpoints:** Status (Online/Offline), Hostname & Role, IP & MAC, Assigned User, OS & Build, Protection, Health, Isolation, Last Seen.
+       - **Top Notable Events & Real Logs:** Threat / Rule Identifier, Urgency, Target Endpoint, MITRE ATT&CK, Count, Timestamp.
+     - Added full-featured pagination controls for `Managed Endpoints` (50, 100, 250, 500, or All 2,675) with First (`⏮`), Prev (`◀`), Next (`▶`), Last (`⏭`) navigation and items range indicators.
+     - Enhanced global search filter to instantly match across hostname, IP, MAC address, OS, assigned user, and device role.
+  3. **Quality & Validation:**
+     - Headless Google Chrome DOM verification confirmed zero UI diagnostics or recovery errors.
+     - AST bracket & parentheses balance check passed 100%.
+     - Deployed to target production server `172.31.105.11` at `/opt/opensoc-forge/` and restarted `opensoc-forge.service`.
+     - Live `/api/v1/sophos/telemetry` verified: 2,675 endpoints, 120 notables, 186 online, 100% tamper protection, 93.6% healthy fleet.

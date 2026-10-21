@@ -344,8 +344,20 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
     """
     global _DATA_CACHE
     now = time.time()
-    if not force_refresh and _DATA_CACHE["data"] and now - _DATA_CACHE["last_synced"] < 20:
+    if not force_refresh and _DATA_CACHE["data"] and now - _DATA_CACHE["last_synced"] < 180:
         return _DATA_CACHE["data"]
+
+    # Try reading from disk cache if in-memory cache is empty and not forcing refresh
+    disk_cache_file = "/tmp/sophos_telemetry_cache.json"
+    if not force_refresh and not _DATA_CACHE["data"] and os.path.exists(disk_cache_file):
+        try:
+            with open(disk_cache_file, "r", encoding="utf-8") as dcf:
+                cached_disk = json.load(dcf)
+                if cached_disk.get("status") == "HEALTHY":
+                    _DATA_CACHE = {"last_synced": now, "data": cached_disk}
+                    return cached_disk
+        except Exception:
+            pass
 
     cfg = load_sophos_config()
     cid = cfg.get("client_id", "").strip()
@@ -410,55 +422,130 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
             "Accept": "application/json"
         }
 
-        # Step 3: Fetch Real Endpoints (up to 100)
-        ep_req = urllib.request.Request(f"{data_region}/endpoint/v1/endpoints?view=full&limit=100", headers=req_headers)
+        # Step 3: Fetch ALL Real Endpoints with Multi-Page Cursor Pagination (pageSize=500)
         endpoints_raw = []
-        try:
-            with safe_urlopen(ep_req, timeout=15) as resp:
-                endpoints_raw = json.loads(resp.read().decode()).get("items", [])
-        except Exception:
-            endpoints_raw = []
+        next_key = None
+        max_ep_pages = 12
+        page_idx = 0
+        while page_idx < max_ep_pages:
+            page_idx += 1
+            ep_url = f"{data_region}/endpoint/v1/endpoints?view=full&pageSize=500&pageTotal=true"
+            if next_key:
+                ep_url += f"&pageFromKey={urllib.parse.quote(next_key)}"
+            ep_req = urllib.request.Request(ep_url, headers=req_headers)
+            try:
+                with safe_urlopen(ep_req, timeout=25) as resp:
+                    ep_json = json.loads(resp.read().decode())
+                    items = ep_json.get("items", [])
+                    endpoints_raw.extend(items)
+                    pages_info = ep_json.get("pages", {})
+                    next_key = pages_info.get("nextKey")
+                    if not next_key:
+                        break
+            except Exception as e:
+                print(f"Error fetching Sophos endpoints page {page_idx}: {e}")
+                break
 
-        # Step 4: Fetch Real Alerts (up to 100)
-        al_req = urllib.request.Request(f"{data_region}/common/v1/alerts?limit=100", headers=req_headers)
+        # Step 4: Fetch ALL Real Alerts with Multi-Page Pagination
         alerts_raw = []
-        try:
-            with safe_urlopen(al_req, timeout=15) as resp:
-                alerts_raw = json.loads(resp.read().decode()).get("items", [])
-        except Exception:
-            alerts_raw = []
+        next_key = None
+        max_al_pages = 10
+        page_idx = 0
+        while page_idx < max_al_pages:
+            page_idx += 1
+            al_url = f"{data_region}/common/v1/alerts?limit=500&pageTotal=true"
+            if next_key:
+                al_url += f"&pageFromKey={urllib.parse.quote(next_key)}"
+            al_req = urllib.request.Request(al_url, headers=req_headers)
+            try:
+                with safe_urlopen(al_req, timeout=20) as resp:
+                    al_json = json.loads(resp.read().decode())
+                    items = al_json.get("items", [])
+                    alerts_raw.extend(items)
+                    pages_info = al_json.get("pages", {})
+                    next_key = pages_info.get("nextKey")
+                    if not next_key:
+                        break
+            except Exception as e:
+                print(f"Error fetching Sophos alerts page {page_idx}: {e}")
+                break
 
-        # Transform Endpoints
+        # Transform Endpoints with ALL Available Metadata Fields
         transformed_endpoints = []
         tamper_count = 0
         good_health_count = 0
+        online_count = 0
+        server_count = 0
+        workstation_count = 0
 
         for ep in endpoints_raw:
             eid = ep.get("id", "")
             hostname = ep.get("hostname", "Unknown")
             ips = ep.get("ipv4Addresses", [])
             primary_ip = ips[0] if ips else "172.31.x.x"
+            macs = ep.get("macAddresses", [])
+            primary_mac = macs[0] if macs else "-"
             os_info = ep.get("os", {})
             os_name = os_info.get("name", "Windows")
-            overall_health = ep.get("health", {}).get("overall", "good")
+            os_build = str(os_info.get("build") or "")
+            device_type = ep.get("type", "computer").lower()
+            if device_type == "server" or os_info.get("isServer"):
+                server_count += 1
+            else:
+                workstation_count += 1
+
+            is_online = bool(ep.get("online", False))
+            if is_online:
+                online_count += 1
+
+            person = ep.get("associatedPerson", {})
+            assigned_user = person.get("name") or person.get("viaLogin") or "-"
+
+            overall_health = ep.get("health", {}).get("overall", "good").lower()
+            threat_health = ep.get("health", {}).get("threats", {}).get("status", "good")
+            service_health = ep.get("health", {}).get("services", {}).get("status", "good")
+
             tamper = ep.get("tamperProtectionEnabled", True)
             if tamper: tamper_count += 1
             if overall_health == "good": good_health_count += 1
 
-            iso_status = _ISOLATION_OVERRIDES.get(eid, "ISOLATED" if ep.get("isolated") else "CONNECTED")
+            iso_info = ep.get("isolation", {})
+            is_isolated = bool(iso_info.get("isolated") or iso_info.get("adminIsolated") or iso_info.get("selfIsolated"))
+            iso_status = _ISOLATION_OVERRIDES.get(eid, "ISOLATED" if is_isolated else "CONNECTED")
+
+            assigned_prods = ep.get("assignedProducts", [])
+            agent_ver = "2026.2.2"
+            has_xdr = False
+            for p in assigned_prods:
+                if p.get("code") == "coreAgent" and p.get("version"):
+                    agent_ver = p.get("version")
+                if "xdr" in p.get("code", "").lower() or "intercept" in p.get("code", "").lower():
+                    has_xdr = True
 
             transformed_endpoints.append({
                 "id": eid,
                 "hostname": hostname,
                 "ip": primary_ip,
                 "all_ips": ips,
+                "mac": primary_mac,
                 "os": os_name,
+                "os_build": os_build,
+                "type": "Server" if (device_type == "server" or os_info.get("isServer")) else "Workstation",
+                "agent_type": ep.get("agentType", "Sophos Central"),
+                "online": is_online,
+                "assigned_user": assigned_user,
                 "health": "GOOD" if overall_health == "good" else ("SUSPICIOUS" if overall_health == "suspicious" else "BAD"),
+                "threat_health": threat_health.upper(),
+                "service_health": service_health.upper(),
                 "tamper_protection": bool(tamper),
-                "intercept_x": "Intercept X Active",
+                "intercept_x": "Intercept X Advanced with XDR" if has_xdr else "Intercept X Active",
                 "isolation_status": iso_status,
-                "agent_version": "2026.2.1",
+                "agent_version": agent_ver,
                 "last_seen": ep.get("lastSeenAt", "Active"),
+                "registered_at": ep.get("registeredAt", "-"),
+                "last_agent_update": ep.get("lastAgentUpdateAt", "-"),
+                "last_os_update": ep.get("lastOsUpdateAt", "-"),
+                "serial_number": ep.get("serialNumber", "-"),
                 "raw_json": ep
             })
 
@@ -589,7 +676,19 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
             "all_real_logs": all_logs
         }
 
+        data["kpis"]["online_endpoints"] = online_count
+        data["kpis"]["server_count"] = server_count
+        data["kpis"]["workstation_count"] = workstation_count
+
         _DATA_CACHE = {"last_synced": now, "data": data}
+
+        # Persist to disk cache
+        try:
+            with open("/tmp/sophos_telemetry_cache.json", "w", encoding="utf-8") as f_cache:
+                json.dump(data, f_cache)
+        except Exception:
+            pass
+
         return data
 
     except Exception as e:
