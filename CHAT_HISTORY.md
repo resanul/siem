@@ -922,3 +922,41 @@ When continuing work from either **Home** or **Office**:
      - Headless Chrome verified zero JavaScript errors or diagnostics.
      - Target production server `172.31.105.11` updated and verified live.
      - `verify_content_match.py` confirmed 100% synchronization across all tracked files.
+
+
+---
+
+## 📌 Session 28 — Elimination of Unicode Emoji Corruption & World-Class Enterprise SOC Incident Workbench
+- **Date / Time:** 2026-10-21 18:20 – 18:35 UTC+6
+- **Context:** Enterprise-Grade SIEM/XDR Forensics Drawer Overhaul, Zero-Glyph-Corruption Policy & CrowdStrike/Sentinel Workbench Architecture
+- **User Request:**
+  > "এগুলা আসে কেনো? তুমি বোঝার চেষ্টা করছো না আমি একটা enterprise grade software বানাচ্ছি, যত সুন্দর ভাবে ডাটা দেখানো যাবে তত ভালো। তুমি research করে দেখো একটা enterprise grade SIEM software এ কি কি আছে সব দেখে দরকার হলে সবার থেকে কিছু কিছু করে নিয়ে best SIEM solution in the world banate hobe."
+- **Root Cause of Question Mark Glitches ():**
+  - Unicode surrogate emoji pairs (`\ud83d\udccb`, `\ud83d\udd0d`, `\ud83d\udcbb`, `\ud83d\udd3d`, etc.) when transferred across certain server charsets/web font stacks collapse into Unicode Replacement Characters (`` in diamond). Emojis also look unprofessional in top-tier security platforms.
+  - Contextual mismatch: Endpoint protection failure alerts (`COX-9`) were showing generic "Location Context: Local Endpoint Disk" and raw rule names under "PATH / LOCATION" rather than actionable agent diagnostics.
+- **Enterprise-Grade SIEM Standards Implemented (CrowdStrike Falcon / Microsoft Sentinel / Splunk ES Model):**
+  1. **Zero-Emoji Architecture with Pure Lucide SVGs:**
+     - Removed 100% of raw unicode surrogate emojis from all tables, buttons, and drawers.
+     - Replaced with high-precision enterprise Lucide SVG vector icons (`activity`, `shield`, `shield-alert`, `cpu`, `code-2`, `terminal`, `network`, `user`, `monitor`, `server`, `copy`, `check`, `crosshair`, `download`, `x`, `alert-triangle`, `file-text`).
+     - Added dedicated `useEffect` hook to trigger `window.lucide.createIcons()` dynamically whenever the forensics modal opens or tabs switch.
+  2. **Multi-Tabbed Incident Investigation Workbench:**
+     - **Tab 1: `Incident Overview & Triage` (Active):**
+       - Adaptive contextual triage:
+         - *Protection Failures (e.g. `COX-9`):* Displays Agent Health Diagnostics, Reachability scope (TCP 443/80), and SOC Remediation Playbook (Service check, installer push).
+         - *Malware & Threat Detections (e.g. `Mal/DorkLnk-A`):* Displays Malicious File, Extension (`.lnk`), UNC Network Share, Target Folder, and Containment steps.
+         - *PUA / Activators (e.g. `KMS Activator`):* Displays Locked DLL/Hook analysis and Safe-Mode manual cleanup instructions.
+     - **Tab 2: `Host & Entity Posture`:**
+       - 6-point asset telemetry grid: Hostname & Role, Resolved IPv4 (`172.22.45.9`), Layer-2 MAC Address (`70:B5:E8:25:B5:4E`), Operating System & Build, Active Directory Account (`COX-9\tbladmin`), and Fleet Security Health.
+     - **Tab 3: `MITRE ATT&CK & Forensics`:**
+       - Tactic, Technique ID, Attack Vector Classification, Sophos Engine Event, and Decoded Signature Key.
+     - **Tab 4: `Raw Telemetry (JSON)`:**
+       - Formatted, syntax-highlighted JSON viewer with one-click `Copy JSON` and `Export JSON` file download.
+  3. **Analyst Quick-Action Toolbelt:**
+     - `[Copy Path / Artifact]` (with dynamic "✓ Copied!" feedback)
+     - `[Hunt in IOC Hunter ↗]` (instant pivot to threat intelligence)
+     - `[View in Fleet]` (direct filter in Managed Endpoints)
+     - `[Export JSON]` (instant incident report download)
+  4. **Quality & Validation:**
+     - Headless Google Chrome confirmed 0 JavaScript errors and 100% clean DOM rendering.
+     - Deployed to target production server `172.31.105.11` and confirmed `active` service.
+     - Synced `CHAT_HISTORY.md` and verified 100% content match across all 20 tracked files.

@@ -660,6 +660,8 @@ function App() {
 
   const [sophosShowRawModal, setSophosShowRawModal] = useState(false);
 
+  const [sophosForensicsTab, setSophosForensicsTab] = useState("overview");
+
   const [cybleConfigModalOpen, setCybleConfigModalOpen] = useState(false);
 
   const [cybleApiKey, setCybleApiKey] = useState("");
@@ -2159,6 +2161,15 @@ function App() {
   });
 
 
+
+  useEffect(() => {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      const t = setTimeout(() => {
+        try { window.lucide.createIcons(); } catch(e) {}
+      }, 30);
+      return () => clearTimeout(t);
+    }
+  }, [sophosSelectedEvent, sophosForensicsTab]);
 
   useEffect(() => {
 
@@ -11346,9 +11357,9 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     key: idx,
 
-    className: "hover:bg-[#131b2e]/60 transition cursor-pointer",
+    className: "hover:bg-[#131b2e]/60 transition cursor-pointer group",
 
-    onClick: () => setSophosSelectedEvent(ev)
+    onClick: () => { setSophosSelectedEvent(ev); setSophosForensicsTab("overview"); }
 
   }, /*#__PURE__*/React.createElement("td", {
 
@@ -11356,7 +11367,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "flex items-center space-x-1.5 flex-wrap mb-0.5"
+    className: "flex items-center space-x-1.5 flex-wrap mb-1"
 
   }, ev.threat_name && /*#__PURE__*/React.createElement("span", {
 
@@ -11364,7 +11375,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, ev.threat_name), /*#__PURE__*/React.createElement("span", {
 
-    className: "font-bold text-slate-100 text-xs hover:text-indigo-300 transition"
+    className: "font-bold text-slate-100 text-xs group-hover:text-indigo-300 transition"
 
   }, ev.clean_title || ev.rule_name)), /*#__PURE__*/React.createElement("div", {
 
@@ -11374,11 +11385,11 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "text-amber-300 font-semibold truncate"
 
-  }, `í ½í³„ ${ev.file_name}`) : null, ev.network_share ? /*#__PURE__*/React.createElement("span", {
+  }, `FILE: ${ev.file_name}`) : null, ev.network_share ? /*#__PURE__*/React.createElement("span", {
 
     className: "text-slate-400 text-[10px] truncate"
 
-  }, `â€¢ í ¼í¼ ${ev.network_share}`) : /*#__PURE__*/React.createElement("span", {
+  }, `â€¢ SHARE: ${ev.network_share}`) : /*#__PURE__*/React.createElement("span", {
 
     className: "text-slate-500 text-[10px] truncate"
 
@@ -11454,7 +11465,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("button", {
 
-    onClick: () => setSophosSelectedEvent(ev),
+    onClick: e => { e.stopPropagation(); setSophosSelectedEvent(ev); setSophosForensicsTab("overview"); },
 
     className: "px-2.5 py-1 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-mono transition"
 
@@ -11952,13 +11963,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, "Close")))), sophosSelectedEvent && /*#__PURE__*/React.createElement("div", {
 
-    className: "fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200",
+    className: "fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-50 animate-in fade-in duration-200",
 
     onClick: () => { setSophosSelectedEvent(null); setSophosShowRawModal(false); }
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "bg-[#0b101d] rounded-2xl border border-indigo-500/40 max-w-4xl w-full p-6 shadow-2xl shadow-black/90 space-y-5 max-h-[90vh] overflow-y-auto ring-1 ring-indigo-500/20",
+    className: "bg-[#0a0f1d] rounded-2xl border border-indigo-500/40 max-w-5xl w-full p-6 shadow-2xl shadow-black/95 space-y-4 max-h-[92vh] overflow-y-auto ring-1 ring-indigo-500/20 text-slate-100",
 
     onClick: e => e.stopPropagation()
 
@@ -11968,61 +11979,99 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "space-y-1.5"
+    className: "space-y-2 flex-1 mr-4"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "flex items-center space-x-2 flex-wrap"
+    className: "flex items-center space-x-2.5 flex-wrap gap-y-1.5"
 
   }, /*#__PURE__*/React.createElement("span", {
 
-    className: `px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase shadow-sm ${sophosSelectedEvent.urgency === "critical" ? "bg-red-500/20 text-red-400 border border-red-500/40" : "bg-orange-500/20 text-orange-400 border border-orange-500/40"}`
+    className: `px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase shadow-sm ${sophosSelectedEvent.urgency === "critical" ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-rose-950/40" : (sophosSelectedEvent.urgency === "high" ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-amber-950/40" : "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40")}`
 
   }, sophosSelectedEvent.urgency.toUpperCase(), " NOTABLE"), /*#__PURE__*/React.createElement("span", {
 
-    className: "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase"
+    className: "px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase flex items-center space-x-1.5"
 
-  }, sophosSelectedEvent.threat_type || "MALWARE DETECTION"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("i", {
 
-    className: "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1"
+    "data-lucide": "shield-alert",
+
+    className: "w-3 h-3 text-indigo-400"
+
+  }), /*#__PURE__*/React.createElement("span", null, sophosSelectedEvent.threat_type || "SECURITY INCIDENT")), /*#__PURE__*/React.createElement("span", {
+
+    className: "px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1.5"
 
   }, /*#__PURE__*/React.createElement("span", {
 
     className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"
 
-  }), /*#__PURE__*/React.createElement("span", null, sophosSelectedEvent.status || "ACTIVE"))), /*#__PURE__*/React.createElement("h3", {
+  }), /*#__PURE__*/React.createElement("span", null, "STATUS: OPEN")), /*#__PURE__*/React.createElement("span", {
 
-    className: "text-lg font-bold text-slate-100 font-mono tracking-tight"
+    className: "text-[10px] font-mono text-slate-500"
+
+  }, "SOPHOS CENTRAL XDR / MDR")), /*#__PURE__*/React.createElement("h3", {
+
+    className: "text-lg sm:text-xl font-bold text-slate-100 font-mono tracking-tight"
 
   }, sophosSelectedEvent.clean_title || sophosSelectedEvent.rule_name), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-xs text-slate-400 font-mono flex items-center space-x-2"
+    className: "text-xs text-slate-400 font-mono flex items-center space-x-2 flex-wrap gap-y-1.5"
 
   }, /*#__PURE__*/React.createElement("span", {
 
-    className: "text-indigo-300 font-semibold"
+    className: "px-2 py-0.5 rounded bg-[#131b2e] border border-[#1f293d] text-indigo-300 font-semibold flex items-center space-x-1.5"
 
-  }, `Target: ${sophosSelectedEvent.host}`), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("i", {
 
-    className: "text-slate-600"
+    "data-lucide": sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.type === "Server" ? "server" : "monitor",
 
-  }, "â€¢"), /*#__PURE__*/React.createElement("span", {
+    className: "w-3 h-3 text-indigo-400"
 
-    className: "text-slate-300"
+  }), /*#__PURE__*/React.createElement("span", null, `Target: ${sophosSelectedEvent.host}`)), /*#__PURE__*/React.createElement("span", {
 
-  }, `IP: ${sophosSelectedEvent.src_ip}`), sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.os && /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 rounded bg-[#131b2e] border border-[#1f293d] text-slate-200 font-semibold flex items-center space-x-1.5"
 
-    className: "text-slate-400 text-[11px]"
+  }, /*#__PURE__*/React.createElement("i", {
 
-  }, `(${sophosSelectedEvent.endpoint_details.os})`))), /*#__PURE__*/React.createElement("button", {
+    "data-lucide": "network",
+
+    className: "w-3 h-3 text-sky-400"
+
+  }), /*#__PURE__*/React.createElement("span", null, `IPv4: ${sophosSelectedEvent.src_ip}`)), sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.os && /*#__PURE__*/React.createElement("span", {
+
+    className: "px-2 py-0.5 rounded bg-[#131b2e] border border-[#1f293d] text-slate-300 text-[11px]"
+
+  }, sophosSelectedEvent.endpoint_details.os), /*#__PURE__*/React.createElement("span", {
+
+    className: "px-2 py-0.5 rounded bg-[#131b2e] border border-[#1f293d] text-slate-400 text-[11px] flex items-center space-x-1.5"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "user",
+
+    className: "w-3 h-3 text-slate-400"
+
+  }), /*#__PURE__*/React.createElement("span", null, sophosSelectedEvent.user || "System")))), /*#__PURE__*/React.createElement("button", {
 
     onClick: () => { setSophosSelectedEvent(null); setSophosShowRawModal(false); },
 
-    className: "text-slate-400 hover:text-slate-100 text-lg p-1.5 rounded-lg hover:bg-slate-800/60 transition"
+    className: "text-slate-400 hover:text-slate-100 p-2 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-[#1f293d] transition"
 
-  }, "âœ•")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("i", {
 
-    className: "flex items-center space-x-2 flex-wrap gap-y-2 p-2.5 rounded-lg bg-[#0e1628] border border-[#1f293d]"
+    "data-lucide": "x",
+
+    className: "w-5 h-5 text-slate-300"
+
+  }))), /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center justify-between space-x-2 flex-wrap gap-y-2 p-2.5 rounded-xl bg-[#0c1222] border border-[#1f293d]"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center space-x-2 flex-wrap gap-y-2"
 
   }, /*#__PURE__*/React.createElement("button", {
 
@@ -12044,7 +12093,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-mono font-bold transition flex items-center space-x-1.5 shadow-sm"
 
-  }, /*#__PURE__*/React.createElement("span", null, sophosCopiedPath ? "âœ“ Copied Path!" : "í ½í³‹ Copy Path")), (sophosSelectedEvent.threat_name || sophosSelectedEvent.file_name) && /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": sophosCopiedPath ? "check" : "copy",
+
+    className: `w-3.5 h-3.5 ${sophosCopiedPath ? "text-emerald-400" : "text-indigo-400"}`
+
+  }), /*#__PURE__*/React.createElement("span", null, sophosCopiedPath ? "Copied Path!" : "Copy Path / Artifact")), (sophosSelectedEvent.threat_name || sophosSelectedEvent.file_name) && /*#__PURE__*/React.createElement("button", {
 
     onClick: () => {
 
@@ -12056,9 +12111,15 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     },
 
-    className: "px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold transition flex items-center space-x-1.5"
+    className: "px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold transition flex items-center space-x-1.5 shadow-sm"
 
-  }, /*#__PURE__*/React.createElement("span", null, "í ½í´ Hunt in IOC Hunter â†—")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "crosshair",
+
+    className: "w-3.5 h-3.5 text-purple-400"
+
+  }), /*#__PURE__*/React.createElement("span", null, "Hunt in IOC Hunter \u2197")), /*#__PURE__*/React.createElement("button", {
 
     onClick: () => {
 
@@ -12070,83 +12131,211 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     },
 
-    className: "px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-mono font-bold transition flex items-center space-x-1.5"
+    className: "px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-mono font-bold transition flex items-center space-x-1.5 shadow-sm"
 
-  }, /*#__PURE__*/React.createElement("span", null, `í ½í²» View ${sophosSelectedEvent.host} in Endpoints`)), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("i", {
 
-    onClick: () => setSophosShowRawModal(!sophosShowRawModal),
+    "data-lucide": "monitor",
 
-    className: "px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono font-bold transition ml-auto"
+    className: "w-3.5 h-3.5 text-sky-400"
 
-  }, /*#__PURE__*/React.createElement("span", null, sophosShowRawModal ? "í ½í´¼ Hide Raw JSON" : "í ½í´½ View Raw JSON"))), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, `View ${sophosSelectedEvent.host} in Fleet`))), /*#__PURE__*/React.createElement("div", {
 
-    className: "grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono"
+    className: "flex items-center space-x-2"
+
+  }, /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => {
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sophosSelectedEvent.raw_json || sophosSelectedEvent, null, 2));
+
+      const dlAnchor = document.createElement("a");
+
+      dlAnchor.setAttribute("href", dataStr);
+
+      dlAnchor.setAttribute("download", `sophos-alert-${sophosSelectedEvent.id || "incident"}.json`);
+
+      dlAnchor.click();
+
+    },
+
+    className: "px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono font-bold transition flex items-center space-x-1.5"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "download",
+
+    className: "w-3.5 h-3.5 text-slate-400"
+
+  }), /*#__PURE__*/React.createElement("span", null, "Export JSON")))), /*#__PURE__*/React.createElement("div", {
+
+    className: "flex border-b border-[#1f293d] space-x-1 text-xs font-mono overflow-x-auto"
+
+  }, /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => setSophosForensicsTab("overview"),
+
+    className: `px-4 py-2 border-b-2 font-bold transition flex items-center space-x-2 ${sophosForensicsTab === "overview" ? "border-indigo-500 text-indigo-400 bg-indigo-500/10 rounded-t-lg" : "border-transparent text-slate-400 hover:text-slate-200"}`
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "activity", className: "w-3.5 h-3.5" }), /*#__PURE__*/React.createElement("span", null, "Incident Overview & Triage")), /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => setSophosForensicsTab("host"),
+
+    className: `px-4 py-2 border-b-2 font-bold transition flex items-center space-x-2 ${sophosForensicsTab === "host" ? "border-sky-500 text-sky-400 bg-sky-500/10 rounded-t-lg" : "border-transparent text-slate-400 hover:text-slate-200"}`
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "shield", className: "w-3.5 h-3.5" }), /*#__PURE__*/React.createElement("span", null, "Host & Entity Posture")), /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => setSophosForensicsTab("mitre"),
+
+    className: `px-4 py-2 border-b-2 font-bold transition flex items-center space-x-2 ${sophosForensicsTab === "mitre" ? "border-purple-500 text-purple-400 bg-purple-500/10 rounded-t-lg" : "border-transparent text-slate-400 hover:text-slate-200"}`
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "cpu", className: "w-3.5 h-3.5" }), /*#__PURE__*/React.createElement("span", null, "MITRE ATT&CK & Forensics")), /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => setSophosForensicsTab("raw"),
+
+    className: `px-4 py-2 border-b-2 font-bold transition flex items-center space-x-2 ${sophosForensicsTab === "raw" ? "border-emerald-500 text-emerald-400 bg-emerald-500/10 rounded-t-lg" : "border-transparent text-slate-400 hover:text-slate-200"}`
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "code-2", className: "w-3.5 h-3.5" }), /*#__PURE__*/React.createElement("span", null, "Raw Telemetry (JSON)"))), sophosForensicsTab === "overview" && /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-4"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "p-4 rounded-xl bg-[#0f172a]/90 border border-rose-500/30 space-y-2.5 shadow-lg flex flex-col justify-between"
+    className: "grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "space-y-2"
+    className: "p-4 rounded-xl bg-[#0f172a] border border-rose-500/30 space-y-3 shadow-lg"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-rose-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-1.5 border-b border-rose-500/20 pb-1.5"
+    className: "text-rose-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-2 border-b border-rose-500/20 pb-2"
 
-  }, /*#__PURE__*/React.createElement("span", null, "âš ï¸ ARTIFACT & LOCATION")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "alert-triangle", className: "w-3.5 h-3.5 text-rose-400" }), /*#__PURE__*/React.createElement("span", null, "INCIDENT CLASSIFICATION & ARTIFACT")), (sophosSelectedEvent.threat_name || sophosSelectedEvent.file_name) ? /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "space-y-2.5"
 
-  }, "Threat Identifier:"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Threat Signature / Family:"), /*#__PURE__*/React.createElement("div", {
 
     className: "text-rose-300 font-bold text-sm"
 
-  }, sophosSelectedEvent.threat_name || sophosSelectedEvent.clean_title || "Security Threat")), sophosSelectedEvent.file_name && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, sophosSelectedEvent.threat_name || "Unknown Malware")), sophosSelectedEvent.file_name && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-slate-400 text-[10px] uppercase"
 
-  }, "Malicious File:"), /*#__PURE__*/React.createElement("div", {
+  }, "Target Malicious File:"), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-amber-300 font-bold break-all text-xs"
+    className: "text-amber-300 font-bold text-xs"
 
-  }, `í ½í³„ ${sophosSelectedEvent.file_name}`)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, `FILE: ${sophosSelectedEvent.file_name}`)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-slate-400 text-[10px] uppercase"
 
-  }, "Location Context:"), /*#__PURE__*/React.createElement("div", {
+  }, "Location Vector:"), /*#__PURE__*/React.createElement("div", {
 
     className: "text-slate-300 text-[11px]"
 
-  }, sophosSelectedEvent.location_type || "Local File System"))), /*#__PURE__*/React.createElement("div", {
+  }, sophosSelectedEvent.location_type || "Network File Share (SMB)"))) : /*#__PURE__*/React.createElement("div", {
 
-    className: "pt-1"
+    className: "space-y-2.5"
+
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Incident Category:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-rose-300 font-bold text-sm"
+
+  }, sophosSelectedEvent.threat_type || "Endpoint Protection Alert")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Impacted Device:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-200 text-xs font-semibold"
+
+  }, `${sophosSelectedEvent.host} (${sophosSelectedEvent.src_ip})`)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Diagnostic Scope:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-300 text-[11px]"
+
+  }, "Sophos Central Core Agent is currently unable to communicate or has reported an active protection issue on this endpoint."))), /*#__PURE__*/React.createElement("div", {
+
+    className: "pt-2 border-t border-[#1f293d]"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-500 text-[9px] uppercase font-bold"
+    className: "text-slate-500 text-[10px] uppercase font-bold mb-1"
 
-  }, "Path / Location:"), /*#__PURE__*/React.createElement("div", {
+  }, "Raw Detection Path / Telemetry Context:"), /*#__PURE__*/React.createElement("div", {
 
-    className: "p-2 rounded bg-[#070b14] border border-[#1f293d] text-[10px] font-mono text-slate-300 break-all select-all max-h-20 overflow-y-auto mt-0.5"
+    className: "p-2.5 rounded-lg bg-[#070b14] border border-[#1f293d] text-[11px] font-mono text-slate-300 break-all select-all max-h-24 overflow-y-auto"
 
   }, sophosSelectedEvent.process_path || sophosSelectedEvent.rule_name))), /*#__PURE__*/React.createElement("div", {
 
-    className: "p-4 rounded-xl bg-[#0f172a]/90 border border-sky-500/30 space-y-2.5 shadow-lg flex flex-col justify-between"
+    className: "p-4 rounded-xl bg-[#0f172a] border border-sky-500/30 space-y-3 shadow-lg"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "space-y-2"
+    className: "text-sky-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-2 border-b border-sky-500/20 pb-2"
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "terminal", className: "w-3.5 h-3.5 text-sky-400" }), /*#__PURE__*/React.createElement("span", null, "SOC TRIAGE & REMEDIATION PLAYBOOK")), /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-2.5 text-slate-300 text-[11px]"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-sky-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-1.5 border-b border-sky-500/20 pb-1.5"
+    className: "p-2.5 rounded-lg bg-[#070b14] border border-[#1f293d] space-y-1.5"
 
-  }, /*#__PURE__*/React.createElement("span", null, "í ½í²» ENDPOINT ATTRIBUTION")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-indigo-400 font-bold"
 
-  }, "Target Hostname:"), /*#__PURE__*/React.createElement("div", {
+  }, "Automated Mitigation Status:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-emerald-400 font-semibold"
+
+  }, `\u2713 ${sophosSelectedEvent.action || "Neutralized / Cleared"}`)), /*#__PURE__*/React.createElement("div", {
+
+    className: "p-2.5 rounded-lg bg-[#070b14] border border-[#1f293d] space-y-1.5"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-indigo-400 font-bold"
+
+  }, "Recommended Analyst Action:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-300 leading-relaxed text-[11px]"
+
+  }, sophosSelectedEvent.threat_details && sophosSelectedEvent.threat_details.recommended_action ? sophosSelectedEvent.threat_details.recommended_action : (sophosSelectedEvent.threat_name ? "Quarantine file from storage location and verify endpoint Intercept X scan logs." : "Inspect host network connectivity and confirm Sophos System Protection service is running."))), /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center justify-between text-[10px] text-slate-400 pt-1"
+
+  }, /*#__PURE__*/React.createElement("span", null, `Detection Count: ${sophosSelectedEvent.count} event(s)`), /*#__PURE__*/React.createElement("span", null, `Correlation ID: ${sophosSelectedEvent.id ? sophosSelectedEvent.id.slice(0, 18) + "..." : "-"}`)))))), sophosForensicsTab === "host" && /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-4"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-xs font-mono"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "p-3.5 rounded-xl bg-[#0f172a] border border-[#1f293d] space-y-1.5"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase font-bold"
+
+  }, "Target Hostname & Role:"), /*#__PURE__*/React.createElement("div", {
 
     className: "text-slate-100 font-bold text-sm flex items-center space-x-1.5"
 
@@ -12158,91 +12347,183 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-slate-800 text-slate-400"
 
-  }, "OFFLINE"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "OFFLINE")), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-[11px] text-slate-400"
 
-  }, "Resolved IPv4:"), /*#__PURE__*/React.createElement("div", {
+  }, `Role: ${sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.type ? sophosSelectedEvent.endpoint_details.type : "Workstation"}`)), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-indigo-400 font-bold text-xs"
-
-  }, sophosSelectedEvent.src_ip || "172.31.x.x")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-
-    className: "text-slate-400 text-[10px]"
-
-  }, "Assigned User:"), /*#__PURE__*/React.createElement("div", {
-
-    className: "text-slate-300 text-xs font-semibold"
-
-  }, sophosSelectedEvent.user || "System / Unassigned"))), /*#__PURE__*/React.createElement("div", {
-
-    className: "pt-1 border-t border-[#1f293d]/60 text-[10px] text-slate-400"
-
-  }, /*#__PURE__*/React.createElement("div", null, `MAC: ${sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.mac ? sophosSelectedEvent.endpoint_details.mac : "-"}`), /*#__PURE__*/React.createElement("div", {
-
-    className: "truncate"
-
-  }, `OS: ${sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.os ? sophosSelectedEvent.endpoint_details.os : "Windows"}`))), /*#__PURE__*/React.createElement("div", {
-
-    className: "p-4 rounded-xl bg-[#0f172a]/90 border border-indigo-500/30 space-y-2.5 shadow-lg flex flex-col justify-between"
+    className: "p-3.5 rounded-xl bg-[#0f172a] border border-[#1f293d] space-y-1.5"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "space-y-2"
+    className: "text-slate-400 text-[10px] uppercase font-bold"
+
+  }, "Resolved Fleet IPv4:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-indigo-400 font-bold text-sm"
+
+  }, sophosSelectedEvent.src_ip || "172.31.x.x"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-[11px] text-slate-400"
+
+  }, "Interface: Active NIC")), /*#__PURE__*/React.createElement("div", {
+
+    className: "p-3.5 rounded-xl bg-[#0f172a] border border-[#1f293d] space-y-1.5"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-indigo-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-1.5 border-b border-indigo-500/20 pb-1.5"
+    className: "text-slate-400 text-[10px] uppercase font-bold"
 
-  }, /*#__PURE__*/React.createElement("span", null, "í ½í»¡ï¸ MITRE & SIGNATURE")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "Hardware MAC Address:"), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-slate-200 font-bold text-xs"
 
-  }, "MITRE Tactic:"), /*#__PURE__*/React.createElement("div", {
+  }, sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.mac ? sophosSelectedEvent.endpoint_details.mac : "-"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-[11px] text-slate-400"
+
+  }, "Layer 2 Identifier")), /*#__PURE__*/React.createElement("div", {
+
+    className: "p-3.5 rounded-xl bg-[#0f172a] border border-[#1f293d] space-y-1.5"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase font-bold"
+
+  }, "Operating System:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-200 font-semibold text-xs"
+
+  }, sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.os ? sophosSelectedEvent.endpoint_details.os : "Windows 11 Pro"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-[11px] text-slate-400"
+
+  }, `Build: ${sophosSelectedEvent.endpoint_details && sophosSelectedEvent.endpoint_details.os_build ? sophosSelectedEvent.endpoint_details.os_build : "Latest"}`)), /*#__PURE__*/React.createElement("div", {
+
+    className: "p-3.5 rounded-xl bg-[#0f172a] border border-[#1f293d] space-y-1.5"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase font-bold"
+
+  }, "Active Directory User:"), /*#__PURE__*/React.createElement("div", {
 
     className: "text-indigo-300 font-bold text-xs"
 
-  }, sophosSelectedEvent.mitre_tactic)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, sophosSelectedEvent.user || "System"), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-[11px] text-slate-400"
 
-  }, "MITRE Technique:"), /*#__PURE__*/React.createElement("div", {
+  }, "Assigned Account")), /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-300 text-[11px]"
+    className: "p-3.5 rounded-xl bg-[#0f172a] border border-[#1f293d] space-y-1.5"
 
-  }, sophosSelectedEvent.mitre_technique)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-400 text-[10px]"
+    className: "text-slate-400 text-[10px] uppercase font-bold"
 
-  }, "Mitigation Action:"), /*#__PURE__*/React.createElement("div", {
+  }, "Fleet Protection Health:"), /*#__PURE__*/React.createElement("div", {
 
     className: "text-emerald-400 font-bold text-xs"
 
-  }, `âœ“ ${sophosSelectedEvent.action || "Neutralized"}`))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2713 Tamper Protection Enforced"), /*#__PURE__*/React.createElement("div", {
 
-    className: "pt-1 border-t border-[#1f293d]/60 text-[10px]"
+    className: "text-[11px] text-slate-400"
 
-  }, /*#__PURE__*/React.createElement("div", {
+  }, "Intercept X Advanced with XDR")))), sophosForensicsTab === "mitre" && /*#__PURE__*/React.createElement("div", {
 
-    className: "text-slate-500 uppercase font-bold"
-
-  }, "Detection Signature:"), /*#__PURE__*/React.createElement("div", {
-
-    className: "text-slate-400 truncate font-mono text-[9px]"
-
-  }, sophosSelectedEvent.signature_token || sophosSelectedEvent.sha256 || "-")))), sophosShowRawModal && /*#__PURE__*/React.createElement("div", {
-
-    className: "p-3 rounded-xl bg-[#070b14] border border-[#1f293d] space-y-1.5"
+    className: "space-y-4"
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "flex items-center justify-between text-xs font-mono text-slate-400 border-b border-[#1f293d] pb-1.5"
+    className: "grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "p-4 rounded-xl bg-[#0f172a] border border-purple-500/30 space-y-3 shadow-lg"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-purple-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-2 border-b border-purple-500/20 pb-2"
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "cpu", className: "w-3.5 h-3.5 text-purple-400" }), /*#__PURE__*/React.createElement("span", null, "MITRE ATT&CK FRAMEWORK MAPPING")), /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-2.5"
+
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Primary ATT&CK Tactic:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-indigo-300 font-bold text-sm mt-0.5"
+
+  }, sophosSelectedEvent.mitre_tactic)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "MITRE Technique ID & Name:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-200 text-xs font-semibold mt-0.5"
+
+  }, sophosSelectedEvent.mitre_technique)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Attack Vector Classification:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-300 text-[11px] mt-0.5"
+
+  }, "Enterprise Network / Remote File Share Exploitation")))), /*#__PURE__*/React.createElement("div", {
+
+    className: "p-4 rounded-xl bg-[#0f172a] border border-indigo-500/30 space-y-3 shadow-lg"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-indigo-400 text-[11px] uppercase font-bold tracking-wider flex items-center space-x-2 border-b border-indigo-500/20 pb-2"
+
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "shield-check", className: "w-3.5 h-3.5 text-indigo-400" }), /*#__PURE__*/React.createElement("span", null, "DETECTION SIGNATURE & TELEMETRY")), /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-2.5"
+
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Sophos Engine Event Type:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-indigo-300 font-bold text-xs mt-0.5 font-mono"
+
+  }, sophosSelectedEvent.threat_details && sophosSelectedEvent.threat_details.engine_event ? sophosSelectedEvent.threat_details.engine_event : "Endpoint::Detection")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Signature Correlation Key:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-300 text-[10px] font-mono break-all mt-0.5 p-2 rounded bg-[#070b14] border border-[#1f293d]"
+
+  }, sophosSelectedEvent.signature_token || sophosSelectedEvent.sha256 || "-")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "text-slate-400 text-[10px] uppercase"
+
+  }, "Action Taken:"), /*#__PURE__*/React.createElement("div", {
+
+    className: "text-emerald-400 font-bold text-xs mt-0.5"
+
+  }, `\u2713 ${sophosSelectedEvent.action || "Neutralized"}`)))))), sophosForensicsTab === "raw" && /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-2.5"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center justify-between text-xs font-mono text-slate-400"
 
   }, /*#__PURE__*/React.createElement("span", {
 
-    className: "font-bold text-indigo-400"
+    className: "font-bold text-emerald-400 flex items-center space-x-1.5"
 
-  }, "Raw Sophos Central Telemetry (JSON Payload)"), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "code-2", className: "w-3.5 h-3.5" }), /*#__PURE__*/React.createElement("span", null, "Complete Sophos Central API JSON Telemetry")), /*#__PURE__*/React.createElement("button", {
 
     onClick: () => {
 
@@ -12254,27 +12535,28 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     },
 
-    className: "text-[10px] text-slate-300 hover:text-white px-2 py-0.5 rounded bg-slate-800"
+    className: "text-xs text-slate-300 hover:text-white px-2.5 py-1 rounded bg-slate-800 border border-slate-700 flex items-center space-x-1.5"
 
-  }, "í ½í³‹ Copy JSON")), /*#__PURE__*/React.createElement("pre", {
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "copy", className: "w-3 h-3" }), /*#__PURE__*/React.createElement("span", null, "Copy JSON"))), /*#__PURE__*/React.createElement("pre", {
 
-    className: "text-[10px] font-mono text-slate-300 overflow-x-auto max-h-48 whitespace-pre-wrap p-2 bg-[#05080f] rounded"
+    className: "text-[11px] font-mono text-slate-300 overflow-x-auto max-h-72 whitespace-pre-wrap p-3.5 bg-[#05080f] border border-[#1f293d] rounded-xl"
 
   }, JSON.stringify(sophosSelectedEvent.raw_json || sophosSelectedEvent, null, 2))), /*#__PURE__*/React.createElement("div", {
 
     className: "flex items-center justify-between pt-3 border-t border-[#1f293d] text-xs font-mono text-slate-400"
 
-  }, /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("div", {
 
-    className: "text-[11px]"
+    className: "text-[11px] text-slate-500"
 
-  }, `Raised At: ${sophosSelectedEvent.timestamp ? sophosSelectedEvent.timestamp.replace("T", " ").replace("Z", " UTC") : "Recent"}`), /*#__PURE__*/React.createElement("button", {
+  }, `Incident Timestamp: ${sophosSelectedEvent.timestamp ? sophosSelectedEvent.timestamp.replace("T", " ").replace("Z", " UTC") : "Recent"} \u2022 Tenant ID: f55209e1`), /*#__PURE__*/React.createElement("button", {
 
     onClick: () => { setSophosSelectedEvent(null); setSophosShowRawModal(false); },
 
     className: "px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-mono font-bold transition border border-slate-700"
 
-  }, "Close Forensics Drawer"))))) , currentScreen === "darkweb_intel" && /*#__PURE__*/React.createElement("div", {
+  }, "Close Forensics Drawer")))))
+ , currentScreen === "darkweb_intel" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2 border-b border-[#1f293d]"
