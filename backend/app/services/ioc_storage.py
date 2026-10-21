@@ -402,6 +402,7 @@ def export_iocs_snapshot(limit: int = 50000) -> str:
         "metadata": {
             "title": "OpenSOC Forge Threat Intelligence Indicators Dataset",
             "source_platforms": [
+                "Cyble Vision (Dark Web & Threat Intel)",
                 "abuse.ch ThreatFox",
                 "abuse.ch URLhaus",
                 "abuse.ch Feodo Tracker",

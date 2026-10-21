@@ -1041,6 +1041,20 @@ def sync_threat_intel(
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
 ):
     """Force re-syncs live threat feeds from external open-source intelligence platforms."""
+    if source and any(x in source.lower() for x in ["cyble"]):
+        from backend.app.services.cyble_threat_intel import fetch_cyble_iocs
+        from backend.app.services.ioc_storage import save_iocs_to_db
+        feeds = fetch_cyble_iocs(100)
+        db_res = save_iocs_to_db(feeds)
+        total_offline = db_res.get("total", len(feeds))
+        return {
+            "status": "success",
+            "message": f"Synced {len(feeds)} IOCs (Cyble Vision) | Saved to Offline DB ({total_offline:,} stored)",
+            "total": len(feeds),
+            "total_offline": total_offline,
+            "feeds": feeds,
+        }
+
     if source == "Cisco Talos" or source == "talos":
         res = update_cisco_talos_from_github()
         try:

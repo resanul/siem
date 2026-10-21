@@ -201,6 +201,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "malwarebazaar": True,
         "emerging_threats": True,
         "alienvault_otx": True,
+        "cyble": True,
     }
 }
 _THREAT_CONFIG_CACHE: Optional[Dict[str, Any]] = None
@@ -310,6 +311,11 @@ def test_provider_key(provider: str, api_key: str) -> Dict[str, Any]:
             key = cfg.get("otx_api_key", "").strip()
         elif provider == "virustotal":
             key = cfg.get("virustotal_api_key", "").strip()
+        elif provider == "cyble":
+            from backend.app.services.cyble_threat_intel import test_cyble_credentials, load_cyble_config
+            cyb_cfg = load_cyble_config()
+            return test_cyble_credentials(key, tenant_id=cyb_cfg.get("tenant_id", ""), base_url=cyb_cfg.get("base_url", "https://api.cyble.com"))
+
         elif provider == "github":
             key = cfg.get("github_token", "").strip()
     if not key:
@@ -864,6 +870,9 @@ def _fetch_source_live(source: str) -> List[Dict[str, Any]]:
         return fetch_emerging_threats(80)
     elif "alienvault" in src_lower or "otx" in src_lower:
         return fetch_alienvault_otx(60)
+    elif "cyble" in src_lower:
+        from backend.app.services.cyble_threat_intel import fetch_cyble_iocs
+        return fetch_cyble_iocs(100)
     return []
 
 
@@ -902,6 +911,13 @@ def _trigger_background_refresh(source: Optional[str] = None):
                 if p.get("alienvault_otx", True):
                     otx = fetch_alienvault_otx(25)
                     if otx: items.extend(otx)
+                if p.get("cyble", True):
+                    try:
+                        from backend.app.services.cyble_threat_intel import fetch_cyble_iocs
+                        cyb = fetch_cyble_iocs(35)
+                        if cyb: items.extend(cyb)
+                    except Exception:
+                        pass
                 if items:
                     save_iocs_to_db(items)
         except Exception as e:
@@ -918,6 +934,15 @@ def get_threat_intel_feed(
     """Aggregates multi-source threat intelligence with local persistent caching and search."""
     cfg = load_threat_intel_config()
     providers = cfg.get("providers", DEFAULT_CONFIG["providers"])
+
+    # If source is Cyble Vision, return live Cyble Threat Intel indicators
+    if source and "cyble" in source.lower():
+        from backend.app.services.cyble_threat_intel import fetch_cyble_iocs
+        cyb_items = fetch_cyble_iocs(100)
+        if search:
+            q = search.lower().strip()
+            return [x for x in cyb_items if q in str(x.get("indicator", "")).lower() or q in str(x.get("malware_family", "")).lower() or q in str(x.get("description", "")).lower()]
+        return cyb_items
 
     # If source is specifically Cisco Talos, query across all 17,214 IOCs
     if source == "Cisco Talos":
@@ -982,6 +1007,14 @@ def get_threat_intel_feed(
         otx = fetch_alienvault_otx(25)
         if otx:
             combined.extend(otx)
+    if providers.get("cyble", True):
+        try:
+            from backend.app.services.cyble_threat_intel import fetch_cyble_iocs
+            cyb = fetch_cyble_iocs(35)
+            if cyb:
+                combined.extend(cyb)
+        except Exception:
+            pass
 
     if combined:
         try:
@@ -1172,6 +1205,17 @@ def hunt_ioc_in_cluster(ioc: str) -> Dict[str, Any]:
     load_all_talos_iocs()
     matched_feed = None
     target_lower = cleaned_ioc.lower()
+
+    # Instant lookup in offline SQLite DB (covers Cyble Vision & Custom IOCs)
+    try:
+        from backend.app.services.ioc_storage import query_offline_iocs
+        db_matches = query_offline_iocs(search=cleaned_ioc, limit=5)
+        for dm in db_matches:
+            if dm.get("indicator", "").lower() == target_lower:
+                matched_feed = dm
+                break
+    except Exception:
+        pass
 
     # Instant O(1) lookup in Cisco Talos database
     if target_lower in _TALOS_MAP:

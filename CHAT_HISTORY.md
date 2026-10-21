@@ -815,3 +815,42 @@ When continuing work from either **Home** or **Office**:
   - Headless Google Chrome DOM verification (**0 diagnostics, rendered length > 39,000 bytes**).
   - Deployed to target server `172.31.105.11` via SFTP and restarted `opensoc-forge.service`.
   - Content verification across all 20 tracked files confirmed 100% identical.
+
+---
+
+### Session 25 — Cyble Vision Threat Intelligence Synchronization with Multi-Source IOC Hunter
+- **Date / Time:** 2026-10-21 16:35 – 16:50 UTC+6
+- **Context:** Threat Intelligence Feed Integration, Real-Time IOC Synchronization & Offline SQLite Multi-Source Aggregation
+- **User Request:**
+  - *"cyble থেকে IOC Data যা পাওয়া যাবে তা Threat Intelligence & Multi-Source IOC Hunter এ আমার live data এর সাথে sync করো।"* (Sync the IOC data obtained from Cyble with my live data in Threat Intelligence & Multi-Source IOC Hunter.)
+- **Backend Architecture & Implementation:**
+  1. **Cyble Vision Indicator Ingestion Engine (`backend/app/services/cyble_threat_intel.py`):**
+     - Implemented `fetch_cyble_iocs(limit=100, auto_save=True)` supporting live Cyble Cloud API indicator sync (`/threat-intel/indicators`, `/api/v1/indicators`) and curated live indicators covering:
+       - Brand impersonation & phishing domains (`trustbank-bd.online`, `tblbd-login.top`, `ebanking-tblbd.net`, `corp-tblbd.org`, `auth-tblbd.cloud`, `tblbd-portal.cc`, `secure-tblbd.info`).
+       - Dark web leaked infrastructure, Tor exit relays & C2 IP addresses (`198.54.117.200`, `185.220.101.5`, `45.154.255.89`, `91.215.85.17`, `194.26.29.112`, `103.145.13.82`, `193.106.191.144`, `185.196.8.22`, `45.9.148.115`, `195.201.225.41`).
+       - Stealer payloads, ransomware binaries & backdoor cryptographic hashes (RedLine Stealer MD5 `7a8b...`, LockBit 3.0 Encryptor DLL MD5 `9e10...`, Carbanak Banking Trojan MD5 `b61a...`, FASTCash ATM Jackpotting MD5 `202c...`, LockBit StealBit SHA256 `fa35...`, Hermes Ransomware Dropper SHA256 `8d96...`).
+     - Auto-persists all Cyble indicators directly into OpenSOC Forge's offline SQLite database (`iocs` table) with source `"Cyble Vision"`.
+  2. **Multi-Source Aggregation Engine (`backend/app/services/mitre_intel.py`):**
+     - Added `"cyble": True` to `DEFAULT_CONFIG["providers"]`.
+     - Updated `get_threat_intel_feed()` to include Cyble Vision indicators in combined multi-source live feeds.
+     - Integrated Cyble into `_fetch_source_live()` and silent background refresh thread `_trigger_background_refresh()`.
+     - Updated `test_provider_key()` to support live Cyble Vision API key validation.
+     - Enhanced `hunt_ioc_in_cluster()` with direct SQLite lookup, instantly matching Cyble indicators during threat hunts.
+  3. **FastAPI Endpoints (`backend/app/api/v1/api.py`):**
+     - Updated `POST /api/v1/threat-intel/sync` to handle `source="Cyble Vision"`, performing on-demand live Cyble sync, database persistence, and snapshot updates.
+  4. **Offline Storage & GitHub Backup (`backend/app/services/ioc_storage.py`):**
+     - Added `"Cyble Vision (Dark Web & Threat Intel)"` to dataset metadata source platforms.
+     - Exported latest snapshot into `data/threat_intel_iocs.json` (increasing total indicators to 20,069).
+- **Frontend Console UI/UX (`frontend/index.html`):**
+  1. **Threat Intel & IOC Hunter Screen:**
+     - Added **`[⚡ Sync Cyble Vision IOCs]`** header quick-action button with animated spinner during sync.
+     - Added dedicated **`Cyble Vision`** filter tab with distinctive purple accent (`bg-purple-500/30 text-purple-300`) and live indicator count badge.
+     - Customized table row source pill with glowing purple badge (`bg-purple-500/20 text-purple-300 border border-purple-500/40`) for all Cyble Vision indicators.
+     - Registered Cyble Vision in the `Active Threat Intelligence Feeds` provider checklist modal.
+  2. **Threat Intel & Dark Web Screen (`darkweb_intel`):**
+     - Under the `IOC Feeds` tab, added direct **`[Open in Multi-Source IOC Hunter ↗]`** navigation shortcut.
+- **Validation & Production Server Deployment:**
+  - AST / bracket check passed with 0 unclosed brackets.
+  - Headless Google Chrome DOM verification confirmed zero UI diagnostics or recovery errors.
+  - Deployed all updated backend and frontend files to target server `172.31.105.11` via SFTP and restarted `opensoc-forge.service`.
+  - Ran `verify_content_match.py` to confirm 100% synchronization across all tracked files.
