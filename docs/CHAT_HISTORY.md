@@ -1010,3 +1010,25 @@ When continuing work from either **Home** or **Office**:
   - Cleared `/tmp/sophos_telemetry_cache.json` and restarted `opensoc-forge.service`.
   - Verified telemetry API: 120 alerts, 47 High, 73 Medium, 7 timeline buckets with Aug 08-14 peak surge.
   - Confirmed 100% file synchronization across all 20 tracked files via `verify_content_match.py`.
+
+
+---
+
+## 📌 Session 30 — Eradication of JavaScript SyntaxError & Edge DOM Verification
+- **Date / Time:** 2026-10-21 18:53 – 18:57 UTC+6
+- **Context:** Fix for `Uncaught SyntaxError: Unexpected token ')' Line: 18165:32` in UI Diagnostics
+- **User Request:**
+  - Uploaded screenshot showing OpenSOC Forge UI Diagnostics screen:
+    `Uncaught SyntaxError: Unexpected token ')' Line: 18165:32`
+- **Root Cause Analysis:**
+  - At the end of the `Notable Events Timeline & Surge Analysis` JSX translation in `frontend/index.html`, `/*#__PURE__*/React.createElement("span", null, "Live Sophos Central Telemetry"))))))` had 6 closing parentheses instead of 5.
+  - This 1 extra `)` shifted the nesting boundary of the component tree, causing the outer `App` component's final return closing sequence to fail with `Unexpected token ')'` at Line 18165:32.
+- **Resolution:**
+  1. Reduced closing parenthesis sequence from 6 to 5:
+     `}), /*#__PURE__*/React.createElement("span", null, "Live Sophos Central Telemetry"))))) ,`
+  2. Verified lexical parser bracket/parenthesis balance:
+     `SUCCESS! No negative paren depth! Final depth = 0`, exact match: `5,936` opening and `5,936` closing parentheses.
+  3. Headless Microsoft Edge DOM check executed and confirmed:
+     `<div id="root">` mounts fully into `<div class="flex h-screen..."><aside...` with 0 UI Diagnostics and 0 console errors.
+  4. Deployed `frontend/index.html` to target production server `172.31.105.11` at `/opt/opensoc-forge/frontend/index.html`.
+  5. Verified 100% synchronization across all 20 tracked files using `verify_content_match.py`.
