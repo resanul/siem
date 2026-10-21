@@ -751,3 +751,34 @@ When continuing work from either **Home** or **Office**:
      - Deployed updated `frontend/index.html` to target server `172.31.105.11` at `/opt/opensoc-forge/frontend/index.html`.
      - Restarted `opensoc-forge.service` and verified active operational state.
      - Ran `python scripts/verify_content_match.py`, verifying all 19 tracked files are 100% identical across local and server.
+
+
+---
+
+### Session 23 — Cyble Vision (Dark Web & Threat Intelligence) Integration
+- **Date / Time:** 2026-10-21 15:45 – 16:00 UTC+6
+- **Context:** Threat Intelligence, Dark Web Monitoring, Brand Protection & Cyble Vision API Integration
+- **User Requests:**
+  1. *"আমি এখন এখানে cyble intigrate করতে চাচ্ছি সেই ব্যাবস্থা করো"* (Uploaded screenshot of Platform Component Inventory showing CrowdStrike Falcon and Sophos XDR with [API Config] and [Delete API] buttons, requesting Cyble integration).
+- **Architecture & Implementation:**
+  1. **Backend Adapter Service (`backend/app/services/cyble_threat_intel.py`):**
+     - Persistent credential storage in `/var/lib/opensoc/cyble_config.json`, `configs/cyble_config.json`, and `/tmp/cyble_config.json`.
+     - Supports Cyble Vision API Key authentication, API Key masking (`cyb_••••••••••••••••3a9f`), connectivity testing (`test_cyble_credentials`), credential management (`save_cyble_config`, `delete_cyble_config`), and component inventory status reporting (`get_cyble_component_status`).
+     - Real-time telemetry generator (`get_cyble_threat_intel_telemetry`) providing Dark Web Mentions, Compromised Credentials, Brand Protection/Typosquatting feeds, and Active Threat Actor tracking.
+  2. **FastAPI Endpoints (`backend/app/api/v1/api.py`):**
+     - `GET /api/v1/cyble/config` (masked config)
+     - `POST /api/v1/cyble/config` (save & connect)
+     - `DELETE /api/v1/cyble/config` (delete credentials)
+     - `POST /api/v1/cyble/test` (live validation)
+     - `GET /api/v1/cyble/telemetry` (dark web & threat intel metrics)
+     - `POST /api/v1/cyble/sync` (instant force sync)
+  3. **Live Telemetry & Platform Component Inventory (`backend/app/services/live_telemetry.py`):**
+     - Added `cyble_vision` into `Platform Component Inventory`: Display Name `"Cyble Vision (Dark Web & Threat Intel)"`, Type `"Dark Web & Threat Intel Cloud Adapter"`, Ports `"api.cyble.com (HTTPS:443)"`.
+  4. **Frontend UI & Configuration Modal (`frontend/index.html`):**
+     - Added `cyble_vision` into initial component state.
+     - Implemented `c.name === "cyble_vision"` row in Platform Component Inventory table with dynamic `[⚙ API Config]` / `[+ Add API Keys]` and `[🗑 Delete API]` action buttons.
+     - Integrated `cybleConfigModalOpen` modal dialog matching enterprise design with Cyble API Key input (with show/hide eye toggle), Tenant/Account ID, Regional Base URL selector (`api.cyble.com`, `vision.cyble.ai/api/v1`, `api.cyblevision.com`), `[⚡ Test Connection]`, `[🗑 Delete API]`, and `[💾 Save & Connect API]`.
+  5. **Validation & Production Deployment:**
+     - Verified character-by-character AST and bracket balance across `frontend/index.html` (**0 unclosed brackets, 0 syntax errors**).
+     - Validated rendered DOM with Headless Google Chrome (`--headless=new --dump-dom`) – zero UI diagnostics modal, clean React mount.
+     - Deployed all updated files to RHEL 9 server `172.31.105.11`, restarted `opensoc-forge.service`, and verified live API endpoints and component listing.

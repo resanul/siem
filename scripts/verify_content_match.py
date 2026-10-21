@@ -8,6 +8,7 @@ files_to_verify = [
     "backend/app/api/v1/api.py",
     "backend/app/services/live_telemetry.py",
     "backend/app/services/sophos_xdr.py",
+    "backend/app/services/cyble_threat_intel.py",
     "backend/app/services/crowdstrike_identity.py",
     "backend/app/services/network_telemetry.py",
     "backend/app/services/host_storage.py",

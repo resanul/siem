@@ -408,6 +408,28 @@ const initialComponents = [{
 
   is_cloud_api: true
 
+}, {
+
+  name: "cyble_vision",
+
+  version: "Vision API v1 / AI",
+
+  status: "NOT_CONFIGURED",
+
+  ports: "api.cyble.com (HTTPS:443)",
+
+  type: "Dark Web & Threat Intel Cloud Adapter",
+
+  pid: "-",
+
+  uptime: "Not Configured",
+
+  can_toggle: false,
+
+  enabled: false,
+
+  is_cloud_api: true
+
 }];
 
 const initialJobs = [];
@@ -621,6 +643,26 @@ function App() {
   const [sophosRawLogModal, setSophosRawLogModal] = useState(null);
 
   const [sophosActiveFilter, setSophosActiveFilter] = useState(null);
+
+  const [cybleConfigModalOpen, setCybleConfigModalOpen] = useState(false);
+
+  const [cybleApiKey, setCybleApiKey] = useState("");
+
+  const [cybleTenantId, setCybleTenantId] = useState("");
+
+  const [cybleBaseUrl, setCybleBaseUrl] = useState("https://api.cyble.com");
+
+  const [cybleShowSecret, setCybleShowSecret] = useState(false);
+
+  const [cybleTestLoading, setCybleTestLoading] = useState(false);
+
+  const [cybleSaveLoading, setCybleSaveLoading] = useState(false);
+
+  const [cybleFeedback, setCybleFeedback] = useState(null);
+
+  const [cybleTelemetry, setCybleTelemetry] = useState(null);
+
+  const [cybleLoading, setCybleLoading] = useState(false);
 
   const [healthDiagnostics, setHealthDiagnostics] = useState({
 
@@ -2191,6 +2233,16 @@ function App() {
     }, 15000);
 
     return () => clearInterval(timer);
+
+  }, [currentScreen]);
+
+  useEffect(() => {
+
+    if (currentScreen !== "threat_intel") return;
+
+    loadCybleConfig();
+
+    fetchCybleTelemetry(false);
 
   }, [currentScreen]);
 
@@ -4449,6 +4501,210 @@ function App() {
       const token = localStorage.getItem("token") || "";
 
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+
+
+  const loadCybleConfig = async () => {
+
+    try {
+
+      const token = localStorage.getItem("token") || "";
+
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+      const res = await fetch("/api/v1/cyble/config", { headers });
+
+      if (res.ok) {
+
+        const data = await res.json();
+
+        if (data.api_key) setCybleApiKey(data.api_key);
+
+        if (data.tenant_id) setCybleTenantId(data.tenant_id);
+
+        if (data.base_url) setCybleBaseUrl(data.base_url);
+
+      }
+
+    } catch (e) {}
+
+  };
+
+
+
+  const handleTestCybleConfig = async () => {
+
+    setCybleTestLoading(true);
+
+    setCybleFeedback(null);
+
+    try {
+
+      const token = localStorage.getItem("token") || "";
+
+      const headers = { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) };
+
+      const res = await fetch("/api/v1/cyble/test", {
+
+        method: "POST",
+
+        headers,
+
+        body: JSON.stringify({ api_key: cybleApiKey, tenant_id: cybleTenantId, base_url: cybleBaseUrl })
+
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+
+        setCybleFeedback({ type: "success", message: `\u2713 ${data.message || "Connection Successful! Authenticated with Cyble Vision."}` });
+
+      } else {
+
+        setCybleFeedback({ type: "error", message: `\u2715 ${data.detail || data.message || "Connection failed. Please check Cyble credentials."}` });
+
+      }
+
+    } catch (e) {
+
+      setCybleFeedback({ type: "error", message: `\u2715 Connection error: ${e.message}` });
+
+    } finally {
+
+      setCybleTestLoading(false);
+
+    }
+
+  };
+
+
+
+  const handleSaveCybleConfig = async () => {
+
+    setCybleSaveLoading(true);
+
+    setCybleFeedback(null);
+
+    try {
+
+      const token = localStorage.getItem("token") || "";
+
+      const headers = { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) };
+
+      const res = await fetch("/api/v1/cyble/config", {
+
+        method: "POST",
+
+        headers,
+
+        body: JSON.stringify({ api_key: cybleApiKey, tenant_id: cybleTenantId, base_url: cybleBaseUrl, enabled: true })
+
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+
+        setCybleFeedback({ type: "success", message: "\u2713 Cyble Vision API saved and connected successfully!" });
+
+        fetchOverview();
+
+        fetchCybleTelemetry(true);
+
+        setTimeout(() => {
+
+          setCybleConfigModalOpen(false);
+
+          setCybleFeedback(null);
+
+        }, 1200);
+
+      } else {
+
+        setCybleFeedback({ type: "error", message: `\u2715 ${data.detail || data.message || "Failed to save Cyble configuration."}` });
+
+      }
+
+    } catch (e) {
+
+      setCybleFeedback({ type: "error", message: `\u2715 Save error: ${e.message}` });
+
+    } finally {
+
+      setCybleSaveLoading(false);
+
+    }
+
+  };
+
+
+
+  const handleDeleteCybleConfig = async () => {
+
+    if (!window.confirm("Are you sure you want to disconnect and delete the Cyble Vision API configuration?")) return;
+
+    try {
+
+      const token = localStorage.getItem("token") || "";
+
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+      const res = await fetch("/api/v1/cyble/config", { method: "DELETE", headers });
+
+      if (res.ok) {
+
+        setCybleApiKey("");
+
+        setCybleTenantId("");
+
+        setCybleFeedback({ type: "success", message: "\u2713 Cyble Vision API disconnected and deleted." });
+
+        fetchOverview();
+
+        setTimeout(() => {
+
+          setCybleConfigModalOpen(false);
+
+          setCybleFeedback(null);
+
+        }, 1200);
+
+      }
+
+    } catch (e) {}
+
+  };
+
+
+
+  const fetchCybleTelemetry = async (force = false) => {
+
+    setCybleLoading(true);
+
+    try {
+
+      const token = localStorage.getItem("token") || "";
+
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+      const res = await fetch(`/api/v1/cyble/telemetry${force ? "?force_refresh=true" : ""}`, { headers });
+
+      if (res.ok) {
+
+        const data = await res.json();
+
+        setCybleTelemetry(data);
+
+      }
+
+    } catch (e) {} finally {
+
+      setCybleLoading(false);
+
+    }
+
+  };
 
       const res = await fetch("/api/v1/sophos/config", { method: "DELETE", headers });
 
@@ -11807,7 +12063,35 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
       className: "flex items-center justify-end gap-2"
 
-    }, c.name === "sophos_xdr" ? [
+    }, c.name === "cyble_vision" ? [
+
+      /*#__PURE__*/React.createElement("button", {
+
+        key: "conf",
+
+        onClick: () => {
+
+          loadCybleConfig();
+
+          setCybleConfigModalOpen(true);
+
+        },
+
+        className: "flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/30 transition-all font-bold"
+
+      }, (c.status === "HEALTHY" || c.status === "DEGRADED") ? "\u2699 API Config" : "+ Add API Keys"),
+
+      (c.status === "HEALTHY" || c.status === "DEGRADED") && /*#__PURE__*/React.createElement("button", {
+
+        key: "del",
+
+        onClick: handleDeleteCybleConfig,
+
+        className: "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 transition-all font-semibold"
+
+      }, "\uD83D\uDDD1 Delete API")
+
+    ] : (c.name === "sophos_xdr" ? [
 
       /*#__PURE__*/React.createElement("button", {
 
@@ -11863,7 +12147,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
       }, "🗑 Delete API")
 
-    ]) : (c.can_toggle ? /*#__PURE__*/React.createElement("div", {
+    ])) : (c.can_toggle ? /*#__PURE__*/React.createElement("div", {
 
       className: "flex items-center justify-end gap-2"
 
@@ -12319,7 +12603,193 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "w-3.5 h-3.5"
 
-  }), /*#__PURE__*/React.createElement("span", null, sophosSaveLoading ? "Saving..." : "Save & Connect API")))))) , currentScreen === "jobs" && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, sophosSaveLoading ? "Saving..." : "Save & Connect API")))))) , cybleConfigModalOpen && /*#__PURE__*/React.createElement("div", {
+
+    className: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50",
+
+    onClick: () => setCybleConfigModalOpen(false)
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "bg-[#0e1422] rounded-xl border border-[#1f293d] max-w-lg w-full p-6 shadow-2xl relative space-y-4",
+
+    onClick: e => e.stopPropagation()
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-start justify-between pb-3 border-b border-[#1f293d]"
+
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center space-x-2"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "globe",
+
+    className: "w-5 h-5 text-sky-400"
+
+  }), /*#__PURE__*/React.createElement("h3", {
+
+    className: "text-base font-bold text-slate-100 font-mono tracking-tight"
+
+  }, "Cyble Vision (Dark Web & Threat Intel) API")), /*#__PURE__*/React.createElement("p", {
+
+    className: "text-xs text-slate-400 mt-1"
+
+  }, "Configure Cyble Vision API credentials for Dark Web & Threat Intelligence feeds.")), /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => setCybleConfigModalOpen(false),
+
+    className: "text-slate-400 hover:text-slate-200 transition p-1"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "x",
+
+    className: "w-4 h-4"
+
+  }))), cybleFeedback && /*#__PURE__*/React.createElement("div", {
+
+    className: `p-3 rounded-lg text-xs font-mono border ${cybleFeedback.type === "success" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}`
+
+  }, cybleFeedback.message), /*#__PURE__*/React.createElement("div", {
+
+    className: "space-y-3 text-xs"
+
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+
+  }, "CYBLE API KEY"), /*#__PURE__*/React.createElement("div", {
+
+    className: "relative"
+
+  }, /*#__PURE__*/React.createElement("input", {
+
+    type: cybleShowSecret ? "text" : "password",
+
+    value: cybleApiKey,
+
+    onChange: e => setCybleApiKey(e.target.value),
+
+    placeholder: "Enter Cyble Vision API Key / Token...",
+
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 pr-10 text-slate-200 font-mono focus:outline-none focus:border-sky-500"
+
+  }), /*#__PURE__*/React.createElement("button", {
+
+    type: "button",
+
+    onClick: () => setCybleShowSecret(!cybleShowSecret),
+
+    className: "absolute right-2.5 top-2 text-slate-400 hover:text-slate-200"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": cybleShowSecret ? "eye-off" : "eye",
+
+    className: "w-4 h-4"
+
+  })))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+
+  }, "TENANT / ACCOUNT ID (OPTIONAL)"), /*#__PURE__*/React.createElement("input", {
+
+    type: "text",
+
+    value: cybleTenantId,
+
+    onChange: e => setCybleTenantId(e.target.value),
+
+    placeholder: "e.g. TBL-CYBLE-ENTERPRISE",
+
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-sky-500"
+
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+
+    className: "block text-slate-400 font-mono mb-1 text-[11px]"
+
+  }, "CYBLE BASE URL"), /*#__PURE__*/React.createElement("select", {
+
+    value: cybleBaseUrl,
+
+    onChange: e => setCybleBaseUrl(e.target.value),
+
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-sky-500"
+
+  }, /*#__PURE__*/React.createElement("option", {
+
+    value: "https://api.cyble.com"
+
+  }, "Global Cloud: https://api.cyble.com (Default)"), /*#__PURE__*/React.createElement("option", {
+
+    value: "https://vision.cyble.ai/api/v1"
+
+  }, "Cyble Vision AI Cloud: https://vision.cyble.ai/api/v1"), /*#__PURE__*/React.createElement("option", {
+
+    value: "https://api.cyblevision.com"
+
+  }, "Dedicated Enterprise Tenant: https://api.cyblevision.com")))), /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center justify-between pt-3 border-t border-[#1f293d] flex-wrap gap-2"
+
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center space-x-2"
+
+  }, /*#__PURE__*/React.createElement("button", {
+
+    disabled: cybleTestLoading,
+
+    onClick: handleTestCybleConfig,
+
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] border border-[#1f293d] text-slate-200 text-xs font-mono font-bold flex items-center space-x-1.5 transition"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "zap",
+
+    className: "w-3.5 h-3.5 text-amber-400"
+
+  }), /*#__PURE__*/React.createElement("span", null, cybleTestLoading ? "Testing..." : "Test Connection")), cybleApiKey && /*#__PURE__*/React.createElement("button", {
+
+    onClick: handleDeleteCybleConfig,
+
+    className: "px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center space-x-1.5 transition"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "trash-2",
+
+    className: "w-3.5 h-3.5"
+
+  }), /*#__PURE__*/React.createElement("span", null, "Delete API"))), /*#__PURE__*/React.createElement("div", {
+
+    className: "flex items-center space-x-2"
+
+  }, /*#__PURE__*/React.createElement("button", {
+
+    onClick: () => setCybleConfigModalOpen(false),
+
+    className: "px-3 py-1.5 rounded-lg bg-[#131b2e] hover:bg-[#1a253e] text-slate-400 text-xs font-mono transition"
+
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+
+    disabled: cybleSaveLoading,
+
+    onClick: handleSaveCybleConfig,
+
+    className: "px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-mono font-bold flex items-center space-x-1.5 shadow-lg shadow-sky-900/30 transition"
+
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "save",
+
+    className: "w-3.5 h-3.5"
+
+  }), /*#__PURE__*/React.createElement("span", null, cybleSaveLoading ? "Saving..." : "Save & Connect API")))))) , currentScreen === "jobs" && /*#__PURE__*/React.createElement("div", {
 
     className: "space-y-4"
 

@@ -481,6 +481,72 @@ def post_sophos_isolate_endpoint(
     return toggle_endpoint_isolation(endpoint_id, isolate)
 
 
+# ===================== CYBLE VISION (DARK WEB & THREAT INTELLIGENCE) =====================
+@api_router.get("/cyble/config")
+def get_cyble_config_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Retrieves masked Cyble Vision API configuration."""
+    from backend.app.services.cyble_threat_intel import get_masked_cyble_config
+    return get_masked_cyble_config()
+
+
+@api_router.post("/cyble/config")
+def post_cyble_config_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Saves or updates Cyble Vision API configuration."""
+    api_key = payload.get("api_key", "").strip()
+    tenant_id = payload.get("tenant_id", "").strip()
+    base_url = payload.get("base_url", "https://api.cyble.com").strip()
+    enabled = payload.get("enabled", True)
+    from backend.app.services.cyble_threat_intel import save_cyble_config
+    res = save_cyble_config(api_key, tenant_id=tenant_id, base_url=base_url, enabled=enabled)
+    return res
+
+
+@api_router.delete("/cyble/config")
+def delete_cyble_config_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:write"))
+):
+    """Removes Cyble Vision API configuration."""
+    from backend.app.services.cyble_threat_intel import delete_cyble_config
+    return delete_cyble_config()
+
+
+@api_router.post("/cyble/test")
+def test_cyble_config_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Validates connectivity to Cyble Vision API using provided API key."""
+    api_key = payload.get("api_key", "").strip()
+    tenant_id = payload.get("tenant_id", "").strip()
+    base_url = payload.get("base_url", "https://api.cyble.com").strip()
+    from backend.app.services.cyble_threat_intel import test_cyble_credentials
+    return test_cyble_credentials(api_key, tenant_id=tenant_id, base_url=base_url)
+
+
+@api_router.get("/cyble/telemetry")
+def get_cyble_telemetry_endpoint(
+    force_refresh: bool = False,
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Fetches real-time Cyble Vision dark web, threat intel, and brand exposure telemetry."""
+    from backend.app.services.cyble_threat_intel import get_cyble_threat_intel_telemetry
+    return get_cyble_threat_intel_telemetry(force_refresh=force_refresh)
+
+
+@api_router.post("/cyble/sync")
+def post_cyble_sync_endpoint(
+    current_user: Dict[str, Any] = Depends(require_permission("alerts:read"))
+):
+    """Forces instant synchronization with Cyble Vision API."""
+    from backend.app.services.cyble_threat_intel import get_cyble_threat_intel_telemetry
+    return get_cyble_threat_intel_telemetry(force_refresh=True)
+
+
 # ===================== EVENT SEARCH =====================
 @api_router.post("/events/search", response_model=EventSearchResponse)
 def search_events_post(

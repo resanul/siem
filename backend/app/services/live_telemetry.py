@@ -721,6 +721,34 @@ def get_live_overview_data() -> Dict[str, Any]:
         "details": sophos_status_info.get("details", "Sophos Central XDR Telemetry")
     })
 
+    # 8. Cyble Vision (Dark Web & Threat Intel) Cloud Component
+    try:
+        from backend.app.services.cyble_threat_intel import get_cyble_component_status
+        cyble_status_info = get_cyble_component_status()
+    except Exception:
+        cyble_status_info = {
+            "status": "NOT_CONFIGURED",
+            "enabled": False,
+            "uptime": "Not Configured",
+            "details": "Cyble Vision API credentials not configured",
+            "ports": "api.cyble.com (HTTPS:443)"
+        }
+
+    components.append({
+        "name": "cyble_vision",
+        "display_name": "Cyble Vision (Dark Web & Threat Intel)",
+        "version": "Vision API v1 / AI",
+        "status": cyble_status_info.get("status", "NOT_CONFIGURED"),
+        "ports": cyble_status_info.get("ports", "api.cyble.com (HTTPS:443)"),
+        "type": "Dark Web & Threat Intel Cloud Adapter",
+        "pid": "-",
+        "uptime": cyble_status_info.get("uptime", "Not Configured"),
+        "can_toggle": False,
+        "enabled": cyble_status_info.get("enabled", False),
+        "is_cloud_api": True,
+        "details": cyble_status_info.get("details", "Cyble Vision Threat Intel & Dark Web Feeds")
+    })
+
     net_telemetry = get_live_network_telemetry()
 
     return {
