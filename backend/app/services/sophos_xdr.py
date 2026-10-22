@@ -816,10 +816,10 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
         healthy_pct = f"{round((good_health_count / total_ep) * 100, 1)}%" if total_ep else "100%"
 
         total_alerts = len(notable_events)
-        crit_pct = f"{round((urgency_counts['critical'] / total_alerts) * 100, 1)}%" if total_alerts else "0%"
-        high_pct = f"{round((urgency_counts['high'] / total_alerts) * 100, 1)}%" if total_alerts else "0%"
-        med_pct = f"{round((urgency_counts['medium'] / total_alerts) * 100, 1)}%" if total_alerts else "0%"
-        low_pct = f"{round((urgency_counts['low'] / total_alerts) * 100, 1)}%" if total_alerts else "0%"
+        crit_pct = f"{round((urgency_counts['critical'] / total_alerts) * 100, 1)}%" if total_alerts else "0.0%"
+        high_pct = f"{round((urgency_counts['high'] / total_alerts) * 100, 1)}%" if total_alerts else "0.0%"
+        med_pct = f"{round((urgency_counts['medium'] / total_alerts) * 100, 1)}%" if total_alerts else "0.0%"
+        low_pct = f"{round((urgency_counts['low'] / total_alerts) * 100, 1)}%" if total_alerts else "0.0%"
 
         urgency_dist = [
             {"urgency": "CRITICAL", "count": urgency_counts["critical"], "color": "#ef4444", "pct": crit_pct},
@@ -828,8 +828,52 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
             {"urgency": "LOW", "count": urgency_counts["low"], "color": "#10b981", "pct": low_pct}
         ]
 
-        malware_count = sum(1 for al in alerts_raw if "malware" in al.get("category", "").lower() or "pua" in al.get("category", "").lower() or "cryptoguard" in al.get("description", "").lower() or "dorklnk" in al.get("description", "").lower())
-        isolated_count = sum(1 for ep in transformed_endpoints if ep["isolation_status"] == "ISOLATED")
+        # Calculate exact categories from real alerts
+        real_malware = 0
+        real_pua = 0
+        real_protection = 0
+        for al in alerts_raw:
+            c = (al.get("category") or "").lower()
+            if "malware" in c:
+                real_malware += 1
+            elif "pua" in c:
+                real_pua += 1
+            else:
+                real_protection += 1
+
+        isolated_count = sum(1 for ep in transformed_endpoints if ep.get("isolation_status") == "ISOLATED")
+
+        # Real chronological timeline buckets across the estate alerts
+        timeline_buckets = [
+            {"time": "Jul 25-31", "start": "2026-07-01", "end": "2026-07-31", "malware": 0, "pua": 0, "protection": 0, "total": 0},
+            {"time": "Aug 01-07", "start": "2026-08-01", "end": "2026-08-07", "malware": 0, "pua": 0, "protection": 0, "total": 0},
+            {"time": "Aug 08-14", "start": "2026-08-08", "end": "2026-08-14", "malware": 0, "pua": 0, "protection": 0, "total": 0},
+            {"time": "Aug 15-21", "start": "2026-08-15", "end": "2026-08-21", "malware": 0, "pua": 0, "protection": 0, "total": 0},
+            {"time": "Aug 22-31", "start": "2026-08-22", "end": "2026-08-31", "malware": 0, "pua": 0, "protection": 0, "total": 0},
+            {"time": "Sep 2026",  "start": "2026-09-01", "end": "2026-09-30", "malware": 0, "pua": 0, "protection": 0, "total": 0},
+            {"time": "Oct (Recent)", "start": "2026-10-01", "end": "2026-10-31", "malware": 0, "pua": 0, "protection": 0, "total": 0}
+        ]
+
+        for n in notable_events:
+            t = (n.get("timestamp") or "")[:10]
+            cat = (n.get("raw_json", {}).get("category") or "").lower()
+            matched_b = False
+            for b in timeline_buckets:
+                if b["start"] <= t <= b["end"]:
+                    b["total"] += 1
+                    if "malware" in cat:
+                        b["malware"] += 1
+                    elif "pua" in cat:
+                        b["pua"] += 1
+                    else:
+                        b["protection"] += 1
+                    matched_b = True
+                    break
+            if not matched_b and timeline_buckets:
+                timeline_buckets[-1]["total"] += 1
+                timeline_buckets[-1]["protection"] += 1
+
+        peak_b = max(timeline_buckets, key=lambda b: b["total"]) if timeline_buckets else {"time": "Aug 08-14", "total": 36}
 
         cid_clean = cid.strip()
         masked_cid = f"{cid_clean[:6]}...{cid_clean[-4:]}" if len(cid_clean) >= 10 else cid_clean
@@ -851,17 +895,14 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
                 "threat_notables": high_threat_count,
                 "isolated_endpoints": isolated_count,
                 "tamper_protection_rate": tamper_rate,
-                "ransomware_blocked": malware_count if malware_count > 0 else 14,
+                "ransomware_blocked": real_malware + real_pua,
                 "healthy_fleet_pct": healthy_pct,
                 "total_endpoints": total_ep
             },
             "urgency_distribution": urgency_dist,
-            "timeline": [
-                {"time": "12:00", "endpoint": 8, "threat": 4, "network": 12},
-                {"time": "14:00", "endpoint": 14, "threat": 9, "network": 18},
-                {"time": "16:00", "endpoint": 22, "threat": 16, "network": 28},
-                {"time": "18:00", "endpoint": total_alerts, "threat": high_threat_count, "network": 35}
-            ],
+            "timeline": timeline_buckets,
+            "timeline_peak": f"Peak Surge: {peak_b['time']} ({peak_b['total']} combined notables)",
+            "primary_vector": f"Agent Health & Protection Policy ({real_protection} events, {round((real_protection / total_alerts) * 100, 1)}%)",
             "top_notable_events": notable_events,
             "managed_endpoints": transformed_endpoints,
             "all_real_logs": all_logs
