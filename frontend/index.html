@@ -673,6 +673,28 @@ function App() {
 
   const [sophosShowRawModal, setSophosShowRawModal] = useState(false);
 
+  // Universal Table Sorting States
+  const [alertSortField, setAlertSortField] = useState("time");
+  const [alertSortOrder, setAlertSortOrder] = useState("desc");
+
+  const [hostsSortField, setHostsSortField] = useState("host");
+  const [hostsSortOrder, setHostsSortOrder] = useState("asc");
+
+  const [netSortField, setNetSortField] = useState("timestamp");
+  const [netSortOrder, setNetSortOrder] = useState("desc");
+
+  const [identitySortField, setIdentitySortField] = useState("timestamp");
+  const [identitySortOrder, setIdentitySortOrder] = useState("desc");
+
+  const [cybleSortField, setCybleSortField] = useState("risk_score");
+  const [cybleSortOrder, setCybleSortOrder] = useState("desc");
+
+  const [iocSortField, setIocSortField] = useState("first_seen");
+  const [iocSortOrder, setIocSortOrder] = useState("desc");
+
+  const [auditSortField, setAuditSortField] = useState("id");
+  const [auditSortOrder, setAuditSortOrder] = useState("desc");
+
   const [sophosForensicsTab, setSophosForensicsTab] = useState("overview");
 
   const [cybleConfigModalOpen, setCybleConfigModalOpen] = useState(false);
@@ -5697,6 +5719,85 @@ function App() {
     return 0;
   });
 
+  // Handlers for Universal Table Column Sorting (Ascending / Descending)
+  const handleSortAlerts = (field) => {
+    if (alertSortField === field) {
+      setAlertSortOrder(alertSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setAlertSortField(field);
+      setAlertSortOrder(field === "severity" ? "desc" : "asc");
+    }
+  };
+
+  const sortedAlerts = [...filteredAlerts].sort((a, b) => {
+    if (alertSortField === "severity") {
+      const rank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 };
+      const valA = rank[(a.severity || "").toUpperCase()] || 0;
+      const valB = rank[(b.severity || "").toUpperCase()] || 0;
+      return alertSortOrder === "asc" ? valA - valB : valB - valA;
+    }
+    let valA = a[alertSortField] ?? "";
+    let valB = b[alertSortField] ?? "";
+    if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+    if (valA < valB) return alertSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return alertSortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const handleSortHosts = (field) => {
+    if (hostsSortField === field) {
+      setHostsSortOrder(hostsSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setHostsSortField(field);
+      setHostsSortOrder("asc");
+    }
+  };
+
+  const handleSortNet = (field) => {
+    if (netSortField === field) {
+      setNetSortOrder(netSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setNetSortField(field);
+      setNetSortOrder("desc");
+    }
+  };
+
+  const handleSortIdentity = (field) => {
+    if (identitySortField === field) {
+      setIdentitySortOrder(identitySortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setIdentitySortField(field);
+      setIdentitySortOrder("desc");
+    }
+  };
+
+  const handleSortCyble = (field) => {
+    if (cybleSortField === field) {
+      setCybleSortOrder(cybleSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setCybleSortField(field);
+      setCybleSortOrder(field === "risk_score" || field === "severity" ? "desc" : "asc");
+    }
+  };
+
+  const handleSortIoc = (field) => {
+    if (iocSortField === field) {
+      setIocSortOrder(iocSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setIocSortField(field);
+      setIocSortOrder("desc");
+    }
+  };
+
+  const handleSortAudit = (field) => {
+    if (auditSortField === field) {
+      setAuditSortOrder(auditSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setAuditSortField(field);
+      setAuditSortOrder("desc");
+    }
+  };
+
   const realUrgencyList = (() => {
     if (sophosTelemetry && sophosTelemetry.urgency_distribution && sophosTelemetry.urgency_distribution.length > 0) {
       return sophosTelemetry.urgency_distribution.map(item => ({
@@ -6626,38 +6727,28 @@ function App() {
     className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "SEVERITY"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "TITLE / DESCRIPTION"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "HOST"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "SOURCE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "MITRE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "STATUS"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
+    onClick: () => handleSortAlerts("severity"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "SEVERITY", alertSortField === "severity" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortAlerts("title"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "TITLE / DESCRIPTION", alertSortField === "title" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortAlerts("host"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "HOST", alertSortField === "host" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortAlerts("source"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "SOURCE", alertSortField === "source" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortAlerts("mitre"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "MITRE", alertSortField === "mitre" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortAlerts("status"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "STATUS", alertSortField === "status" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    className: "p-3 text-right"
   }, "ACTION"))), /*#__PURE__*/React.createElement("tbody", {
-
     className: "divide-y divide-[#1f293d]"
-
-  }, filteredAlerts.map(a => /*#__PURE__*/React.createElement("tr", {
+  }, sortedAlerts.map(a => /*#__PURE__*/React.createElement("tr", {
 
     key: a.id,
 
@@ -7934,51 +8025,41 @@ function App() {
     className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-
+    onClick: () => handleSortHosts("id"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "AGENT ID", hostsSortField === "id" ? (hostsSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortHosts("host"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "HOSTNAME", hostsSortField === "host" ? (hostsSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortHosts("ip"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "IP ADDRESS", hostsSortField === "ip" ? (hostsSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortHosts("os"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "OPERATING SYSTEM", hostsSortField === "os" ? (hostsSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortHosts("version"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "AGENT VERSION", hostsSortField === "version" ? (hostsSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
     className: "p-3"
-
-  }, "AGENT ID"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "HOSTNAME"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "IP ADDRESS"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "OPERATING SYSTEM"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "AGENT VERSION"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
   }, "FIM STATUS"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "STATE"), /*#__PURE__*/React.createElement("th", {
-
+    onClick: () => handleSortHosts("status"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "STATE", hostsSortField === "status" ? (hostsSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
     className: "p-3 text-right"
-
   }, "ACTIONS"))), /*#__PURE__*/React.createElement("tbody", {
-
     className: "divide-y divide-[#1f293d]"
-
   }, hostsFleet.filter(h => {
-
-    const term = hostsSearch.toLowerCase();
-
+    const term = (hostsSearch || "").toLowerCase();
     const match = !term || (h.host || "").toLowerCase().includes(term) || (h.ip || "").toLowerCase().includes(term) || (h.os || "").toLowerCase().includes(term) || (h.id || "").toLowerCase().includes(term);
-
     const matchSt = hostsFilterStatus === "ALL" || h.status === hostsFilterStatus;
-
     return match && matchSt;
-
+  }).sort((a, b) => {
+    let valA = a[hostsSortField] ?? "";
+    let valB = b[hostsSortField] ?? "";
+    if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+    if (valA < valB) return hostsSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return hostsSortOrder === "asc" ? 1 : -1;
+    return 0;
   }).map((h, i) => /*#__PURE__*/React.createElement("tr", {
 
     key: h.id || i,
@@ -9263,7 +9344,27 @@ function App() {
 
     className: "text-[11px] text-slate-400 uppercase bg-[#0a0f1d] border-b border-[#1f293d]"
 
-  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Timestamp"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Vendor / Sensor"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Action"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Protocol"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Source Endpoint"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Destination Endpoint"), /*#__PURE__*/React.createElement("th", { className: "p-3" }, "Payload / Volume Details"))), /*#__PURE__*/React.createElement("tbody", {
+  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortNet("timestamp"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "Timestamp", netSortField === "timestamp" ? (netSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortNet("vendor"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "Vendor / Sensor", netSortField === "vendor" ? (netSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortNet("action"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "Action", netSortField === "action" ? (netSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortNet("proto"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "Protocol", netSortField === "proto" ? (netSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortNet("src"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "Source Endpoint", netSortField === "src" ? (netSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortNet("dst"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "Destination Endpoint", netSortField === "dst" ? (netSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  className: "p-3"
+}, "Payload / Volume Details"))), /*#__PURE__*/React.createElement("tbody", {
 
     className: "divide-y divide-[#1f293d] text-slate-300"
 
@@ -9303,6 +9404,15 @@ function App() {
 
       return true;
 
+    })
+
+    .sort((a, b) => {
+      let valA = a[netSortField] ?? "";
+      let valB = b[netSortField] ?? "";
+      if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+      if (valA < valB) return netSortOrder === "asc" ? -1 : 1;
+      if (valA > valB) return netSortOrder === "asc" ? 1 : -1;
+      return 0;
     })
 
     .map((ev, eIdx) => /*#__PURE__*/React.createElement("tr", {
@@ -10022,45 +10132,31 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "text-[11px] text-slate-400 uppercase bg-[#131b2e]/80 border-b border-[#1f293d]"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-
     className: "p-2.5"
-
   }, "Actions"), /*#__PURE__*/React.createElement("th", {
-
+    onClick: () => handleSortIdentity("timestamp"),
+    className: "p-2.5 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "@timestamp", identitySortField === "timestamp" ? (identitySortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIdentity("user_name"),
+    className: "p-2.5 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "User / Account", identitySortField === "user_name" ? (identitySortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIdentity("rule_name"),
+    className: "p-2.5 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "Event / Detection", identitySortField === "rule_name" ? (identitySortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIdentity("severity"),
+    className: "p-2.5 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "Severity", identitySortField === "severity" ? (identitySortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIdentity("domain"),
+    className: "p-2.5 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "Domain", identitySortField === "domain" ? (identitySortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIdentity("target_dc"),
+    className: "p-2.5 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "Target DC", identitySortField === "target_dc" ? (identitySortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
     className: "p-2.5"
-
-  }, "@timestamp"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-2.5"
-
-  }, "User / Account"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-2.5"
-
-  }, "Event / Detection"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-2.5"
-
-  }, "Severity"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-2.5"
-
-  }, "Domain"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-2.5"
-
-  }, "Target DC"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-2.5"
-
   }, "MITRE ATT&CK"), /*#__PURE__*/React.createElement("th", {
-
     className: "p-2.5 text-right"
-
   }, "Falcon"))), /*#__PURE__*/React.createElement("tbody", {
-
     className: "divide-y divide-[#1f293d] text-slate-300"
-
   }, (identityTelemetry?.events || []).filter(ev => {
 
     if (identityScenarioFilter !== "ALL" && !ev.rule_name.toLowerCase().includes(identityScenarioFilter.toLowerCase())) return false;
@@ -10075,6 +10171,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     return true;
 
+  }).sort((a, b) => {
+    let valA = a[identitySortField] ?? "";
+    let valB = b[identitySortField] ?? "";
+    if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+    if (valA < valB) return identitySortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return identitySortOrder === "asc" ? 1 : -1;
+    return 0;
   }).slice(0, 30).map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
 
     key: idx,
@@ -12733,24 +12836,43 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
   }, /*#__PURE__*/React.createElement("thead", {
     className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "SEVERITY"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "INCIDENT TITLE & LEAK DETAILS"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "SOURCE / FORUM"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "THREAT ACTOR"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "AFFECTED ASSET"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "RISK SCORE"), /*#__PURE__*/React.createElement("th", {
-    className: "p-3"
-  }, "STATUS"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("severity"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "SEVERITY", cybleSortField === "severity" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("title"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "INCIDENT TITLE & LEAK DETAILS", cybleSortField === "title" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("source"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "SOURCE / FORUM", cybleSortField === "source" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("actor"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "THREAT ACTOR", cybleSortField === "actor" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("affected_asset"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "AFFECTED ASSET", cybleSortField === "affected_asset" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("risk_score"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "RISK SCORE", cybleSortField === "risk_score" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortCyble("status"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "STATUS", cybleSortField === "status" ? (cybleSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
     className: "p-3 text-right"
   }, "PAYLOAD"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d]"
-  }, filteredCybleDarkWeb.map((al, idx) => /*#__PURE__*/React.createElement("tr", {
+  }, [...filteredCybleDarkWeb].sort((a, b) => {
+    let valA = a[cybleSortField] ?? "";
+    let valB = b[cybleSortField] ?? "";
+    if (cybleSortField === "risk_score") {
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+      return cybleSortOrder === "asc" ? valA - valB : valB - valA;
+    }
+    if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+    if (valA < valB) return cybleSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return cybleSortOrder === "asc" ? 1 : -1;
+    return 0;
+  }).map((al, idx) => /*#__PURE__*/React.createElement("tr", {
     key: idx,
     className: "hover:bg-[#131b2e]/60 transition"
   }, /*#__PURE__*/React.createElement("td", {
@@ -14827,34 +14949,26 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "ENTRY #"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "ACTOR & ROLE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "ACTION"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "RESOURCE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "STATUS"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "SHA-256 ENTRY HASH"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "TIME"))), /*#__PURE__*/React.createElement("tbody", {
+  onClick: () => handleSortAudit("id"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "ENTRY #", auditSortField === "id" ? (auditSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortAudit("actor"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "ACTOR & ROLE", auditSortField === "actor" ? (auditSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortAudit("action"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "ACTION", auditSortField === "action" ? (auditSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortAudit("res"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "RESOURCE", auditSortField === "res" ? (auditSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortAudit("status"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "STATUS", auditSortField === "status" ? (auditSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+  className: "p-3"
+}, "SHA-256 ENTRY HASH"), /*#__PURE__*/React.createElement("th", {
+  onClick: () => handleSortAudit("time"),
+  className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+}, "TIME", auditSortField === "time" ? (auditSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"))), /*#__PURE__*/React.createElement("tbody", {
 
     className: "divide-y divide-[#1f293d] font-mono text-[11px]"
 
@@ -16750,46 +16864,43 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "bg-[#080c14] text-slate-400 text-[11px] border-b border-[#1f293d] sticky top-0 z-10"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "SOURCE / TYPE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "INDICATOR / CVE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "MALWARE FAMILY / DETAILS"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "CONFIDENCE / SCORE"), /*#__PURE__*/React.createElement("th", {
-
-    className: "p-3"
-
-  }, "DATE ADDED"), /*#__PURE__*/React.createElement("th", {
-
+    onClick: () => handleSortIoc("source"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "SOURCE / TYPE", iocSortField === "source" ? (iocSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIoc("indicator"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "INDICATOR / CVE", iocSortField === "indicator" ? (iocSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIoc("malware_family"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "MALWARE FAMILY / DETAILS", iocSortField === "malware_family" ? (iocSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIoc("confidence"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "CONFIDENCE / SCORE", iocSortField === "confidence" ? (iocSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortIoc("first_seen"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
+  }, "DATE ADDED", iocSortField === "first_seen" ? (iocSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
     className: "p-3 text-right"
-
   }, "ACTION"))), /*#__PURE__*/React.createElement("tbody", {
-
     className: "divide-y divide-[#1f293d] text-slate-300"
-
   }, (threatFeedsLoading && filteredThreatFeeds.length === 0) ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-
     colSpan: 6,
-
     className: "p-8 text-center text-slate-400"
-
   }, "Loading real threat feeds from active providers...")) : filteredThreatFeeds.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-
     colSpan: 6,
-
     className: "p-8 text-center text-slate-400"
-
-  }, "No indicators match the selected filter. Click 'Sync Feeds' to refresh.")) : filteredThreatFeeds.map((feed, idx) => /*#__PURE__*/React.createElement("tr", {
+  }, "No indicators match the selected filter. Click 'Sync Feeds' to refresh.")) : [...filteredThreatFeeds].sort((a, b) => {
+    let valA = a[iocSortField] ?? "";
+    let valB = b[iocSortField] ?? "";
+    if (iocSortField === "confidence") {
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+      return iocSortOrder === "asc" ? valA - valB : valB - valA;
+    }
+    if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+    if (valA < valB) return iocSortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return iocSortOrder === "asc" ? 1 : -1;
+    return 0;
+  }).map((feed, idx) => /*#__PURE__*/React.createElement("tr", {
 
     key: idx,
 

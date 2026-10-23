@@ -1070,3 +1070,38 @@ When continuing work from either **Home** or **Office**:
   - Automated headless Edge browser verification passed with 0 runtime errors and flawless DOM mount.
   - Deployed `backend/app/services/sophos_xdr.py` and `frontend/index.html` to production server `172.31.105.11:7070`.
   - Service restarted, cache synchronized, and `verify_content_match.py` confirmed 100% synchronization across all 20 tracked files.
+
+
+---
+
+## 📌 Session 32 — Universal Table Sorting & Filtering (Ascending & Descending)
+- **Date / Time:** 2026-10-23 17:35 – 17:45 UTC+6
+- **Context:** Extension of XDR-style Clickable Column Sorting (Ascending / Descending / Neutral) to All Platform Tables
+- **User Request:**
+  > "যত জায়গাতে Table আছে সব জায়গাতে ফিল্টার add করো যেমন্টা XDR portion এ করেছো assending & dessinding"
+- **Architectural Scope & Table Upgrades:**
+  Extended interactive multi-directional column sorting (`▲` Ascending / `▼` Descending / `⇅` Neutral) across 7 major enterprise SOC workbench tables in `frontend/index.html`:
+  1. **Alerts & Detections Table (`currentScreen === "alerts"`):**
+     - Clickable Sort Headers: `SEVERITY` (Critical/High/Medium/Low rank-ordered), `TITLE / DESCRIPTION`, `HOST`, `SOURCE`, `MITRE`, `STATUS`.
+     - Integrated with live `searchQuery`, `filterSeverity`, and `filterSource`.
+  2. **Hosts & Agents Fleet Table (`currentScreen === "hosts"`):**
+     - Clickable Sort Headers: `AGENT ID`, `HOSTNAME`, `IP ADDRESS`, `OPERATING SYSTEM`, `AGENT VERSION`, `STATE`.
+     - Integrated with `hostsSearch` and `hostsFilterStatus`.
+  3. **Network Telemetry Table (`currentScreen === "network"`):**
+     - Clickable Sort Headers: `Timestamp`, `Vendor / Sensor`, `Action`, `Protocol`, `Source Endpoint`, `Destination Endpoint`.
+     - Integrated with `netSearchQuery` and `netVendorFilter`.
+  4. **CrowdStrike Identity Protection Table (`currentScreen === "identity"`):**
+     - Clickable Sort Headers: `@timestamp`, `User / Account`, `Event / Detection`, `Severity`, `Domain`, `Target DC`.
+     - Integrated with `identitySearch` and `identityScenarioFilter`.
+  5. **Threat Intel & Dark Web Leaks Table (`cybleTab === "darkweb"`):**
+     - Clickable Sort Headers: `SEVERITY`, `INCIDENT TITLE & LEAK DETAILS`, `SOURCE / FORUM`, `THREAT ACTOR`, `AFFECTED ASSET`, `RISK SCORE` (numeric sort), `STATUS`.
+     - Integrated with `cybleSearch`.
+  6. **Multi-Source Threat Intelligence IOC Hunter Table (`currentScreen === "ioc_hunter"`):**
+     - Clickable Sort Headers: `SOURCE / TYPE`, `INDICATOR / CVE`, `MALWARE FAMILY / DETAILS`, `CONFIDENCE / SCORE` (numeric sort), `DATE ADDED`.
+  7. **Audit Trail Table (`currentScreen === "audit"`):**
+     - Clickable Sort Headers: `ENTRY #`, `ACTOR & ROLE`, `ACTION`, `RESOURCE`, `STATUS`, `TIME`.
+- **Quality Assurance & Verification:**
+  - Lexical parsing confirmed 100% parenthesis balance (6,187 opening, 6,187 closing, final depth = 0).
+  - Headless Microsoft Edge DOM validation verified clean mount with 0 UI Diagnostics errors and 0 syntax warnings.
+  - Deployed updated `frontend/index.html` to target production server `172.31.105.11:7070`.
+  - Verified 100% synchronization across all 20 tracked files using `verify_content_match.py`.
