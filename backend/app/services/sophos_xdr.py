@@ -8,6 +8,8 @@ for the OpenSOC platform component inventory.
 import os
 import json
 import time
+import threading
+from datetime import timedelta
 import ssl
 import base64
 import re
@@ -19,6 +21,56 @@ from typing import Dict, Any, List, Optional
 CONFIG_PERSISTENT_FILE = "/var/lib/opensoc/sophos_config.json"
 CONFIG_LOCAL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "configs", "sophos_config.json")
 CONFIG_TEMP_FILE = "/tmp/sophos_config.json"
+
+TELEMETRY_PERSISTENT_FILE = "/var/lib/opensoc/sophos_persisted_telemetry.json"
+TELEMETRY_LOCAL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "configs", "sophos_persisted_telemetry.json")
+TELEMETRY_TEMP_FILE = "/tmp/sophos_telemetry_cache.json"
+
+_SYNC_LOCK = threading.Lock()
+_IS_SYNCING = False
+
+
+def _get_telemetry_storage_path() -> str:
+    for candidate in [TELEMETRY_PERSISTENT_FILE, TELEMETRY_LOCAL_FILE, TELEMETRY_TEMP_FILE]:
+        d = os.path.dirname(candidate)
+        try:
+            if not os.path.exists(d):
+                os.makedirs(d, exist_ok=True)
+            test_f = os.path.join(d, ".test_perm")
+            with open(test_f, "w") as tf:
+                tf.write("ok")
+            os.remove(test_f)
+            return candidate
+        except Exception:
+            continue
+    return TELEMETRY_TEMP_FILE
+
+
+def _save_persisted_telemetry(data: Dict[str, Any]) -> None:
+    """Persists telemetry to reliable storage across system reboots and browser reloads."""
+    for p in [TELEMETRY_PERSISTENT_FILE, TELEMETRY_LOCAL_FILE, TELEMETRY_TEMP_FILE]:
+        try:
+            d = os.path.dirname(p)
+            if not os.path.exists(d):
+                os.makedirs(d, exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except Exception:
+            pass
+
+
+def _load_persisted_telemetry() -> Optional[Dict[str, Any]]:
+    """Loads telemetry from reliable storage."""
+    for p in [TELEMETRY_PERSISTENT_FILE, TELEMETRY_LOCAL_FILE, TELEMETRY_TEMP_FILE]:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and data.get("status") == "HEALTHY":
+                        return data
+            except Exception:
+                pass
+    return None
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "client_id": "",
@@ -459,29 +511,74 @@ def _parse_sophos_threat_details(desc: str, cat: str, group_key: str, alert_raw:
     return threat_info
 
 
+def _background_sophos_sync() -> None:
+    """Asynchronous background worker to sync live Sophos Central telemetry without blocking UI requests."""
+    global _IS_SYNCING
+    with _SYNC_LOCK:
+        if _IS_SYNCING:
+            return
+        _IS_SYNCING = True
+    try:
+        _fetch_live_sophos_telemetry()
+    except Exception as e:
+        print(f"[Sophos XDR] Background sync error: {e}")
+    finally:
+        with _SYNC_LOCK:
+            _IS_SYNCING = False
+
+
 def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
     """
     Enterprise Endpoint Security Posture (XDR) Aggregator.
-    Queries live Sophos Central API for real endpoints, alerts, and security logs.
-    Results cached for 20 seconds for responsive rendering.
+    Returns persistent 7-day retained telemetry instantly (0ms) on browser reloads.
+    Silently refreshes in the background if data is older than 5 minutes (SWR pattern).
     """
+    global _DATA_CACHE, _IS_SYNCING
+    now = time.time()
+
+    # Load dynamic retention policy (default 7 days)
+    retention_days = 7
+    try:
+        from backend.app.services.retention_policy import load_retention_policy
+        ret_pol = load_retention_policy()
+        retention_days = max(1, int(ret_pol.get("retention_days", 7)))
+    except Exception:
+        pass
+    retention_cutoff_seconds = retention_days * 86400
+
+    # 1. In-memory fast cache within retention period
+    if not force_refresh and _DATA_CACHE.get("data"):
+        data = _DATA_CACHE["data"]
+        last_sync = _DATA_CACHE.get("last_synced", 0)
+        age = now - last_sync
+        if age < retention_cutoff_seconds:
+            # Trigger background sync if older than 5 minutes (300s)
+            if age >= 300 and not _IS_SYNCING:
+                threading.Thread(target=_background_sophos_sync, daemon=True).start()
+            return data
+
+    # 2. Disk persistence fast load (retained for retention_days)
+    if not force_refresh:
+        disk_data = _load_persisted_telemetry()
+        if disk_data:
+            synced_epoch = disk_data.get("_synced_epoch", 0)
+            if synced_epoch == 0:
+                synced_epoch = now
+            age = now - synced_epoch
+            if age < retention_cutoff_seconds:
+                _DATA_CACHE = {"last_synced": synced_epoch, "data": disk_data}
+                if age >= 300 and not _IS_SYNCING:
+                    threading.Thread(target=_background_sophos_sync, daemon=True).start()
+                return disk_data
+
+    # 3. Synchronous live fetch (if force_refresh=True or no persisted data)
+    return _fetch_live_sophos_telemetry()
+
+
+def _fetch_live_sophos_telemetry() -> Dict[str, Any]:
+    """Queries live Sophos Central API and saves retained telemetry to persistent storage."""
     global _DATA_CACHE
     now = time.time()
-    if not force_refresh and _DATA_CACHE["data"] and now - _DATA_CACHE["last_synced"] < 180:
-        return _DATA_CACHE["data"]
-
-    # Try reading from disk cache if in-memory cache is empty and not forcing refresh
-    disk_cache_file = "/tmp/sophos_telemetry_cache.json"
-    if not force_refresh and not _DATA_CACHE["data"] and os.path.exists(disk_cache_file):
-        try:
-            with open(disk_cache_file, "r", encoding="utf-8") as dcf:
-                cached_disk = json.load(dcf)
-                if cached_disk.get("status") == "HEALTHY":
-                    _DATA_CACHE = {"last_synced": now, "data": cached_disk}
-                    return cached_disk
-        except Exception:
-            pass
-
     cfg = load_sophos_config()
     cid = cfg.get("client_id", "").strip()
     sec = cfg.get("client_secret", "").strip()
@@ -668,8 +765,7 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
                 "registered_at": ep.get("registeredAt", "-"),
                 "last_agent_update": ep.get("lastAgentUpdateAt", "-"),
                 "last_os_update": ep.get("lastOsUpdateAt", "-"),
-                "serial_number": ep.get("serialNumber", "-"),
-                "raw_json": ep
+                "serial_number": ep.get("serialNumber", "-")
             })
 
         # Transform Alerts into Notable Events & Unified Real Logs
@@ -912,14 +1008,9 @@ def get_sophos_xdr_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
         data["kpis"]["server_count"] = server_count
         data["kpis"]["workstation_count"] = workstation_count
 
+        data["_synced_epoch"] = now
         _DATA_CACHE = {"last_synced": now, "data": data}
-
-        # Persist to disk cache
-        try:
-            with open("/tmp/sophos_telemetry_cache.json", "w", encoding="utf-8") as f_cache:
-                json.dump(data, f_cache)
-        except Exception:
-            pass
+        _save_persisted_telemetry(data)
 
         return data
 

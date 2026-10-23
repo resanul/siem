@@ -628,7 +628,20 @@ function App() {
 
   const [sophosFeedback, setSophosFeedback] = useState(null);
 
-  const [sophosTelemetry, setSophosTelemetry] = useState(null);
+  const [sophosTelemetry, setSophosTelemetry] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_sophos_telemetry");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object" && parsed.kpis) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load cached sophos telemetry:", e);
+    }
+    return null;
+  });
 
   const [sophosLoading, setSophosLoading] = useState(false);
 
@@ -678,7 +691,20 @@ function App() {
 
   const [cybleFeedback, setCybleFeedback] = useState(null);
 
-  const [cybleTelemetry, setCybleTelemetry] = useState(null);
+  const [cybleTelemetry, setCybleTelemetry] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_cyble_telemetry");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object" && parsed.kpis) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load cached cyble telemetry:", e);
+    }
+    return null;
+  });
 
   const [cybleLoading, setCybleLoading] = useState(false);
 
@@ -4476,37 +4502,28 @@ function App() {
 
 
   const fetchSophosTelemetry = async (force = false) => {
-
-    setSophosLoading(true);
-
-    try {
-
-      const token = localStorage.getItem("token") || "";
-
-      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-
-      const res = await fetch(`/api/v1/sophos/telemetry?force_refresh=${force}`, { headers });
-
-      if (res.ok) {
-
-        const data = await res.json();
-
-        setSophosTelemetry(data);
-
-        try { localStorage.setItem("opensoc_sophos_telemetry", JSON.stringify(data)); } catch (e) {}
-
-      }
-
-    } catch (e) {
-
-      console.error("Sophos telemetry fetch error:", e);
-
-    } finally {
-
-      setSophosLoading(false);
-
+    // Only show full loading if we have no retained data in state (prevents reload flicker)
+    if (!sophosTelemetry) {
+      setSophosLoading(true);
     }
-
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch(`/api/v1/sophos/telemetry?force_refresh=${force}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setSophosTelemetry(data);
+        try {
+          localStorage.setItem("opensoc_sophos_telemetry", JSON.stringify(data));
+        } catch (e) {
+          console.warn("LocalStorage save warning:", e);
+        }
+      }
+    } catch (e) {
+      console.error("Sophos telemetry fetch error:", e);
+    } finally {
+      setSophosLoading(false);
+    }
   };
 
 
@@ -4770,31 +4787,23 @@ function App() {
 
 
   const fetchCybleTelemetry = async (force = false) => {
-
-    setCybleLoading(true);
-
-    try {
-
-      const token = localStorage.getItem("token") || "";
-
-      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-
-      const res = await fetch(`/api/v1/cyble/telemetry${force ? "?force_refresh=true" : ""}`, { headers });
-
-      if (res.ok) {
-
-        const data = await res.json();
-
-        setCybleTelemetry(data);
-
-      }
-
-    } catch (e) {} finally {
-
-      setCybleLoading(false);
-
+    if (!cybleTelemetry) {
+      setCybleLoading(true);
     }
-
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch(`/api/v1/cyble/telemetry${force ? "?force_refresh=true" : ""}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setCybleTelemetry(data);
+        try {
+          localStorage.setItem("opensoc_cyble_telemetry", JSON.stringify(data));
+        } catch (e) {}
+      }
+    } catch (e) {} finally {
+      setCybleLoading(false);
+    }
   };
 
 
