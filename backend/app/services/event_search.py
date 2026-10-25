@@ -773,6 +773,34 @@ class EventSearchService:
                 except Exception:
                     pass
 
+        # 5b. RSA NetWitness SIEM Ingested Logs & Network Telemetry
+        try:
+            from backend.app.services.netwitness_siem import load_synced_netwitness_events
+            nw_events = load_synced_netwitness_events()
+            for nwe in nw_events:
+                sid = nwe.get("session_id")
+                etype = nwe.get("endpoint_type", "log")
+                eid = f"netwitness-{etype}-{sid}"
+                if not sid or eid in seen_ids:
+                    continue
+                seen_ids.add(eid)
+
+                index_name = "netwitness-logs" if etype == "log" else "netwitness-network"
+                host_val = nwe.get("device_host") or nwe.get("device_ip") or "172.31.101.34"
+
+                events.append(EventItem(
+                    id=eid,
+                    timestamp=nwe.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                    index=index_name,
+                    source_type=f"netwitness.{nwe.get('device_type', 'event')}",
+                    host=host_val,
+                    severity=nwe.get("severity", "LOW"),
+                    summary=f"NetWitness: [{nwe.get('device_type', 'log')}] {nwe.get('description', '')}",
+                    raw=nwe.get("raw_metas") or nwe
+                ))
+        except Exception:
+            pass
+
         # 6. Threat Intelligence Indicators from ioc_storage.py
         try:
             from backend.app.services.ioc_storage import query_offline_iocs
