@@ -226,13 +226,19 @@ const initialOverview = {
 
   latency: 1.8,
 
-  totalAlerts: 13844,
+  totalAlerts: 1284,
 
-  criticalAlerts: 187,
+  criticalAlerts: 72,
 
   highAlerts: 242,
 
-  activeCases: 1,
+  activeCases: 36,
+
+  monitoredAssets: 3452,
+
+  ingestedData: "2.4 TB",
+
+  activeUsers: 8921,
 
   totalEndpoints: 8,
 
@@ -435,6 +441,12 @@ const initialComponents = [{
 const initialJobs = [];
 
 function App() {
+
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [timeRange, setTimeRange] = useState("Last 24 hours");
+  const [timeRangeDropdownOpen, setTimeRangeDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [currentScreen, setCurrentScreen] = useState(() => {
 
@@ -2223,6 +2235,29 @@ function App() {
   });
 
 
+
+  useEffect(() => {
+    const clockTimer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    const handleGlobalKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        const inputEl = document.getElementById("universal-siem-search-input");
+        if (inputEl) {
+          inputEl.focus();
+          inputEl.select();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+
+    return () => {
+      clearInterval(clockTimer);
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (window.lucide && typeof window.lucide.createIcons === "function") {
@@ -6126,96 +6161,130 @@ function App() {
     className: "flex-1 flex flex-col h-screen overflow-hidden"
 
   }, /*#__PURE__*/React.createElement("header", {
-
-    className: "h-14 bg-[#0e1422] border-b border-[#1f293d] px-6 flex items-center justify-between shrink-0"
-
+    className: "h-16 bg-[#0b101d] border-b border-[#182338] px-6 flex items-center justify-between shrink-0 z-30"
   }, /*#__PURE__*/React.createElement("div", {
-
-    className: "flex items-center space-x-3"
-
-  }, /*#__PURE__*/React.createElement("span", {
-
-    className: "text-slate-400 text-xs uppercase font-mono tracking-wider"
-
-  }, "Workspace:"), /*#__PURE__*/React.createElement("span", {
-
-    className: "text-xs font-semibold text-slate-200 bg-[#131b2e] px-2.5 py-1 rounded border border-[#1f293d]"
-
-  }, overview.workspace || "OpenSOC Forge Live System (dashboard-11 / 172.31.105.11)"), /*#__PURE__*/React.createElement("span", {
-
-    className: "flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono"
-
-  }, /*#__PURE__*/React.createElement("span", {
-
-    className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
-
-  }), /*#__PURE__*/React.createElement("span", null, `PIPELINE HEALTHY (${overview.latency || 3.8}ms)`))), /*#__PURE__*/React.createElement("div", {
-
-    className: "flex items-center space-x-3"
-
+    className: "flex items-center flex-1 max-w-xl mr-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative w-full flex items-center"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "search",
+    className: "w-4 h-4 text-slate-400 absolute left-3 pointer-events-none"
+  }), /*#__PURE__*/React.createElement("input", {
+    id: "universal-siem-search-input",
+    type: "text",
+    value: globalSearch,
+    onChange: (e) => setGlobalSearch(e.target.value),
+    onKeyDown: (e) => {
+      if (e.key === "Enter" && globalSearch.trim()) {
+        try {
+          if (typeof setSearchTerm === "function") setSearchTerm(globalSearch.trim());
+        } catch(err) {}
+        setCurrentScreen("alerts");
+      }
+    },
+    placeholder: "Search for IP, user, host, hash, domain, file, incident, rule, MITRE technique... (Ctrl + K)",
+    className: "w-full bg-[#0e1526] border border-[#1d2942] focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/30 rounded-lg pl-9 pr-16 py-2 text-xs text-slate-200 placeholder-slate-400 focus:outline-none transition-all shadow-inner"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "absolute right-2.5 px-1.5 py-0.5 rounded bg-[#162035] border border-[#23314d] text-[10px] font-mono text-slate-400 pointer-events-none shadow-xs"
+  }, "Ctrl + K"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-3 shrink-0"
   }, /*#__PURE__*/React.createElement("button", {
-
-    onClick: openThreatConfigModal,
-
-    className: `px-3 py-1.5 rounded border text-xs font-mono flex items-center space-x-1.5 transition-colors ${proxyConfig.enabled ? "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/30" : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-600"}`,
-
-    title: "Configure Corporate Proxy & Threat Intel API Keys"
-
-  }, /*#__PURE__*/React.createElement("i", {
-
-    "data-lucide": "globe",
-
-    className: "w-3.5 h-3.5"
-
-  }), /*#__PURE__*/React.createElement("span", null, proxyConfig.enabled ? "🌐 Proxy Active" : "🌐 Proxy Settings")), /*#__PURE__*/React.createElement("button", {
-
     onClick: triggerGitUpdate,
-
     disabled: gitUpdateStatus?.loading || userRole === "SecOps Viewer",
-
-    className: "px-3 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50",
-
-    title: "1-Click pull from GitHub (origin/master) and reload console"
-
+    className: "px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50 transition-colors",
+    title: "1-Click pull from GitHub and reload console"
   }, /*#__PURE__*/React.createElement("i", {
-
     "data-lucide": "git-pull-request",
-
     className: "w-3.5 h-3.5"
-
-  }), /*#__PURE__*/React.createElement("span", null, gitUpdateStatus?.loading ? "Updating..." : "⚡ 1-Click Git Update")), /*#__PURE__*/React.createElement("button", {
-
+  }), /*#__PURE__*/React.createElement("span", { className: "hidden md:inline" }, gitUpdateStatus?.loading ? "Updating..." : "Git Pull")), /*#__PURE__*/React.createElement("button", {
     onClick: () => triggerSyntheticTest("suricata"),
-
     disabled: syntheticStatus?.loading || userRole === "SecOps Viewer",
-
-    className: "px-3 py-1.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50",
-
-    title: "Inject harmless test alert to verify end-to-end telemetry pipeline"
-
+    className: "px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono flex items-center space-x-1.5 disabled:opacity-50 transition-colors",
+    title: "Inject harmless test alert to verify pipeline"
   }, /*#__PURE__*/React.createElement("i", {
-
     "data-lucide": "zap",
-
     className: "w-3.5 h-3.5"
-
-  }), /*#__PURE__*/React.createElement("span", null, syntheticStatus?.loading ? "Verifying..." : "Inject Synthetic Event")), /*#__PURE__*/React.createElement("div", {
-
-    className: "h-4 w-px bg-[#1f293d]"
-
-  }), /*#__PURE__*/React.createElement("div", {
-
-    className: "flex items-center space-x-2 text-xs"
-
+  }), /*#__PURE__*/React.createElement("span", { className: "hidden md:inline" }, syntheticStatus?.loading ? "Testing..." : "Inject Test")), /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTimeRangeDropdownOpen(!timeRangeDropdownOpen),
+    className: "px-3 py-1.5 rounded-lg bg-[#0e1526] border border-[#1d2942] hover:border-slate-500 text-xs font-medium text-slate-200 flex items-center space-x-2 transition-all shadow-xs"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "clock",
+    className: "w-3.5 h-3.5 text-slate-400"
+  }), /*#__PURE__*/React.createElement("span", null, timeRange), /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "chevron-down",
+    className: "w-3 h-3 text-slate-400"
+  })), timeRangeDropdownOpen && /*#__PURE__*/React.createElement("div", {
+    className: "absolute right-0 mt-1.5 w-44 bg-[#0e1526] border border-[#1d2942] rounded-lg shadow-2xl py-1 z-50"
+  }, ["Last 15 minutes", "Last 1 hour", "Last 24 hours", "Last 7 days", "Last 30 days"].map((range) => /*#__PURE__*/React.createElement("button", {
+    key: range,
+    onClick: () => {
+      setTimeRange(range);
+      setTimeRangeDropdownOpen(false);
+    },
+    className: `w-full text-left px-3 py-1.5 text-xs flex items-center justify-between hover:bg-[#162035] transition-colors ${timeRange === range ? "text-cyan-400 font-semibold bg-cyan-500/10" : "text-slate-300"}`
+  }, /*#__PURE__*/React.createElement("span", null, range), timeRange === range && /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "check",
+    className: "w-3.5 h-3.5 text-cyan-400"
+  }))))), /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNotificationsOpen(!notificationsOpen),
+    className: "relative p-2 rounded-lg bg-[#0e1526] border border-[#1d2942] text-slate-300 hover:text-white hover:bg-[#141f36] transition-colors shadow-xs",
+    title: "Security Notifications"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "bell",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#0e1526] animate-pulse"
+  })), notificationsOpen && /*#__PURE__*/React.createElement("div", {
+    className: "absolute right-0 mt-1.5 w-72 bg-[#0e1526] border border-[#1d2942] rounded-lg shadow-2xl p-3 z-50 text-xs"
   }, /*#__PURE__*/React.createElement("div", {
-
-    className: "w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300"
-
-  }, "A"), /*#__PURE__*/React.createElement("span", {
-
-    className: "text-slate-300 font-medium"
-
-  }, "admin")))), gitUpdateStatus && /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between font-bold text-slate-200 border-b border-[#1d2942] pb-2 mb-2"
+  }, /*#__PURE__*/React.createElement("span", null, "Security Notifications"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 font-mono"
+  }, "Active")), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2 text-slate-300"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-2 rounded bg-rose-500/10 border border-rose-500/20 text-[11px]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "font-semibold text-rose-400"
+  }, "High Alert Anomaly Detected"), /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-400 text-[10px] mt-0.5"
+  }, `${overview.criticalAlerts || 72} critical events pending review.`)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setNotificationsOpen(false);
+      setCurrentScreen("alerts");
+    },
+    className: "w-full py-1 text-center text-cyan-400 hover:underline text-[11px] font-medium"
+  }, "View All Alerts →")))), /*#__PURE__*/React.createElement("button", {
+    onClick: openThreatConfigModal,
+    className: "p-2 rounded-lg bg-[#0e1526] border border-[#1d2942] text-slate-300 hover:text-white hover:bg-[#141f36] transition-colors shadow-xs",
+    title: "Settings & Threat Intel Proxy Configuration"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "settings",
+    className: "w-4 h-4"
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: () => alert("OpenSOC Forge SIEM - Live Security Operations Console.\nVersion: 1.0.0-production\nUniversal Search Shortcut: Ctrl + K"),
+    className: "p-2 rounded-lg bg-[#0e1526] border border-[#1d2942] text-slate-300 hover:text-white hover:bg-[#141f36] transition-colors shadow-xs",
+    title: "Help & SOC Manual"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "help-circle",
+    className: "w-4 h-4"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "h-7 w-px bg-[#1d2942] mx-1"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col items-end justify-center font-mono leading-tight pl-1 select-none"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm font-bold text-slate-100 tracking-wider font-mono"
+  }, currentTime.toTimeString().split(" ")[0]), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-400 font-sans mt-0.5"
+  }, currentTime.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  })))), gitUpdateStatus && /*#__PURE__*/React.createElement("div", {
 
     className: `mx-6 mt-3 p-3 rounded border text-xs font-mono flex items-center justify-between ${gitUpdateStatus.success ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : (gitUpdateStatus.loading ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400")}`
 
@@ -6288,106 +6357,164 @@ function App() {
     className: "text-slate-200"
 
   }, overview.profile || "RHEL 9 / Podman")))), /*#__PURE__*/React.createElement("div", {
-
-    className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-
-  }, /*#__PURE__*/React.createElement("div", {
-
-    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
-
-  }, /*#__PURE__*/React.createElement("div", {
-
-    className: "flex justify-between items-start text-slate-400 text-xs mb-1"
-
-  }, /*#__PURE__*/React.createElement("span", null, "CRITICAL & HIGH ALERTS"), /*#__PURE__*/React.createElement("i", {
-
-    "data-lucide": "shield-alert",
-
-    className: "w-4 h-4 text-rose-500"
-
-  })), /*#__PURE__*/React.createElement("div", {
-
-    className: "text-2xl font-bold text-rose-500 font-mono"
-
-  }, (overview.criticalAlerts || 0) + (overview.highAlerts || 0)), /*#__PURE__*/React.createElement("p", {
-
-    className: "text-[11px] text-slate-400 mt-1"
-
-  }, `${overview.criticalAlerts || 0} Critical, ${overview.highAlerts || 0} High active alerts`)), /*#__PURE__*/React.createElement("div", {
-
-    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
-
-  }, /*#__PURE__*/React.createElement("div", {
-
-    className: "flex justify-between items-start text-slate-400 text-xs mb-1"
-
-  }, /*#__PURE__*/React.createElement("span", null, "EVENTS PER SECOND"), /*#__PURE__*/React.createElement("i", {
-
-    "data-lucide": "activity",
-
-    className: "w-4 h-4 text-emerald-400"
-
-  })), /*#__PURE__*/React.createElement("div", {
-
-    className: "text-2xl font-bold text-emerald-400 font-mono"
-
-  }, overview.eps || 0, " ", /*#__PURE__*/React.createElement("span", {
-
-    className: "text-xs text-slate-400 font-normal"
-
-  }, "EPS")), /*#__PURE__*/React.createElement("p", {
-
-    className: "text-[11px] text-slate-400 mt-1"
-
-  }, `Pipeline ingestion latency: ${overview.latency || 3.8} ms`)), /*#__PURE__*/React.createElement("div", {
-
-    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
-
-  }, /*#__PURE__*/React.createElement("div", {
-
-    className: "flex justify-between items-start text-slate-400 text-xs mb-1"
-
-  }, /*#__PURE__*/React.createElement("span", null, "MONITORED ENDPOINTS"), /*#__PURE__*/React.createElement("i", {
-
-    "data-lucide": "server",
-
-    className: "w-4 h-4 text-sky-400"
-
-  })), /*#__PURE__*/React.createElement("div", {
-
-    className: "text-2xl font-bold text-sky-400 font-mono"
-
-  }, (overview.healthyEndpoints !== undefined ? overview.healthyEndpoints : 7), " / ", (overview.totalEndpoints !== undefined ? overview.totalEndpoints : 8)), /*#__PURE__*/React.createElement("p", {
-
-    className: "text-[11px] text-slate-400 mt-1"
-
-  }, "Active reporting network and host sensors")), /*#__PURE__*/React.createElement("div", {
-
-    className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
-
-  }, /*#__PURE__*/React.createElement("div", {
-
-    className: "flex justify-between items-start text-slate-400 text-xs mb-1"
-
-  }, /*#__PURE__*/React.createElement("span", null, "MITRE ATT&CK TECHNIQUES"), /*#__PURE__*/React.createElement("i", {
-
-    "data-lucide": "crosshair",
-
-    className: "w-4 h-4 text-purple-400"
-
-  })), /*#__PURE__*/React.createElement("div", {
-
-    className: "text-2xl font-bold text-purple-400 font-mono"
-
-  }, overview.mitreCoverage || 158, " ", /*#__PURE__*/React.createElement("span", {
-
-    className: "text-xs text-slate-400 font-normal"
-
-  }, "Rules")), /*#__PURE__*/React.createElement("p", {
-
-    className: "text-[11px] text-slate-400 mt-1"
-
-  }, "Active Sigma, Wazuh, and Suricata detections"))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5"
+  }, [
+    {
+      title: "Total Alerts",
+      value: (overview.totalAlerts !== undefined ? overview.totalAlerts : 1284).toLocaleString(),
+      delta: "28%",
+      isUp: true,
+      deltaColor: "text-rose-400",
+      iconName: "alert-triangle",
+      iconColor: "text-rose-400",
+      iconBg: "bg-rose-500/10",
+      iconBorder: "border-rose-500/30",
+      glowShadow: "shadow-[0_0_15px_rgba(244,63,94,0.25)]",
+      bars: [25, 40, 30, 55, 45, 70, 60, 85, 65, 90, 80, 100, 75, 90],
+      barColor: "bg-rose-500/70"
+    },
+    {
+      title: "Critical Alerts",
+      value: (overview.criticalAlerts !== undefined ? overview.criticalAlerts : 72).toLocaleString(),
+      delta: "40%",
+      isUp: true,
+      deltaColor: "text-red-400",
+      iconName: "shield-alert",
+      iconColor: "text-red-400",
+      iconBg: "bg-red-600/10",
+      iconBorder: "border-red-600/30",
+      glowShadow: "shadow-[0_0_15px_rgba(239,68,68,0.25)]",
+      bars: [15, 30, 25, 50, 40, 60, 45, 70, 55, 80, 65, 95, 70, 85],
+      barColor: "bg-red-500/70"
+    },
+    {
+      title: "Open Incidents",
+      value: (overview.activeCases !== undefined ? overview.activeCases : 36).toLocaleString(),
+      delta: "12%",
+      isUp: true,
+      deltaColor: "text-amber-400",
+      iconName: "alert-circle",
+      iconColor: "text-amber-400",
+      iconBg: "bg-amber-500/10",
+      iconBorder: "border-amber-500/30",
+      glowShadow: "shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+      bars: [30, 20, 45, 35, 60, 50, 40, 65, 55, 75, 60, 85, 70, 80],
+      barColor: "bg-amber-500/70"
+    },
+    {
+      title: "Monitored Assets",
+      value: (overview.monitoredAssets !== undefined ? overview.monitoredAssets : 3452).toLocaleString(),
+      delta: "5%",
+      isUp: true,
+      deltaColor: "text-purple-400",
+      iconName: "server",
+      iconColor: "text-purple-400",
+      iconBg: "bg-purple-500/10",
+      iconBorder: "border-purple-500/30",
+      glowShadow: "shadow-[0_0_15px_rgba(168,85,247,0.25)]",
+      bars: [40, 50, 45, 60, 55, 70, 65, 75, 70, 80, 85, 90, 88, 95],
+      barColor: "bg-purple-500/70"
+    },
+    {
+      title: "Ingested Data",
+      value: overview.ingestedData || "2.4 TB",
+      delta: "12%",
+      isUp: true,
+      deltaColor: "text-sky-400",
+      iconName: "database",
+      iconColor: "text-sky-400",
+      iconBg: "bg-sky-500/10",
+      iconBorder: "border-sky-500/30",
+      glowShadow: "shadow-[0_0_15px_rgba(14,165,233,0.25)]",
+      bars: [30, 45, 40, 60, 55, 75, 65, 80, 70, 85, 80, 95, 90, 100],
+      barColor: "bg-sky-500/70"
+    },
+    {
+      title: "Active Users",
+      value: (overview.activeUsers !== undefined ? overview.activeUsers : 8921).toLocaleString(),
+      delta: "1%",
+      isUp: true,
+      deltaColor: "text-emerald-400",
+      iconName: "users",
+      iconColor: "text-emerald-400",
+      iconBg: "bg-emerald-500/10",
+      iconBorder: "border-emerald-500/30",
+      glowShadow: "shadow-[0_0_15px_rgba(16,185,129,0.25)]",
+      bars: [45, 50, 55, 60, 58, 65, 70, 75, 72, 80, 85, 88, 92, 95],
+      barColor: "bg-emerald-500/70"
+    }
+  ].map((card, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] hover:border-slate-500/50 rounded-xl p-4 transition-all duration-200 flex flex-col justify-between relative overflow-hidden group shadow-md hover:shadow-lg"
+  }, [
+    /*#__PURE__*/React.createElement("div", {
+      key: "top",
+      className: "flex items-start justify-between"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        key: "icon",
+        className: `w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${card.iconBg} ${card.iconBorder} ${card.iconColor} ${card.glowShadow} transition-transform group-hover:scale-105`
+      }, /*#__PURE__*/React.createElement("i", {
+        "data-lucide": card.iconName,
+        className: "w-5 h-5"
+      })),
+      /*#__PURE__*/React.createElement("div", {
+        key: "sparkline",
+        className: "flex items-end space-x-1 h-9 opacity-75 group-hover:opacity-100 transition-opacity pl-2"
+      }, card.bars.map((h, bIdx) => /*#__PURE__*/React.createElement("div", {
+        key: bIdx,
+        style: { height: `${h}%` },
+        className: `w-1 rounded-sm ${card.barColor}`
+      })))
+    ]),
+    /*#__PURE__*/React.createElement("div", {
+      key: "bottom",
+      className: "mt-3.5"
+    }, [
+      /*#__PURE__*/React.createElement("span", {
+        key: "label",
+        className: "text-[12px] font-medium text-slate-400 block tracking-wide"
+      }, card.title),
+      /*#__PURE__*/React.createElement("div", {
+        key: "val",
+        className: "text-2xl font-bold text-slate-100 font-mono tracking-tight mt-0.5"
+      }, card.value),
+      /*#__PURE__*/React.createElement("div", {
+        key: "delta",
+        className: `flex items-center space-x-1 mt-1 text-[11px] font-medium ${card.deltaColor}`
+      }, [
+        /*#__PURE__*/React.createElement("span", { key: "arr", className: "font-bold" }, card.isUp ? "↑ " : "↓ ", card.delta),
+        /*#__PURE__*/React.createElement("span", { key: "txt", className: "text-slate-400 font-normal ml-0.5" }, "vs last 24h")
+      ])
+    ])
+  ]))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#0b1224]/60 border border-[#18233c] rounded-xl px-5 py-3 flex flex-wrap items-center justify-between gap-4 text-xs font-mono"
+  }, [
+    /*#__PURE__*/React.createElement("div", {
+      key: "eps",
+      className: "flex items-center space-x-2"
+    }, [
+      /*#__PURE__*/React.createElement("span", { className: "text-slate-400 uppercase tracking-wider text-[11px]" }, "Ingestion EPS:"),
+      /*#__PURE__*/React.createElement("span", { className: "text-emerald-400 font-bold" }, `${overview.eps || 86.4} EPS`),
+      /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, `(${overview.latency || 1.8} ms latency)`)
+    ]),
+    /*#__PURE__*/React.createElement("div", {
+      key: "endpoints",
+      className: "flex items-center space-x-2"
+    }, [
+      /*#__PURE__*/React.createElement("span", { className: "text-slate-400 uppercase tracking-wider text-[11px]" }, "Sensors & Endpoints:"),
+      /*#__PURE__*/React.createElement("span", { className: "text-sky-400 font-bold" }, `${overview.healthyEndpoints !== undefined ? overview.healthyEndpoints : 7} / ${overview.totalEndpoints !== undefined ? overview.totalEndpoints : 8} Online`),
+      /*#__PURE__*/React.createElement("span", { className: "text-emerald-400 text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/30" }, "Operational")
+    ]),
+    /*#__PURE__*/React.createElement("div", {
+      key: "mitre",
+      className: "flex items-center space-x-2"
+    }, [
+      /*#__PURE__*/React.createElement("span", { className: "text-slate-400 uppercase tracking-wider text-[11px]" }, "MITRE ATT&CK Coverage:"),
+      /*#__PURE__*/React.createElement("span", { className: "text-purple-400 font-bold" }, `${overview.mitreCoverage || 158} Active Techniques`),
+      /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "(Sigma + Wazuh + Suricata)")
+    ])
+  ]), /*#__PURE__*/React.createElement("div", {
 
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
 
