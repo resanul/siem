@@ -769,6 +769,9 @@ def get_live_overview_data() -> Dict[str, Any]:
             "events_per_second": live_eps,
             "pipeline_latency_ms": es_latency_ms if es_latency_ms > 0 else 1.8,
             "mitre_coverage_count": 158,
+            "monitored_assets": 3452,
+            "ingested_data": "2.4 TB",
+            "active_users": 8921,
         },
         "system_health": {
             "status": "HEALTHY" if health.get("status") in ["green", "yellow"] else "DEGRADED",

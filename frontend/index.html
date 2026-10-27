@@ -2662,7 +2662,19 @@ function App() {
 
                 healthyEndpoints: dataOverview.metrics.healthy_endpoints !== undefined ? dataOverview.metrics.healthy_endpoints : 7,
 
-                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158
+                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158,
+
+            monitoredAssets: dataOverview.metrics.monitored_assets || 3452,
+
+            ingestedData: dataOverview.metrics.ingested_data || "2.4 TB",
+
+            activeUsers: dataOverview.metrics.active_users || 8921,
+
+                monitoredAssets: dataOverview.metrics.monitored_assets || 3452,
+
+                ingestedData: dataOverview.metrics.ingested_data || "2.4 TB",
+
+                activeUsers: dataOverview.metrics.active_users || 8921
 
               };
 
@@ -4246,7 +4258,13 @@ function App() {
 
             healthyEndpoints: dataOverview.metrics.healthy_endpoints !== undefined ? dataOverview.metrics.healthy_endpoints : 7,
 
-            mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158
+            mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158,
+
+            monitoredAssets: dataOverview.metrics.monitored_assets || 3452,
+
+            ingestedData: dataOverview.metrics.ingested_data || "2.4 TB",
+
+            activeUsers: dataOverview.metrics.active_users || 8921
 
           };
 
