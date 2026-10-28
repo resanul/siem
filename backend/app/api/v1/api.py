@@ -1610,38 +1610,77 @@ def trigger_system_git_update():
         "latest_commit": "Updated from origin/master"
     }
     
-    candidate_repos = [
-        "/home/resanul/siem",
+    candidate_paths = [
         "/opt/opensoc-forge",
         os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")),
+        "/home/resanul/siem",
     ]
-    
+    seen_repos = set()
+    candidate_repos = []
+    for r in candidate_paths:
+        norm = os.path.realpath(r)
+        if norm not in seen_repos and os.path.isdir(os.path.join(norm, ".git")):
+            seen_repos.add(norm)
+            candidate_repos.append(norm)
+
+    any_success = False
+
     for repo in candidate_repos:
-        if os.path.isdir(os.path.join(repo, ".git")):
-            try:
+        try:
+            # Detect active branch
+            branch_proc = subprocess.run(
+                ["git", "-C", repo, "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            branch = branch_proc.stdout.strip() or "main"
+            if branch == "HEAD":
+                branch = "main"
+
+            # Pull from origin active branch
+            proc = subprocess.run(
+                ["git", "-C", repo, "pull", "--no-rebase", "origin", branch],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            # If conflict or diverged, attempt clean fetch and re-alignment
+            if proc.returncode != 0:
+                subprocess.run(["git", "-C", repo, "fetch", "origin", branch], capture_output=True, text=True, timeout=20)
                 proc = subprocess.run(
-                    ["git", "-C", repo, "pull", "origin", "master"],
+                    ["git", "-C", repo, "reset", "--hard", f"origin/{branch}"],
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=20
                 )
-                commit_proc = subprocess.run(
-                    ["git", "-C", repo, "log", "-1", "--pretty=format:%h - %s (%cr)"],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                results["steps"].append({
-                    "repo": repo,
-                    "returncode": proc.returncode,
-                    "stdout": proc.stdout.strip(),
-                    "stderr": proc.stderr.strip(),
-                    "latest_commit": commit_proc.stdout.strip()
-                })
-                if commit_proc.stdout.strip():
-                    results["latest_commit"] = commit_proc.stdout.strip()
-            except Exception as e:
-                results["steps"].append({"repo": repo, "error": str(e)})
+
+            commit_proc = subprocess.run(
+                ["git", "-C", repo, "log", "-1", "--pretty=format:%h - %s (%cr)"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if proc.returncode == 0:
+                any_success = True
+
+            results["steps"].append({
+                "repo": repo,
+                "branch": branch,
+                "returncode": proc.returncode,
+                "stdout": proc.stdout.strip(),
+                "stderr": proc.stderr.strip(),
+                "latest_commit": commit_proc.stdout.strip()
+            })
+            if commit_proc.stdout.strip():
+                results["latest_commit"] = commit_proc.stdout.strip()
+        except Exception as e:
+            results["steps"].append({"repo": repo, "error": str(e)})
+
+    if not any_success and candidate_repos:
+        results["status"] = "FAILED"
 
     if os.path.exists("/home/resanul/siem/frontend") and os.path.exists("/opt/opensoc-forge/frontend"):
         try:

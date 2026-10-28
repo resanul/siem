@@ -2834,13 +2834,23 @@ function App() {
 
   const triggerGitUpdate = async () => {
 
-    setGitUpdateStatus({ loading: true, message: "Pulling latest code from GitHub (origin/master)..." });
+    setGitUpdateStatus({ loading: true, message: "Pulling latest code from GitHub (origin/main)..." });
 
     try {
 
       const res = await fetch("/api/v1/system/git-update", { method: "POST" });
 
       const data = await res.json();
+
+      if (data.status === "FAILED") {
+        const errMsg = data.steps?.[0]?.stderr || data.steps?.[0]?.error || "Unable to sync with GitHub.";
+        setGitUpdateStatus({
+          loading: false,
+          success: false,
+          message: "❌ Git Pull Failed: " + errMsg
+        });
+        return;
+      }
 
       const rawCommit = data.latest_commit || "latest version";
 
