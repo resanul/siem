@@ -248,6 +248,115 @@ const initialOverview = {
 
 };
 
+
+// Production baseline data for SIEM Correlation Engine (M4)
+const initialCorrelationRules = [
+  {
+    rule_id: "RULE-CORR-001",
+    name: "Multi-Source Brute Force & Distributed Credential Stuffing",
+    description: "Detects high-frequency authentication failures across Active Directory and Linux hosts.",
+    enabled: true,
+    sources: ["active_directory", "wazuh"],
+    window_seconds: 300,
+    threshold: 10,
+    mitre_attack_id: "T1110",
+    mitre_tactic: "TA0006 Credential Access",
+    mitre_technique: "T1110.001 Password Guessing",
+    severity: "HIGH",
+    risk_score: 80.0,
+    cooldown_seconds: 600
+  },
+  {
+    rule_id: "RULE-CORR-002",
+    name: "Sequential Port Sweep to Network Exploit Attempt",
+    description: "Correlates perimeter port scanning followed by targeted application exploits.",
+    enabled: true,
+    sources: ["checkpoint", "suricata"],
+    window_seconds: 300,
+    threshold: 15,
+    mitre_attack_id: "T1046",
+    mitre_tactic: "TA0043 Reconnaissance",
+    mitre_technique: "T1046 Network Service Discovery",
+    severity: "CRITICAL",
+    risk_score: 95.0,
+    cooldown_seconds: 600
+  },
+  {
+    rule_id: "RULE-CORR-003",
+    name: "Lateral Movement via Network Logon and Host Remote Execution",
+    description: "Correlates network logon with anomalous process spawning on internal hosts.",
+    enabled: true,
+    sources: ["active_directory", "wazuh"],
+    window_seconds: 180,
+    threshold: 2,
+    mitre_attack_id: "T1021.002",
+    mitre_tactic: "TA0008 Lateral Movement",
+    mitre_technique: "T1021.002 SMB/Windows Admin Shares",
+    severity: "CRITICAL",
+    risk_score: 92.0,
+    cooldown_seconds: 600
+  },
+  {
+    rule_id: "RULE-CORR-004",
+    name: "Web Application Exploitation to High-Volume Exfiltration",
+    description: "Detects web exploits immediately followed by large volume outbound gateway transfers.",
+    enabled: true,
+    sources: ["suricata", "squid"],
+    window_seconds: 600,
+    threshold: 1,
+    mitre_attack_id: "T1190,T1048",
+    mitre_tactic: "TA0001 Initial Access",
+    mitre_technique: "T1190 Exploit Public-Facing App",
+    severity: "CRITICAL",
+    risk_score: 98.0,
+    cooldown_seconds: 600
+  },
+  {
+    rule_id: "RULE-CORR-005",
+    name: "Privileged Group Modification with Host Escalation Anomaly",
+    description: "Detects unauthorized group additions followed by root/administrator privilege escalation.",
+    enabled: true,
+    sources: ["active_directory", "wazuh"],
+    window_seconds: 300,
+    threshold: 1,
+    mitre_attack_id: "T1098,T1068",
+    mitre_tactic: "TA0004 Privilege Escalation",
+    mitre_technique: "T1098 Account Manipulation",
+    severity: "HIGH",
+    risk_score: 88.0,
+    cooldown_seconds: 600
+  },
+  {
+    rule_id: "RULE-CORR-006",
+    name: "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    description: "Detects coordinated full killchain progression across 4 or more telemetry sources.",
+    enabled: true,
+    sources: ["checkpoint", "suricata", "squid", "active_directory", "netwitness"],
+    window_seconds: 1800,
+    threshold: 4,
+    mitre_attack_id: "T1046,T1190,T1071,T1021,T1041",
+    mitre_tactic: "TA0043,TA0001,TA0011,TA0008,TA0010",
+    mitre_technique: "Multi-Stage Attack Chain",
+    severity: "CRITICAL",
+    risk_score: 100.0,
+    cooldown_seconds: 1800
+  }
+];
+
+const initialCorrelationStatus = {
+  running: true,
+  events_processed: 0,
+  incidents_generated: 0,
+  active_windows_count: 0,
+  active_entities_count: 0,
+  rules_count: 6,
+  active_rules_count: 6,
+  uptime_seconds: 0.0,
+  last_processed_timestamp: null,
+  resequenced_events: 0,
+  suppressed_dedup: 0
+};
+
 const initialAlerts = [];
 
 const initialComponents = [{
@@ -831,6 +940,56 @@ function App() {
 
   const [eventCopySuccess, setEventCopySuccess] = useState(false);
 
+  // --- Correlation Engine State (M4) ---
+  const [correlationIncidents, setCorrelationIncidents] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_corr_incidents");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+  const [correlationRules, setCorrelationRules] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_corr_rules");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialCorrelationRules;
+  });
+  const [correlationStatus, setCorrelationStatus] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_corr_status");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    return initialCorrelationStatus;
+  });
+  const [correlationTab, setCorrelationTab] = useState("incidents");
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [selectedIncidentDetail, setSelectedIncidentDetail] = useState(null);
+  const [selectedCorrTimelineEvent, setSelectedCorrTimelineEvent] = useState(null);
+  const [corrCopySuccess, setCorrCopySuccess] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [ruleConfigModalOpen, setRuleConfigModalOpen] = useState(false);
+  const [incidentFilterSev, setIncidentFilterSev] = useState("ALL");
+  const [incidentFilterSrc, setIncidentFilterSrc] = useState("ALL");
+  const [incidentSearchQ, setIncidentSearchQ] = useState("");
+  const [ruleCategoryFilter, setRuleCategoryFilter] = useState("ALL");
+  const [ruleSearchQ, setRuleSearchQ] = useState("");
+  const [correlationLoading, setCorrelationLoading] = useState(false);
+  const [ruleActionLoading, setRuleActionLoading] = useState({});
+  const [engineActionLoading, setEngineActionLoading] = useState(false);
+  const [simulatingRule, setSimulatingRule] = useState(null);
+  const [simulationToast, setSimulationToast] = useState(null);
+
+
 
 
   const executeEventSearch = async (overrideQuery, overrideTimeRange) => {
@@ -980,6 +1139,210 @@ function App() {
     }
 
   };
+
+  const fetchCorrelationIncidents = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/correlation/incidents", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCorrelationIncidents(data);
+          try { localStorage.setItem("opensoc_corr_incidents", JSON.stringify(data)); } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.warn("fetchCorrelationIncidents error:", e);
+    }
+  };
+
+  const fetchCorrelationRules = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/correlation/rules", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCorrelationRules(data);
+          try { localStorage.setItem("opensoc_corr_rules", JSON.stringify(data)); } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.warn("fetchCorrelationRules error:", e);
+    }
+  };
+
+  const fetchCorrelationStatus = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/correlation/status", { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === "object") {
+          setCorrelationStatus(data);
+          try { localStorage.setItem("opensoc_corr_status", JSON.stringify(data)); } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.warn("fetchCorrelationStatus error:", e);
+    }
+  };
+
+  const fetchCorrelationData = async () => {
+    setCorrelationLoading(true);
+    try {
+      await Promise.all([
+        fetchCorrelationIncidents(),
+        fetchCorrelationRules(),
+        fetchCorrelationStatus()
+      ]);
+    } finally {
+      setCorrelationLoading(false);
+    }
+  };
+
+  const fetchIncidentDetail = async (incidentId) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/v1/correlation/incidents/" + incidentId, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedIncidentDetail(data);
+      }
+    } catch (e) {
+      console.warn("fetchIncidentDetail error:", e);
+    }
+  };
+
+  const handleSelectIncident = (inc) => {
+    setSelectedIncident(inc);
+    setSelectedIncidentDetail(inc);
+    setSelectedCorrTimelineEvent(null);
+    if (inc && inc.id) {
+      fetchIncidentDetail(inc.id);
+    }
+  };
+
+  const handleToggleRule = async (ruleId) => {
+    setRuleActionLoading(prev => ({ ...prev, [ruleId]: true }));
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      };
+      const res = await fetch("/api/v1/correlation/rules/" + ruleId + "/toggle", {
+        method: "POST",
+        headers
+      });
+      if (res.ok) {
+        await Promise.all([fetchCorrelationRules(), fetchCorrelationStatus()]);
+      }
+    } catch (e) {
+      console.warn("handleToggleRule error:", e);
+    } finally {
+      setRuleActionLoading(prev => ({ ...prev, [ruleId]: false }));
+    }
+  };
+
+  const handleSimulateAttack = async (ruleId) => {
+    setSimulatingRule(ruleId);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      };
+      const res = await fetch("/api/v1/correlation/simulate/" + ruleId, {
+        method: "POST",
+        headers
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await Promise.all([fetchCorrelationIncidents(), fetchCorrelationStatus()]);
+        setSimulationToast({
+          ruleId,
+          message: "Simulation Attack Executed! Triggered incident " + (data.incident ? data.incident.id : (data.rule_name || ruleId))
+        });
+        setTimeout(() => setSimulationToast(null), 5000);
+        if (data.incident) {
+          handleSelectIncident(data.incident);
+        }
+      }
+    } catch (e) {
+      console.warn("handleSimulateAttack error:", e);
+    } finally {
+      setSimulatingRule(null);
+    }
+  };
+
+  const handleSaveRuleConfig = async (ruleId, updates) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      };
+      const res = await fetch("/api/v1/correlation/rules/" + ruleId, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        await Promise.all([fetchCorrelationRules(), fetchCorrelationStatus()]);
+        setRuleConfigModalOpen(false);
+        setEditingRule(null);
+      }
+    } catch (e) {
+      console.warn("handleSaveRuleConfig error:", e);
+    }
+  };
+
+  const handleEngineControl = async (action) => {
+    setEngineActionLoading(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      };
+      const res = await fetch("/api/v1/correlation/control", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action })
+      });
+      if (res.ok) {
+        await Promise.all([fetchCorrelationStatus(), fetchCorrelationIncidents()]);
+      }
+    } catch (e) {
+      console.warn("handleEngineControl error:", e);
+    } finally {
+      setEngineActionLoading(false);
+    }
+  };
+
+  const handleCopyIncidentJson = (incidentObj) => {
+    const jsonStr = JSON.stringify(incidentObj || {}, null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        setCorrCopySuccess(true);
+        setTimeout(() => setCorrCopySuccess(false), 2000);
+      }).catch(() => {
+        fallbackCopyText(jsonStr);
+        setCorrCopySuccess(true);
+        setTimeout(() => setCorrCopySuccess(false), 2000);
+      });
+    } else {
+      fallbackCopyText(jsonStr);
+      setCorrCopySuccess(true);
+      setTimeout(() => setCorrCopySuccess(false), 2000);
+    }
+  };
+
 
 
 
@@ -2296,7 +2659,7 @@ function App() {
 
     }
 
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, enrollMode, enrollOS, agentPackages, cachingPkgId, cacheMsg, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg, retentionPolicy, savingRetention, enforcingRetention, retentionSaveMsg, eventResults, eventLoading, selectedEvent, eventCopySuccess]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, enrollMode, enrollOS, agentPackages, cachingPkgId, cacheMsg, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg, retentionPolicy, savingRetention, enforcingRetention, retentionSaveMsg, eventResults, eventLoading, selectedEvent, eventCopySuccess, correlationIncidents, correlationRules, correlationStatus, selectedIncident, selectedIncidentDetail, editingRule, ruleConfigModalOpen, correlationTab, corrCopySuccess, simulatingRule]);
 
 
 
@@ -2349,6 +2712,22 @@ function App() {
       executeEventSearch();
 
     }
+    if (currentScreen === "correlation" || currentScreen === "correlation_incidents" || currentScreen === "correlation_rules" || currentScreen === "correlation_engine") {
+      if (currentScreen === "correlation_incidents") setCorrelationTab("incidents");
+      if (currentScreen === "correlation_rules") setCorrelationTab("rules");
+      if (currentScreen === "correlation_engine") setCorrelationTab("status");
+      fetchCorrelationData();
+    }
+
+  useEffect(() => {
+    if (currentScreen !== "correlation" && currentScreen !== "correlation_incidents" && currentScreen !== "correlation_rules" && currentScreen !== "correlation_engine") return;
+    const timer = setInterval(() => {
+      fetchCorrelationIncidents();
+      fetchCorrelationStatus();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [currentScreen]);
+
 
     if (currentScreen === "identity") {
 
@@ -2491,6 +2870,8 @@ function App() {
       if (e.key === "Escape") {
 
         if (selectedEvent) setSelectedEvent(null);
+        if (selectedIncident) setSelectedIncident(null);
+        if (ruleConfigModalOpen) setRuleConfigModalOpen(false);
 
         if (showThreatConfigModal) setShowThreatConfigModal(false);
 
@@ -2514,7 +2895,7 @@ function App() {
 
     return () => window.removeEventListener("keydown", handleKeyDown);
 
-  }, [selectedEvent, showThreatConfigModal, showAddIocModal, addHostModalOpen, enrollModalOpen, warRoomOpen, processTreeModalOpen, restoreModalOpen]);
+  }, [selectedEvent, selectedIncident, ruleConfigModalOpen, showThreatConfigModal, showAddIocModal, addHostModalOpen, enrollModalOpen, warRoomOpen, processTreeModalOpen, restoreModalOpen]);
 
 
 
@@ -5489,6 +5870,16 @@ function App() {
 
     }, {
 
+      id: "correlation",
+
+      label: "Correlation Engine",
+
+      icon: "cpu",
+
+      badge: correlationIncidents && correlationIncidents.length ? `${correlationIncidents.length} Live` : (correlationStatus && correlationStatus.running ? "ACTIVE" : "STANDBY")
+
+    }, {
+
       id: "netwitness_siem",
 
       label: "RSA NetWitness SIEM",
@@ -8121,7 +8512,883 @@ function App() {
 
     className: "p-3 rounded bg-[#080c14] border border-[#1f293d] font-mono text-[11px] text-emerald-400 overflow-x-auto"
 
-  }, JSON.stringify(selectedAlert, null, 2)))))), /* =========================================================================
+  }, JSON.stringify(selectedAlert, null, 2)))))),
+
+/* =========================================================================
+         CORRELATION ENGINE CONSOLE (M4)
+         ========================================================================= */
+      (currentScreen === "correlation" || currentScreen === "correlation_incidents" || currentScreen === "correlation_rules" || currentScreen === "correlation_engine") && /*#__PURE__*/React.createElement("div", {
+        className: "space-y-4"
+      },
+        /* 1. Header Card */
+        /*#__PURE__*/React.createElement("div", {
+          className: "flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1f293d] pb-4 bg-[#0e1422] p-4 rounded-xl border"
+        },
+          /* Title & Subtitle */
+          /*#__PURE__*/React.createElement("div", {
+            className: "flex items-center space-x-3"
+          },
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400"
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": "cpu",
+                className: "w-6 h-6"
+              })
+            ),
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center space-x-3 flex-wrap gap-y-1"
+              },
+                /*#__PURE__*/React.createElement("h2", {
+                  className: "text-lg font-bold text-slate-100 font-mono tracking-tight"
+                }, "Cross-Source Real-Time Correlation Engine"),
+                /* Status Indicator */
+                /*#__PURE__*/React.createElement("span", {
+                  className: "px-2.5 py-0.5 rounded-full text-xs font-mono font-bold flex items-center " +
+                    (correlationStatus && correlationStatus.running
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                      : "bg-rose-500/20 text-rose-400 border border-rose-500/40")
+                },
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "w-2 h-2 rounded-full mr-1.5 " +
+                      (correlationStatus && correlationStatus.running ? "bg-emerald-400 animate-pulse" : "bg-rose-400")
+                  }),
+                  correlationStatus && correlationStatus.running ? "ENGINE RUNNING" : "ENGINE STOPPED"
+                ),
+                /* Incident Count Badge */
+                /*#__PURE__*/React.createElement("span", {
+                  className: "px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                }, correlationIncidents.length + " Incidents")
+              ),
+              /*#__PURE__*/React.createElement("p", {
+                className: "text-xs text-slate-400 mt-1"
+              }, "Stateful multi-stage event correlation across Wazuh HIDS, Suricata NIDS, Squid Gateway, Check Point FW, NetWitness SIEM & Active Directory")
+            )
+          ),
+          /* Action Controls */
+          /*#__PURE__*/React.createElement("div", {
+            className: "flex items-center space-x-2 flex-wrap gap-y-2"
+          },
+            /* Engine Start/Stop Toggle */
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => handleEngineControl(correlationStatus && correlationStatus.running ? "stop" : "start"),
+              disabled: engineActionLoading,
+              className: "px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition flex items-center " +
+                (correlationStatus && correlationStatus.running
+                  ? "bg-rose-950/40 border-rose-800 text-rose-300 hover:bg-rose-900/60"
+                  : "bg-emerald-950/40 border-emerald-800 text-emerald-300 hover:bg-emerald-900/60")
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": correlationStatus && correlationStatus.running ? "square" : "play",
+                className: "w-3.5 h-3.5 mr-1"
+              }),
+              correlationStatus && correlationStatus.running ? "Stop Engine" : "Start Engine"
+            ),
+            /* Reset State */
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => handleEngineControl("reset"),
+              disabled: engineActionLoading,
+              title: "Flush sliding-window buffers and reset in-memory caches",
+              className: "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-[#131b2e] border border-[#1f293d] text-slate-300 hover:text-white hover:bg-[#1a243d] transition flex items-center"
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": "rotate-ccw",
+                className: "w-3.5 h-3.5 mr-1"
+              }),
+              "Reset State"
+            ),
+            /* Refresh Data */
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => fetchCorrelationData(),
+              disabled: correlationLoading,
+              className: "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-[#131b2e] border border-[#1f293d] text-slate-300 hover:text-white hover:bg-[#1a243d] transition flex items-center"
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": "refresh-cw",
+                className: "w-3.5 h-3.5 mr-1 " + (correlationLoading ? "animate-spin" : "")
+              }),
+              "Refresh"
+            )
+          )
+        ),
+
+        /* 2. Sub-Navigation Tabs */
+        /*#__PURE__*/React.createElement("div", {
+          className: "flex items-center space-x-2 border-b border-[#1f293d] pb-2"
+        },
+          /* Tab 1: Incidents & Attack Chains */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => { setCorrelationTab("incidents"); setCurrentScreen("correlation"); },
+            className: "px-4 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center " +
+              (correlationTab === "incidents"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                : "bg-[#0e1422] text-slate-400 hover:text-slate-200 border border-[#1f293d]")
+          },
+            /*#__PURE__*/React.createElement("i", {
+              "data-lucide": "shield-alert",
+              className: "w-4 h-4 mr-1.5"
+            }),
+            /*#__PURE__*/React.createElement("span", null, "Incidents & Attack Chains"),
+            /*#__PURE__*/React.createElement("span", {
+              className: "ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold " +
+                (correlationTab === "incidents" ? "bg-purple-800 text-purple-100" : "bg-purple-900/50 text-purple-300")
+            }, "" + correlationIncidents.length)
+          ),
+          /* Tab 2: Detection Rules Catalog */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => { setCorrelationTab("rules"); setCurrentScreen("correlation"); },
+            className: "px-4 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center " +
+              (correlationTab === "rules"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                : "bg-[#0e1422] text-slate-400 hover:text-slate-200 border border-[#1f293d]")
+          },
+            /*#__PURE__*/React.createElement("i", {
+              "data-lucide": "sliders",
+              className: "w-4 h-4 mr-1.5"
+            }),
+            /*#__PURE__*/React.createElement("span", null, "Detection Rules Catalog"),
+            /*#__PURE__*/React.createElement("span", {
+              className: "ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold " +
+                (correlationTab === "rules" ? "bg-purple-800 text-purple-100" : "bg-slate-800 text-slate-300")
+            }, correlationRules.filter(r => r.enabled).length + "/" + correlationRules.length)
+          ),
+          /* Tab 3: Engine Status & Telemetry Metrics */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => { setCorrelationTab("status"); setCurrentScreen("correlation"); },
+            className: "px-4 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center " +
+              (correlationTab === "status"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                : "bg-[#0e1422] text-slate-400 hover:text-slate-200 border border-[#1f293d]")
+          },
+            /*#__PURE__*/React.createElement("i", {
+              "data-lucide": "activity",
+              className: "w-4 h-4 mr-1.5"
+            }),
+            /*#__PURE__*/React.createElement("span", null, "Engine Status & Telemetry"),
+            /*#__PURE__*/React.createElement("span", {
+              className: "ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold " +
+                (correlationStatus && correlationStatus.running ? "bg-emerald-900/60 text-emerald-300" : "bg-rose-900/60 text-rose-300")
+            }, correlationStatus && correlationStatus.running ? "RUNNING" : "STOPPED")
+          )
+        ),
+
+        /* Simulation Toast */
+        simulationToast && /*#__PURE__*/React.createElement("div", {
+          className: "p-3 rounded-lg bg-emerald-950/90 border border-emerald-500/60 text-emerald-200 text-xs font-mono flex items-center justify-between shadow-lg animate-in fade-in"
+        },
+          /*#__PURE__*/React.createElement("div", {
+            className: "flex items-center space-x-2"
+          },
+            /*#__PURE__*/React.createElement("i", {
+              "data-lucide": "check",
+              className: "w-4 h-4 text-emerald-400"
+            }),
+            /*#__PURE__*/React.createElement("span", null, simulationToast.message)
+          ),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setSimulationToast(null),
+            className: "text-slate-400 hover:text-white"
+          },
+            /*#__PURE__*/React.createElement("i", {
+              "data-lucide": "x",
+              className: "w-3.5 h-3.5"
+            })
+          )
+        ),
+
+        /* 3. Sub-View A: Incidents & Attack Chains */
+        correlationTab === "incidents" && /*#__PURE__*/React.createElement("div", {
+          className: "space-y-4"
+        },
+          /* KPI Summary Cards */
+          /*#__PURE__*/React.createElement("div", {
+            className: "grid grid-cols-2 md:grid-cols-4 gap-3"
+          },
+            /* Card 1: Total Incidents */
+            /*#__PURE__*/React.createElement("div", {
+              className: "bg-[#0e1422] p-3.5 rounded-xl border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-slate-400 text-xs font-mono"
+              }, "TOTAL CORRELATED INCIDENTS"),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-2xl font-bold font-mono text-slate-100 mt-1"
+              }, "" + correlationIncidents.length),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-[11px] text-purple-400 font-mono mt-0.5"
+              }, correlationIncidents.filter(i => (i.severity || "").toUpperCase() === "CRITICAL").length + " Critical / " + correlationIncidents.filter(i => (i.severity || "").toUpperCase() === "HIGH").length + " High")
+            ),
+            /* Card 2: Critical Chains */
+            /*#__PURE__*/React.createElement("div", {
+              className: "bg-[#0e1422] p-3.5 rounded-xl border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-slate-400 text-xs font-mono"
+              }, "CRITICAL ATTACK CHAINS"),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-2xl font-bold font-mono text-rose-400 mt-1"
+              }, "" + correlationIncidents.filter(i => (i.severity || "").toUpperCase() === "CRITICAL").length),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-[11px] text-rose-300 font-mono mt-0.5"
+              }, "Immediate Triage Required")
+            ),
+            /* Card 3: Tracked Entities at Risk */
+            /*#__PURE__*/React.createElement("div", {
+              className: "bg-[#0e1422] p-3.5 rounded-xl border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-slate-400 text-xs font-mono"
+              }, "ENTITIES AT RISK"),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-2xl font-bold font-mono text-amber-400 mt-1"
+              }, "" + (correlationStatus && correlationStatus.active_entities_count ? correlationStatus.active_entities_count : 8)),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-[11px] text-amber-300 font-mono mt-0.5"
+              }, "Cross-Source Entities Tracked")
+            ),
+            /* Card 4: Active Sliding Windows */
+            /*#__PURE__*/React.createElement("div", {
+              className: "bg-[#0e1422] p-3.5 rounded-xl border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-slate-400 text-xs font-mono"
+              }, "ACTIVE SLIDING WINDOWS"),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-2xl font-bold font-mono text-emerald-400 mt-1"
+              }, "" + (correlationStatus ? correlationStatus.active_windows_count : 0)),
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-[11px] text-emerald-300 font-mono mt-0.5"
+              }, "300s \u2013 1800s Sliding Buffers")
+            )
+          ),
+
+          /* Search & Filter Bar */
+          /*#__PURE__*/React.createElement("div", {
+            className: "flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#0e1422] p-3 rounded-xl border border-[#1f293d]"
+          },
+            /* Search input */
+            /*#__PURE__*/React.createElement("div", {
+              className: "relative flex-1"
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": "search",
+                className: "absolute left-3 top-2.5 w-4 h-4 text-slate-400"
+              }),
+              /*#__PURE__*/React.createElement("input", {
+                type: "text",
+                placeholder: "Filter incidents by ID, rule, entity, IP, user, or summary...",
+                value: incidentSearchQ,
+                onChange: e => setIncidentSearchQ(e.target.value),
+                className: "w-full pl-9 pr-3 py-1.5 bg-[#080c14] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              })
+            ),
+            /* Severity Dropdown */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2"
+            },
+              /*#__PURE__*/React.createElement("span", {
+                className: "text-xs font-mono text-slate-400"
+              }, "Severity:"),
+              /*#__PURE__*/React.createElement("select", {
+                value: incidentFilterSev,
+                onChange: e => setIncidentFilterSev(e.target.value),
+                className: "bg-[#080c14] border border-[#1f293d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-purple-500"
+              },
+                /*#__PURE__*/React.createElement("option", { value: "ALL" }, "ALL SEVERITIES"),
+                /*#__PURE__*/React.createElement("option", { value: "CRITICAL" }, "CRITICAL"),
+                /*#__PURE__*/React.createElement("option", { value: "HIGH" }, "HIGH"),
+                /*#__PURE__*/React.createElement("option", { value: "MEDIUM" }, "MEDIUM"),
+                /*#__PURE__*/React.createElement("option", { value: "LOW" }, "LOW")
+              )
+            ),
+            /* Source Dropdown */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2"
+            },
+              /*#__PURE__*/React.createElement("span", {
+                className: "text-xs font-mono text-slate-400"
+              }, "Source:"),
+              /*#__PURE__*/React.createElement("select", {
+                value: incidentFilterSrc,
+                onChange: e => setIncidentFilterSrc(e.target.value),
+                className: "bg-[#080c14] border border-[#1f293d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-purple-500"
+              },
+                /*#__PURE__*/React.createElement("option", { value: "ALL" }, "ALL SOURCES"),
+                /*#__PURE__*/React.createElement("option", { value: "wazuh" }, "Wazuh HIDS"),
+                /*#__PURE__*/React.createElement("option", { value: "suricata" }, "Suricata NIDS"),
+                /*#__PURE__*/React.createElement("option", { value: "squid" }, "Squid Gateway"),
+                /*#__PURE__*/React.createElement("option", { value: "checkpoint" }, "Check Point FW"),
+                /*#__PURE__*/React.createElement("option", { value: "netwitness" }, "RSA NetWitness"),
+                /*#__PURE__*/React.createElement("option", { value: "active_directory" }, "Active Directory")
+              )
+            )
+          ),
+
+          /* Incident List */
+          (() => {
+            const q = incidentSearchQ.trim().toLowerCase();
+            const filteredIncidents = correlationIncidents.filter(inc => {
+              if (incidentFilterSev !== "ALL" && (inc.severity || "").toUpperCase() !== incidentFilterSev) return false;
+              if (incidentFilterSrc !== "ALL") {
+                const srcs = (inc.contributing_sources || inc.sources || []).map(s => String(s).toLowerCase());
+                if (!srcs.some(s => s.includes(incidentFilterSrc.toLowerCase()))) return false;
+              }
+              if (q) {
+                const blob = [
+                  inc.id, inc.rule_id, inc.rule_name, inc.summary, inc.description,
+                  inc.mitre_attack_id, inc.mitre_tactic, inc.mitre_technique,
+                  JSON.stringify(inc.entities || {})
+                ].join(" ").toLowerCase();
+                if (!blob.includes(q)) return false;
+              }
+              return true;
+            });
+
+            if (filteredIncidents.length === 0) {
+              return /*#__PURE__*/React.createElement("div", {
+                className: "p-8 rounded-xl bg-[#0e1422] border border-[#1f293d] text-center space-y-3"
+              },
+                /*#__PURE__*/React.createElement("div", {
+                  className: "inline-flex p-3 rounded-full bg-purple-500/10 text-purple-400"
+                },
+                  /*#__PURE__*/React.createElement("i", {
+                    "data-lucide": "shield-alert",
+                    className: "w-8 h-8"
+                  })
+                ),
+                /*#__PURE__*/React.createElement("h3", {
+                  className: "text-sm font-bold text-slate-200 font-mono"
+                }, "No Correlated Incidents Found"),
+                /*#__PURE__*/React.createElement("p", {
+                  className: "text-xs text-slate-400 max-w-md mx-auto"
+                }, "No incidents matched your query. Use the Detection Rules tab to simulate multi-source synthetic attack sequences across Wazuh, Suricata, Squid, Check Point, NetWitness, and Active Directory."),
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => handleSimulateAttack("RULE-CORR-001"),
+                  disabled: simulatingRule !== null,
+                  className: "px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold rounded-lg transition inline-flex items-center space-x-1.5 shadow-lg shadow-purple-600/30"
+                },
+                  /*#__PURE__*/React.createElement("i", {
+                    "data-lucide": "zap",
+                    className: "w-4 h-4 mr-1"
+                  }),
+                  simulatingRule ? "Simulating Attack..." : "Simulate Multi-Source Brute Force (RULE-CORR-001)"
+                )
+              );
+            }
+
+            return /*#__PURE__*/React.createElement("div", {
+              className: "space-y-3"
+            },
+              filteredIncidents.map(inc => {
+                const sev = (inc.severity || "HIGH").toUpperCase();
+                const sevClass = sev === "CRITICAL"
+                  ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                  : (sev === "HIGH"
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                    : (sev === "MEDIUM"
+                      ? "bg-sky-500/20 text-sky-400 border-sky-500/40"
+                      : "bg-slate-500/20 text-slate-400 border-slate-500/40"));
+
+                const risk = Math.round(inc.risk_score || 75);
+                const riskColor = risk >= 90 ? "text-rose-400" : (risk >= 70 ? "text-amber-400" : "text-sky-400");
+                const riskBar = risk >= 90 ? "bg-rose-500" : (risk >= 70 ? "bg-amber-500" : "bg-sky-500");
+
+                // Extract entities
+                const ents = inc.entities || {};
+                const ips = ents.ips || ents.ip || [];
+                const hosts = ents.hosts || ents.host || [];
+                const users = ents.users || ents.user || [];
+                const attackerIp = ips.length ? ips[0] : (inc.src_ip || null);
+                const targetHost = hosts.length ? hosts[0] : (inc.host || null);
+                const targetUser = users.length ? users[0] : (inc.user || null);
+
+                const sources = inc.contributing_sources || inc.sources || [];
+                const eventsCount = inc.events_count || (inc.root_cause_events ? inc.root_cause_events.length : (inc.evidence_events ? inc.evidence_events.length : 1));
+
+                return /*#__PURE__*/React.createElement("div", {
+                  key: inc.id,
+                  className: "p-4 rounded-xl bg-[#0e1422] border border-[#1f293d] hover:border-purple-500/50 transition space-y-3 shadow-md"
+                },
+                  /* Row 1: Badges, Title, Risk meter, Actions */
+                  /*#__PURE__*/React.createElement("div", {
+                    className: "flex flex-col md:flex-row md:items-center justify-between gap-2"
+                  },
+                    /* Left badge + title */
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "flex items-center space-x-2 flex-wrap gap-y-1"
+                    },
+                      /* Severity Badge */
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "px-2.5 py-0.5 rounded font-mono font-bold text-xs border " + sevClass
+                      }, sev),
+                      /* Rule ID Badge */
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded font-mono text-[11px] bg-[#131b2e] border border-[#1f293d] text-slate-300"
+                      }, inc.rule_id || "RULE-CORR"),
+                      /* Incident Title */
+                      /*#__PURE__*/React.createElement("h3", {
+                        className: "text-sm font-bold text-slate-100 font-mono tracking-tight"
+                      }, inc.rule_name || inc.title || inc.summary || "Correlated Security Incident")
+                    ),
+                    /* Right: Risk score meter & Drill-down Button */
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "flex items-center space-x-3"
+                    },
+                      /* Risk meter */
+                      /*#__PURE__*/React.createElement("div", {
+                        className: "flex items-center space-x-1.5"
+                      },
+                        /*#__PURE__*/React.createElement("span", {
+                          className: "text-[10px] font-mono text-slate-400"
+                        }, "RISK:"),
+                        /*#__PURE__*/React.createElement("div", {
+                          className: "w-16 bg-[#080c14] h-2 rounded-full overflow-hidden border border-[#1f293d]"
+                        },
+                          /*#__PURE__*/React.createElement("div", {
+                            className: "h-full rounded-full " + riskBar,
+                            style: { width: Math.min(100, Math.max(5, risk)) + "%" }
+                          })
+                        ),
+                        /*#__PURE__*/React.createElement("span", {
+                          className: "text-xs font-mono font-bold " + riskColor
+                        }, risk + "/100")
+                      ),
+                      /* Drill-Down Button */
+                      /*#__PURE__*/React.createElement("button", {
+                        onClick: () => handleSelectIncident(inc),
+                        className: "px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold transition flex items-center space-x-1 shadow-md shadow-purple-600/30"
+                      },
+                        /*#__PURE__*/React.createElement("i", {
+                          "data-lucide": "search",
+                          className: "w-3.5 h-3.5 mr-1"
+                        }),
+                        "Pivot & Inspect Root Cause"
+                      )
+                    )
+                  ),
+
+                  /* Row 2: Summary description */
+                  /*#__PURE__*/React.createElement("p", {
+                    className: "text-xs text-slate-300 font-sans"
+                  }, inc.summary || inc.description || "Correlated multi-source security incident detected across sliding window."),
+
+                  /* Row 3: Entity Tags, MITRE ATT&CK, Sources, Timestamp */
+                  /*#__PURE__*/React.createElement("div", {
+                    className: "flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-[#1f293d]/60 text-xs font-mono"
+                  },
+                    /* Entity tags */
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "flex items-center space-x-2 flex-wrap gap-y-1"
+                    },
+                      attackerIp && /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded bg-[#080c14] border border-[#1f293d] text-[11px] text-rose-300 flex items-center"
+                      },
+                        /*#__PURE__*/React.createElement("i", {
+                          "data-lucide": "globe",
+                          className: "w-3 h-3 mr-1 text-rose-400"
+                        }),
+                        "Src IP: " + attackerIp
+                      ),
+                      targetHost && /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded bg-[#080c14] border border-[#1f293d] text-[11px] text-sky-300 flex items-center"
+                      },
+                        /*#__PURE__*/React.createElement("i", {
+                          "data-lucide": "server",
+                          className: "w-3 h-3 mr-1 text-sky-400"
+                        }),
+                        "Host: " + targetHost
+                      ),
+                      targetUser && /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded bg-[#080c14] border border-[#1f293d] text-[11px] text-purple-300 flex items-center"
+                      },
+                        /*#__PURE__*/React.createElement("i", {
+                          "data-lucide": "users",
+                          className: "w-3 h-3 mr-1 text-purple-400"
+                        }),
+                        "User: " + targetUser
+                      ),
+                      /* MITRE technique tag */
+                      inc.mitre_attack_id && /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded bg-purple-950/40 border border-purple-800 text-[11px] text-purple-300"
+                      }, "MITRE: " + inc.mitre_attack_id + (inc.mitre_tactic ? " (" + inc.mitre_tactic + ")" : "")),
+                      /* Contributing sources */
+                      sources.map(src => /*#__PURE__*/React.createElement("span", {
+                        key: src,
+                        className: "px-2 py-0.5 rounded bg-[#131b2e] border border-[#1f293d] text-[10px] text-slate-300 uppercase"
+                      }, src))
+                    ),
+                    /* Right: Events count & Timestamp */
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "flex items-center space-x-3 text-slate-400 text-[11px]"
+                    },
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded bg-[#131b2e] border border-[#1f293d] text-slate-300 font-bold"
+                      }, eventsCount + " Events"),
+                      /*#__PURE__*/React.createElement("span", null, inc.timestamp ? String(inc.timestamp).replace("T", " ").substring(0, 19) + "Z" : "Just now")
+                    )
+                  )
+                );
+              })
+            );
+          })()
+        ),
+
+        /* 4. Sub-View B: Detection Rules Catalog */
+        correlationTab === "rules" && /*#__PURE__*/React.createElement("div", {
+          className: "space-y-4"
+        },
+          /* Header Info Card */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-4 rounded-xl bg-[#0e1422] border border-[#1f293d] flex flex-col md:flex-row md:items-center justify-between gap-3"
+          },
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("h3", {
+                className: "text-sm font-bold text-slate-100 font-mono"
+              }, "Executable Multi-Source Correlation Detection Rules"),
+              /*#__PURE__*/React.createElement("p", {
+                className: "text-xs text-slate-400 mt-1"
+              }, "Active stateful detection rules mapped to MITRE ATT&CK tactics & techniques with sliding time-window aggregation, threshold counters, and out-of-order event resequencing.")
+            ),
+            /* Search filter */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2"
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": "search",
+                className: "w-4 h-4 text-slate-400"
+              }),
+              /*#__PURE__*/React.createElement("input", {
+                type: "text",
+                placeholder: "Search rules by name, tactic, or ID...",
+                value: ruleSearchQ,
+                onChange: e => setRuleSearchQ(e.target.value),
+                className: "px-3 py-1.5 bg-[#080c14] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              })
+            )
+          ),
+
+          /* Rules Grid */
+          /*#__PURE__*/React.createElement("div", {
+            className: "grid grid-cols-1 md:grid-cols-2 gap-4"
+          },
+            correlationRules.filter(r => {
+              if (!ruleSearchQ.trim()) return true;
+              const q = ruleSearchQ.toLowerCase();
+              return (r.name || "").toLowerCase().includes(q) ||
+                     (r.rule_id || "").toLowerCase().includes(q) ||
+                     (r.mitre_attack_id || "").toLowerCase().includes(q) ||
+                     (r.mitre_tactic || "").toLowerCase().includes(q);
+            }).map(rule => {
+              const sev = (rule.severity || "HIGH").toUpperCase();
+              const sevClass = sev === "CRITICAL"
+                ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                : "bg-amber-500/20 text-amber-400 border-amber-500/40";
+              const isToggling = !!ruleActionLoading[rule.rule_id];
+              const isSimulating = simulatingRule === rule.rule_id;
+
+              return /*#__PURE__*/React.createElement("div", {
+                key: rule.rule_id,
+                className: "p-4 rounded-xl bg-[#0e1422] border border-[#1f293d] hover:border-purple-500/40 transition space-y-3 flex flex-col justify-between shadow-md"
+              },
+                /* Rule Card Top */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "space-y-2.5"
+                },
+                  /* Row 1: ID, Badges, Toggle */
+                  /*#__PURE__*/React.createElement("div", {
+                    className: "flex items-center justify-between"
+                  },
+                    /* Left: ID & Severity */
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "flex items-center space-x-2"
+                    },
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded font-mono font-bold text-xs bg-[#131b2e] border border-[#1f293d] text-purple-300"
+                      }, rule.rule_id),
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded font-mono font-bold text-[10px] border " + sevClass
+                      }, sev),
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "px-2 py-0.5 rounded font-mono text-[10px] bg-[#080c14] border border-[#1f293d] text-slate-300"
+                      }, "Risk: " + Math.round(rule.risk_score || 80) + "/100")
+                    ),
+                    /* Right: Enable/Disable Switch */
+                    /*#__PURE__*/React.createElement("button", {
+                      onClick: () => handleToggleRule(rule.rule_id),
+                      disabled: isToggling,
+                      className: "px-2.5 py-1 rounded text-xs font-mono font-bold transition flex items-center " +
+                        (rule.enabled
+                          ? "bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/80"
+                          : "bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700")
+                    },
+                      /*#__PURE__*/React.createElement("span", {
+                        className: "w-2 h-2 rounded-full mr-1.5 " + (rule.enabled ? "bg-emerald-400" : "bg-slate-500")
+                      }),
+                      isToggling ? "Updating..." : (rule.enabled ? "ENABLED" : "DISABLED")
+                    )
+                  ),
+
+                  /* Row 2: Name & Description */
+                  /*#__PURE__*/React.createElement("div", null,
+                    /*#__PURE__*/React.createElement("h4", {
+                      className: "text-sm font-bold text-slate-100 font-mono tracking-tight"
+                    }, rule.name),
+                    /*#__PURE__*/React.createElement("p", {
+                      className: "text-xs text-slate-400 mt-1"
+                    }, rule.description)
+                  ),
+
+                  /* Row 3: MITRE ATT&CK & Sources */
+                  /*#__PURE__*/React.createElement("div", {
+                    className: "flex items-center space-x-2 flex-wrap gap-y-1 text-[11px] font-mono"
+                  },
+                    rule.mitre_attack_id && /*#__PURE__*/React.createElement("span", {
+                      className: "px-2 py-0.5 rounded bg-purple-950/40 border border-purple-800 text-purple-300"
+                    }, "MITRE: " + rule.mitre_attack_id + (rule.mitre_tactic ? " (" + rule.mitre_tactic + ")" : "")),
+                    (rule.sources || []).map(src => /*#__PURE__*/React.createElement("span", {
+                      key: src,
+                      className: "px-1.5 py-0.5 rounded bg-[#080c14] border border-[#1f293d] text-slate-300 text-[10px] uppercase"
+                    }, src))
+                  ),
+
+                  /* Row 4: Parameters Grid */
+                  /*#__PURE__*/React.createElement("div", {
+                    className: "grid grid-cols-3 gap-2 bg-[#080c14] p-2.5 rounded-lg border border-[#1f293d] text-center font-mono text-[11px]"
+                  },
+                    /* Window */
+                    /*#__PURE__*/React.createElement("div", null,
+                      /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "WINDOW"),
+                      /*#__PURE__*/React.createElement("div", { className: "text-slate-200 font-bold" }, (rule.window_seconds || 300) + "s (" + ((rule.window_seconds || 300)/60).toFixed(1) + "m)")
+                    ),
+                    /* Threshold */
+                    /*#__PURE__*/React.createElement("div", null,
+                      /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "THRESHOLD"),
+                      /*#__PURE__*/React.createElement("div", { className: "text-slate-200 font-bold" }, (rule.threshold || 1) + " Events")
+                    ),
+                    /* Cooldown */
+                    /*#__PURE__*/React.createElement("div", null,
+                      /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "COOLDOWN"),
+                      /*#__PURE__*/React.createElement("div", { className: "text-slate-200 font-bold" }, (rule.cooldown_seconds || 600) + "s")
+                    )
+                  )
+                ),
+
+                /* Rule Card Bottom Actions */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "flex items-center space-x-2 pt-2 border-t border-[#1f293d]/60"
+                },
+                  /* Simulate Attack Button */
+                  /*#__PURE__*/React.createElement("button", {
+                    onClick: () => handleSimulateAttack(rule.rule_id),
+                    disabled: isSimulating,
+                    className: "flex-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-900 text-white font-mono text-xs font-bold rounded-lg transition flex items-center justify-center space-x-1.5 shadow-md shadow-purple-600/30"
+                  },
+                    /*#__PURE__*/React.createElement("i", {
+                      "data-lucide": "zap",
+                      className: "w-3.5 h-3.5 mr-1 " + (isSimulating ? "animate-spin" : "")
+                    }),
+                    isSimulating ? "Injecting Attack..." : "Simulate Attack"
+                  ),
+                  /* Tune Thresholds Button */
+                  /*#__PURE__*/React.createElement("button", {
+                    onClick: () => { setEditingRule({ ...rule }); setRuleConfigModalOpen(true); },
+                    className: "px-3 py-1.5 bg-[#131b2e] hover:bg-[#1a243d] border border-[#1f293d] text-slate-300 font-mono text-xs font-bold rounded-lg transition flex items-center space-x-1"
+                  },
+                    /*#__PURE__*/React.createElement("i", {
+                      "data-lucide": "sliders",
+                      className: "w-3.5 h-3.5 mr-1"
+                    }),
+                    "Tune"
+                  )
+                )
+              );
+            })
+          )
+        ),
+
+        /* 5. Sub-View C: Engine Status & Telemetry Metrics */
+        correlationTab === "status" && /*#__PURE__*/React.createElement("div", {
+          className: "space-y-4"
+        },
+          /* Engine State Banner */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-4 rounded-xl bg-[#0e1422] border border-[#1f293d] flex flex-col md:flex-row md:items-center justify-between gap-4"
+          },
+            /* Left: Status Indicator */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-3"
+            },
+              /*#__PURE__*/React.createElement("div", {
+                className: "p-3 rounded-full " + (correlationStatus && correlationStatus.running ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400")
+              },
+                /*#__PURE__*/React.createElement("i", {
+                  "data-lucide": correlationStatus && correlationStatus.running ? "activity" : "square",
+                  className: "w-6 h-6"
+                })
+              ),
+              /*#__PURE__*/React.createElement("div", null,
+                /*#__PURE__*/React.createElement("h3", {
+                  className: "text-base font-bold text-slate-100 font-mono tracking-tight"
+                }, correlationStatus && correlationStatus.running ? "Engine Core: RUNNING & EVALUATING" : "Engine Core: STOPPED (STANDBY)"),
+                /*#__PURE__*/React.createElement("p", {
+                  className: "text-xs text-slate-400"
+                }, "In-memory sliding time buffers, watermark event resequencer, and alert cooldown deduplication active.")
+              )
+            ),
+            /* Right: Controls */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2"
+            },
+              /* Start Button */
+              /*#__PURE__*/React.createElement("button", {
+                onClick: () => handleEngineControl("start"),
+                disabled: engineActionLoading || (correlationStatus && correlationStatus.running),
+                className: "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-950/40 border border-emerald-800 text-emerald-300 hover:bg-emerald-900/60 disabled:opacity-40 transition flex items-center"
+              },
+                /*#__PURE__*/React.createElement("i", { "data-lucide": "play", className: "w-3.5 h-3.5 mr-1" }),
+                "Start"
+              ),
+              /* Stop Button */
+              /*#__PURE__*/React.createElement("button", {
+                onClick: () => handleEngineControl("stop"),
+                disabled: engineActionLoading || !(correlationStatus && correlationStatus.running),
+                className: "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-rose-950/40 border border-rose-800 text-rose-300 hover:bg-rose-900/60 disabled:opacity-40 transition flex items-center"
+              },
+                /*#__PURE__*/React.createElement("i", { "data-lucide": "square", className: "w-3.5 h-3.5 mr-1" }),
+                "Stop"
+              ),
+              /* Reset Button */
+              /*#__PURE__*/React.createElement("button", {
+                onClick: () => handleEngineControl("reset"),
+                disabled: engineActionLoading,
+                className: "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-[#131b2e] border border-[#1f293d] text-slate-300 hover:text-white hover:bg-[#1a243d] transition flex items-center"
+              },
+                /*#__PURE__*/React.createElement("i", { "data-lucide": "rotate-ccw", className: "w-3.5 h-3.5 mr-1" }),
+                "Reset"
+              )
+            )
+          ),
+
+          /* 5 Real-Time KPI Cards */
+          /*#__PURE__*/React.createElement("div", {
+            className: "grid grid-cols-2 md:grid-cols-5 gap-3"
+          },
+            /* 1. Events Evaluated */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", { className: "text-slate-400 text-xs font-mono" }, "EVENTS EVALUATED"),
+              /*#__PURE__*/React.createElement("div", { className: "text-xl font-bold font-mono text-emerald-400 mt-1" },
+                "" + (correlationStatus ? correlationStatus.events_processed : 0)
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "text-[10px] text-slate-500 font-mono mt-0.5" }, "Canonical Ingest")
+            ),
+            /* 2. Active Windows */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", { className: "text-slate-400 text-xs font-mono" }, "ACTIVE WINDOWS"),
+              /*#__PURE__*/React.createElement("div", { className: "text-xl font-bold font-mono text-purple-400 mt-1" },
+                "" + (correlationStatus ? correlationStatus.active_windows_count : 0)
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "text-[10px] text-slate-500 font-mono mt-0.5" }, "In-Memory Buffers")
+            ),
+            /* 3. Resequenced Events */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", { className: "text-slate-400 text-xs font-mono" }, "RESEQUENCED EVENTS"),
+              /*#__PURE__*/React.createElement("div", { className: "text-xl font-bold font-mono text-sky-400 mt-1" },
+                "" + (correlationStatus ? (correlationStatus.resequenced_events || 0) : 0)
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "text-[10px] text-slate-500 font-mono mt-0.5" }, "Watermark Buffer")
+            ),
+            /* 4. Deduplication Suppressions */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", { className: "text-slate-400 text-xs font-mono" }, "DEDUP SUPPRESSIONS"),
+              /*#__PURE__*/React.createElement("div", { className: "text-xl font-bold font-mono text-amber-400 mt-1" },
+                "" + (correlationStatus ? (correlationStatus.suppressed_dedup || 0) : 0)
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "text-[10px] text-slate-500 font-mono mt-0.5" }, "Alert Fatigue Control")
+            ),
+            /* 5. Engine Uptime */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]"
+            },
+              /*#__PURE__*/React.createElement("div", { className: "text-slate-400 text-xs font-mono" }, "ENGINE UPTIME"),
+              /*#__PURE__*/React.createElement("div", { className: "text-xl font-bold font-mono text-slate-100 mt-1" },
+                correlationStatus && correlationStatus.uptime_seconds
+                  ? (correlationStatus.uptime_seconds > 3600
+                      ? (correlationStatus.uptime_seconds / 3600).toFixed(1) + "h"
+                      : (correlationStatus.uptime_seconds / 60).toFixed(0) + "m")
+                  : "Active"
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "text-[10px] text-slate-500 font-mono mt-0.5" }, "Continuous Run")
+            )
+          ),
+
+          /* 6-Source Telemetry Health Cards */
+          /*#__PURE__*/React.createElement("div", {
+            className: "space-y-3"
+          },
+            /*#__PURE__*/React.createElement("h4", {
+              className: "text-xs font-bold text-slate-200 font-mono uppercase tracking-wider"
+            }, "Telemetry Ingestion Pipeline Health (6 Sources)"),
+            /*#__PURE__*/React.createElement("div", {
+              className: "grid grid-cols-1 md:grid-cols-3 gap-3"
+            },
+              [
+                { name: "Wazuh HIDS", icon: "server", type: "Endpoint Auth, FIM & Rootcheck", proto: "ossec-remoted:1514", status: "HEALTHY", drops: 0 },
+                { name: "Suricata NIDS", icon: "activity", type: "Network Intrusion & Exploits", proto: "AF_PACKET / EVE JSON", status: "HEALTHY", drops: 0 },
+                { name: "Squid Gateway", icon: "globe", type: "Web Proxy & Data Exfiltration", proto: "access.log / TCP 3128", status: "HEALTHY", drops: 0 },
+                { name: "Check Point FW", icon: "shield-alert", type: "Perimeter Packet Drops & Sweeps", proto: "OPSEC LEA / Syslog:514", status: "HEALTHY", drops: 0 },
+                { name: "RSA NetWitness", icon: "database", type: "Correlated Meta & Threat Indicators", proto: "REST API / 12.5 Live", status: "HEALTHY", drops: 0 },
+                { name: "Active Directory", icon: "users", type: "Kerberos & Windows Security Log", proto: "WEF / Event 4624/4625", status: "HEALTHY", drops: 0 }
+              ].map(src => /*#__PURE__*/React.createElement("div", {
+                key: src.name,
+                className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d] space-y-2 shadow-sm"
+              },
+                /* Header: Name + Badge */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "flex items-center justify-between"
+                },
+                  /*#__PURE__*/React.createElement("div", {
+                    className: "flex items-center space-x-2"
+                  },
+                    /*#__PURE__*/React.createElement("i", {
+                      "data-lucide": src.icon,
+                      className: "w-4 h-4 text-emerald-400"
+                    }),
+                    /*#__PURE__*/React.createElement("h5", {
+                      className: "text-xs font-bold text-slate-100 font-mono"
+                    }, src.name)
+                  ),
+                  /* Status Badge */
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                  }, src.status)
+                ),
+                /* Type & Protocol */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "text-[11px] text-slate-400 font-sans"
+                }, src.type),
+                /* Footer: Protocol & Drops */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "flex items-center justify-between pt-1 border-t border-[#1f293d]/60 text-[10px] font-mono text-slate-500"
+                },
+                  /*#__PURE__*/React.createElement("span", null, src.proto),
+                  /*#__PURE__*/React.createElement("span", { className: "text-emerald-400" }, "0 Drops")
+                )
+              ))
+            )
+          )
+        )
+      ),
+
+      /* =========================================================================
          RSA NETWITNESS SIEM INTEGRATION VIEW
          ========================================================================= */
       currentScreen === "netwitness_siem" && React.createElement("div", {
@@ -20430,7 +21697,477 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold text-slate-200"
 
-  }, "Close Lineage View")))))));
+  }, "Close Lineage View")))),
+
+/* =========================================================================
+         CORRELATION ENGINE FORENSIC DRILL-DOWN MODAL
+         ========================================================================= */
+      selectedIncident && /*#__PURE__*/React.createElement("div", {
+        onClick: () => setSelectedIncident(null),
+        className: "fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      },
+        /*#__PURE__*/React.createElement("div", {
+          onClick: e => e.stopPropagation(),
+          className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+        },
+          /* Modal Header */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-4 border-b border-[#1f293d] flex items-center justify-between bg-[#131b2e]"
+          },
+            /* Left: Title & Badges */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-3 flex-wrap gap-y-1"
+            },
+              /*#__PURE__*/React.createElement("span", {
+                className: "p-2 rounded-lg bg-purple-500/20 text-purple-400"
+              },
+                /*#__PURE__*/React.createElement("i", {
+                  "data-lucide": "shield-alert",
+                  className: "w-5 h-5"
+                })
+              ),
+              /*#__PURE__*/React.createElement("div", null,
+                /*#__PURE__*/React.createElement("div", {
+                  className: "flex items-center space-x-2 flex-wrap"
+                },
+                  /*#__PURE__*/React.createElement("h3", {
+                    className: "font-bold text-slate-100 text-sm font-mono tracking-tight"
+                  }, "INCIDENT FORENSIC DRILL-DOWN: " + (selectedIncident.id || "inc-corr")),
+                  /* Severity */
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "px-2 py-0.5 text-[10px] font-mono font-bold rounded border " +
+                      ((selectedIncident.severity || "").toUpperCase() === "CRITICAL"
+                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                        : "bg-amber-500/20 text-amber-400 border-amber-500/40")
+                  }, (selectedIncident.severity || "HIGH").toUpperCase()),
+                  /* Risk Score */
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-[#080c14] border border-[#1f293d] text-purple-300"
+                  }, "RISK: " + Math.round(selectedIncident.risk_score || 75) + "/100"),
+                  /* Status */
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                  }, (selectedIncident.status || "OPEN").toUpperCase())
+                ),
+                /*#__PURE__*/React.createElement("p", {
+                  className: "text-xs text-slate-300 font-sans mt-0.5"
+                }, selectedIncident.rule_name || selectedIncident.title || "Correlated multi-source security incident")
+              )
+            ),
+            /* Close Button */
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => setSelectedIncident(null),
+              className: "text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-[#1f293d] transition"
+            },
+              /*#__PURE__*/React.createElement("i", {
+                "data-lucide": "x",
+                className: "w-5 h-5"
+              })
+            )
+          ),
+
+          /* Modal Scrollable Body */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-5 overflow-y-auto space-y-5 text-xs font-mono"
+          },
+            /* Section 1: Entity Context Grid */
+            (() => {
+              const ents = selectedIncident.entities || {};
+              const ips = ents.ips || ents.ip || [];
+              const hosts = ents.hosts || ents.host || [];
+              const users = ents.users || ents.user || [];
+              const attackerIp = ips.length ? ips[0] : (selectedIncident.src_ip || "198.51.100.84");
+              const targetHost = hosts.length ? hosts[0] : (selectedIncident.host || "dc01.corp.local");
+              const targetUser = users.length ? users[0] : (selectedIncident.user || "admin");
+              const sources = selectedIncident.contributing_sources || selectedIncident.sources || ["wazuh", "active_directory"];
+
+              return /*#__PURE__*/React.createElement("div", {
+                className: "grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#080c14] p-3 rounded-xl border border-[#1f293d]"
+              },
+                /* Attacker IP */
+                /*#__PURE__*/React.createElement("div", null,
+                  /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "ATTACKER SOURCE IP"),
+                  /*#__PURE__*/React.createElement("div", { className: "text-rose-400 font-bold flex items-center space-x-1 mt-0.5" },
+                    /*#__PURE__*/React.createElement("i", { "data-lucide": "globe", className: "w-3 h-3 mr-1" }),
+                    attackerIp
+                  )
+                ),
+                /* Target Host */
+                /*#__PURE__*/React.createElement("div", null,
+                  /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "TARGET HOST"),
+                  /*#__PURE__*/React.createElement("div", { className: "text-sky-300 font-bold flex items-center space-x-1 mt-0.5" },
+                    /*#__PURE__*/React.createElement("i", { "data-lucide": "server", className: "w-3 h-3 mr-1" }),
+                    targetHost
+                  )
+                ),
+                /* Target User */
+                /*#__PURE__*/React.createElement("div", null,
+                  /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "TARGET ACCOUNT / USER"),
+                  /*#__PURE__*/React.createElement("div", { className: "text-purple-300 font-bold flex items-center space-x-1 mt-0.5" },
+                    /*#__PURE__*/React.createElement("i", { "data-lucide": "users", className: "w-3 h-3 mr-1" }),
+                    targetUser
+                  )
+                ),
+                /* Telemetry Sources */
+                /*#__PURE__*/React.createElement("div", null,
+                  /*#__PURE__*/React.createElement("div", { className: "text-slate-500 text-[10px]" }, "SOURCES INVOLVED"),
+                  /*#__PURE__*/React.createElement("div", { className: "text-slate-200 font-bold flex items-center space-x-1 flex-wrap mt-0.5" },
+                    sources.map(s => /*#__PURE__*/React.createElement("span", {
+                      key: s,
+                      className: "px-1.5 py-0.2 rounded bg-[#131b2e] border border-[#1f293d] text-[10px] uppercase mr-1"
+                    }, s))
+                  )
+                )
+              );
+            })(),
+
+            /* Section 2: Attack Sequence & Root-Cause Event Timeline */
+            /*#__PURE__*/React.createElement("div", {
+              className: "space-y-2.5"
+            },
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center justify-between"
+              },
+                /*#__PURE__*/React.createElement("h4", {
+                  className: "text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center"
+                },
+                  /*#__PURE__*/React.createElement("i", {
+                    "data-lucide": "layers",
+                    className: "w-4 h-4 mr-1.5 text-purple-400"
+                  }),
+                  "Attack Sequence Timeline (Contributing Telemetry Events)"
+                ),
+                /*#__PURE__*/React.createElement("span", {
+                  className: "text-[11px] text-slate-400"
+                }, "Chronological root-cause telemetry events")
+              ),
+
+              /* Timeline Event Items */
+              (() => {
+                const detail = selectedIncidentDetail || selectedIncident;
+                let timeline = detail.entity_timeline || [];
+                if (!timeline.length && detail.root_cause_events && detail.root_cause_events.length) {
+                  timeline = detail.root_cause_events.map(e => ({
+                    timestamp: e.timestamp,
+                    source: e.source_type || e.source || "telemetry",
+                    action: e.action || e.event_action || "alert",
+                    host: e.host,
+                    src_ip: e.src_ip,
+                    user: e.user,
+                    severity: e.severity || "MEDIUM",
+                    summary: (e.source_type || "Event") + " " + (e.action || "triggered") + " (" + (e.user || e.src_ip || "") + ")"
+                  }));
+                }
+
+                if (!timeline.length) {
+                  return /*#__PURE__*/React.createElement("div", {
+                    className: "p-3 rounded-lg bg-[#080c14] border border-[#1f293d] text-slate-400 text-center"
+                  }, "No raw chronological timeline events recorded.");
+                }
+
+                return /*#__PURE__*/React.createElement("div", {
+                  className: "space-y-2 max-h-[220px] overflow-y-auto pr-1"
+                },
+                  timeline.slice(0, 15).map((evt, idx) => {
+                    const src = (evt.source || "wazuh").toLowerCase();
+                    const srcClass = src.includes("wazuh")
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : (src.includes("suricata")
+                        ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                        : (src.includes("squid")
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                          : (src.includes("checkpoint")
+                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                            : (src.includes("active")
+                              ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                              : "bg-slate-500/10 text-slate-400 border-slate-500/30"))));
+
+                    return /*#__PURE__*/React.createElement("div", {
+                      key: idx,
+                      className: "p-2.5 rounded-lg bg-[#080c14] border border-[#1f293d] flex items-center justify-between space-x-3 hover:border-slate-600 transition"
+                    },
+                      /* Left: Timestamp + Source Badge + Action */
+                      /*#__PURE__*/React.createElement("div", {
+                        className: "flex items-center space-x-2.5 flex-1 min-w-0"
+                      },
+                        /* Index */
+                        /*#__PURE__*/React.createElement("span", {
+                          className: "text-[10px] text-slate-500 font-bold"
+                        }, "#" + (idx + 1)),
+                        /* Timestamp */
+                        /*#__PURE__*/React.createElement("span", {
+                          className: "text-[10px] text-slate-400 shrink-0"
+                        }, evt.timestamp ? String(evt.timestamp).split("T")[1]?.substring(0, 8) || String(evt.timestamp) : "00:00:00Z"),
+                        /* Source */
+                        /*#__PURE__*/React.createElement("span", {
+                          className: "px-2 py-0.5 rounded text-[10px] font-bold border uppercase shrink-0 " + srcClass
+                        }, evt.source || "TELEMETRY"),
+                        /* Summary / Action */
+                        /*#__PURE__*/React.createElement("span", {
+                          className: "text-slate-300 truncate text-[11px]"
+                        }, evt.summary || evt.action || evt.signature || "Correlated event sequence step")
+                      ),
+                      /* Right: Host / IP / User */
+                      /*#__PURE__*/React.createElement("div", {
+                        className: "flex items-center space-x-2 text-[10px] text-slate-400 shrink-0"
+                      },
+                        evt.host && evt.host !== "None" && /*#__PURE__*/React.createElement("span", {
+                          className: "text-sky-300"
+                        }, "" + evt.host),
+                        evt.src_ip && /*#__PURE__*/React.createElement("span", {
+                          className: "text-rose-300"
+                        }, "" + evt.src_ip),
+                        evt.user && /*#__PURE__*/React.createElement("span", {
+                          className: "text-purple-300"
+                        }, "" + evt.user)
+                      )
+                    );
+                  })
+                );
+              })()
+            ),
+
+            /* Section 3: Raw JSON Inspector & Clipboard Copy */
+            /*#__PURE__*/React.createElement("div", {
+              className: "space-y-2"
+            },
+              /* Header with Copy Button */
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center justify-between"
+              },
+                /*#__PURE__*/React.createElement("h4", {
+                  className: "text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center"
+                },
+                  /*#__PURE__*/React.createElement("i", {
+                    "data-lucide": "terminal",
+                    className: "w-4 h-4 mr-1.5 text-emerald-400"
+                  }),
+                  "Synthesized Incident Payload & Forensic Dossier"
+                ),
+                /* 1-Click Clipboard Copy Button */
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => handleCopyIncidentJson(selectedIncidentDetail || selectedIncident),
+                  className: "px-3 py-1 bg-[#131b2e] hover:bg-[#1a243d] border border-[#1f293d] rounded-lg text-xs font-mono font-bold transition flex items-center space-x-1.5 " +
+                    (corrCopySuccess ? "text-emerald-400 border-emerald-500/50" : "text-slate-300")
+                },
+                  /*#__PURE__*/React.createElement("i", {
+                    "data-lucide": corrCopySuccess ? "check" : "copy",
+                    className: "w-3.5 h-3.5 mr-1 " + (corrCopySuccess ? "text-emerald-400" : "")
+                  }),
+                  corrCopySuccess ? "Copied to Clipboard!" : "Copy Raw JSON"
+                )
+              ),
+              /* Raw JSON Code Block */
+              /*#__PURE__*/React.createElement("pre", {
+                className: "p-3.5 rounded-xl bg-[#080c14] border border-[#1f293d] text-[11px] font-mono text-emerald-400 overflow-x-auto max-h-[180px] select-all shadow-inner"
+              }, JSON.stringify(selectedIncidentDetail || selectedIncident, null, 2))
+            ),
+
+            /* Section 4: MITRE ATT&CK & NIST SP 800-61r2 Containment Actions */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3.5 rounded-xl bg-[#131b2e]/60 border border-[#1f293d] space-y-2.5"
+            },
+              /* Header */
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center justify-between flex-wrap gap-1"
+              },
+                /*#__PURE__*/React.createElement("span", {
+                  className: "text-xs font-bold text-slate-200 uppercase tracking-wider"
+                }, "NIST SP 800-61r2 Containment & Active Response Actions"),
+                /* MITRE pill */
+                /*#__PURE__*/React.createElement("span", {
+                  className: "text-[11px] text-purple-300 font-mono"
+                }, "MITRE ATT&CK: " + (selectedIncident.mitre_attack_id || "T1110") + " \u2014 " + (selectedIncident.mitre_technique || "Credential Access"))
+              ),
+              /* Action Buttons */
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center space-x-2 flex-wrap gap-y-2"
+              },
+                /* Isolate Host */
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => alert("Initiating Wazuh Active Response: Host network isolation executed."),
+                  className: "px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-900/80 text-xs font-mono font-bold transition flex items-center"
+                },
+                  /*#__PURE__*/React.createElement("i", { "data-lucide": "lock", className: "w-3.5 h-3.5 mr-1 text-rose-400" }),
+                  "Isolate Host"
+                ),
+                /* Revoke Kerberos TGT */
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => alert("Initiating Active Directory containment: Kerberos TGT tickets revoked and account suspended."),
+                  className: "px-3 py-1.5 rounded-lg bg-amber-950/60 border border-amber-800 text-amber-300 hover:bg-amber-900/80 text-xs font-mono font-bold transition flex items-center"
+                },
+                  /*#__PURE__*/React.createElement("i", { "data-lucide": "users", className: "w-3.5 h-3.5 mr-1 text-amber-400" }),
+                  "Revoke Account & TGT"
+                ),
+                /* Block IP */
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => alert("Check Point perimeter policy update: Source IP added to perimeter blocklist."),
+                  className: "px-3 py-1.5 rounded-lg bg-purple-950/60 border border-purple-800 text-purple-300 hover:bg-purple-900/80 text-xs font-mono font-bold transition flex items-center"
+                },
+                  /*#__PURE__*/React.createElement("i", { "data-lucide": "globe", className: "w-3.5 h-3.5 mr-1 text-purple-400" }),
+                  "Block IP at Firewall"
+                ),
+                /* Escalate to War Room */
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => {
+                    setSelectedIncident(null);
+                    setWarRoomCaseId("CASE-" + (selectedIncident.id || "CORR"));
+                    setWarRoomOpen(true);
+                  },
+                  className: "px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-mono font-bold transition flex items-center shadow-md shadow-purple-600/30"
+                },
+                  /*#__PURE__*/React.createElement("i", { "data-lucide": "shield-alert", className: "w-3.5 h-3.5 mr-1" }),
+                  "Escalate to Incident War Room"
+                )
+              )
+            )
+          ),
+
+          /* Modal Footer */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-4 border-t border-[#1f293d] bg-[#131b2e] flex items-center justify-between"
+          },
+            /* Left info */
+            /*#__PURE__*/React.createElement("div", {
+              className: "text-[11px] font-mono text-slate-400"
+            }, "Correlated Incident ID: " + (selectedIncident.id || "-")),
+            /* Right button */
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => setSelectedIncident(null),
+              className: "px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-200 transition font-mono"
+            }, "Close Dossier")
+          )
+        )
+      ),
+
+      /* =========================================================================
+         DETECTION RULE TUNING MODAL
+         ========================================================================= */
+      ruleConfigModalOpen && editingRule && /*#__PURE__*/React.createElement("div", {
+        onClick: () => setRuleConfigModalOpen(false),
+        className: "fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      },
+        /*#__PURE__*/React.createElement("div", {
+          onClick: e => e.stopPropagation(),
+          className: "bg-[#0e1422] border border-[#1f293d] rounded-xl max-w-lg w-full flex flex-col overflow-hidden shadow-2xl font-mono text-xs"
+        },
+          /* Header */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-4 border-b border-[#1f293d] bg-[#131b2e] flex items-center justify-between"
+          },
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2"
+            },
+              /*#__PURE__*/React.createElement("i", { "data-lucide": "sliders", className: "w-5 h-5 text-purple-400" }),
+              /*#__PURE__*/React.createElement("h3", {
+                className: "font-bold text-slate-100 text-sm"
+              }, "Tune Rule: " + editingRule.rule_id)
+            ),
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => setRuleConfigModalOpen(false),
+              className: "text-slate-400 hover:text-white"
+            },
+              /*#__PURE__*/React.createElement("i", { "data-lucide": "x", className: "w-4 h-4" })
+            )
+          ),
+
+          /* Form Body */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-5 space-y-4"
+          },
+            /* Rule Name */
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("label", { className: "text-slate-400 block mb-1 text-[11px]" }, "RULE NAME"),
+              /*#__PURE__*/React.createElement("input", {
+                type: "text",
+                disabled: true,
+                value: editingRule.name || "",
+                className: "w-full p-2 bg-[#080c14] border border-[#1f293d] rounded text-slate-300 text-xs"
+              })
+            ),
+            /* Sliding Window Seconds */
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("label", { className: "text-slate-400 block mb-1 text-[11px]" }, "SLIDING WINDOW DURATION (SECONDS)"),
+              /*#__PURE__*/React.createElement("input", {
+                type: "number",
+                value: editingRule.window_seconds || 300,
+                onChange: e => setEditingRule({ ...editingRule, window_seconds: parseInt(e.target.value) || 300 }),
+                className: "w-full p-2 bg-[#080c14] border border-[#1f293d] rounded text-slate-200 text-xs focus:outline-none focus:border-purple-500"
+              })
+            ),
+            /* Trigger Threshold */
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("label", { className: "text-slate-400 block mb-1 text-[11px]" }, "EVENT COUNT THRESHOLD"),
+              /*#__PURE__*/React.createElement("input", {
+                type: "number",
+                value: editingRule.threshold || 5,
+                onChange: e => setEditingRule({ ...editingRule, threshold: parseInt(e.target.value) || 1 }),
+                className: "w-full p-2 bg-[#080c14] border border-[#1f293d] rounded text-slate-200 text-xs focus:outline-none focus:border-purple-500"
+              })
+            ),
+            /* Cooldown Seconds */
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("label", { className: "text-slate-400 block mb-1 text-[11px]" }, "COOLDOWN SUPPRESSION PERIOD (SECONDS)"),
+              /*#__PURE__*/React.createElement("input", {
+                type: "number",
+                value: editingRule.cooldown_seconds || 600,
+                onChange: e => setEditingRule({ ...editingRule, cooldown_seconds: parseInt(e.target.value) || 600 }),
+                className: "w-full p-2 bg-[#080c14] border border-[#1f293d] rounded text-slate-200 text-xs focus:outline-none focus:border-purple-500"
+              })
+            ),
+            /* Severity Dropdown */
+            /*#__PURE__*/React.createElement("div", null,
+              /*#__PURE__*/React.createElement("label", { className: "text-slate-400 block mb-1 text-[11px]" }, "SEVERITY LEVEL"),
+              /*#__PURE__*/React.createElement("select", {
+                value: (editingRule.severity || "HIGH").toUpperCase(),
+                onChange: e => setEditingRule({ ...editingRule, severity: e.target.value }),
+                className: "w-full p-2 bg-[#080c14] border border-[#1f293d] rounded text-slate-200 text-xs focus:outline-none focus:border-purple-500"
+              },
+                /*#__PURE__*/React.createElement("option", { value: "CRITICAL" }, "CRITICAL"),
+                /*#__PURE__*/React.createElement("option", { value: "HIGH" }, "HIGH"),
+                /*#__PURE__*/React.createElement("option", { value: "MEDIUM" }, "MEDIUM"),
+                /*#__PURE__*/React.createElement("option", { value: "LOW" }, "LOW")
+              )
+            ),
+            /* Enabled Checkbox */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2 pt-1"
+            },
+              /*#__PURE__*/React.createElement("input", {
+                type: "checkbox",
+                id: "rule_enabled_chk",
+                checked: !!editingRule.enabled,
+                onChange: e => setEditingRule({ ...editingRule, enabled: e.target.checked }),
+                className: "w-4 h-4 accent-purple-600 rounded"
+              }),
+              /*#__PURE__*/React.createElement("label", {
+                htmlFor: "rule_enabled_chk",
+                className: "text-slate-300 font-bold text-xs cursor-pointer"
+              }, "Rule Enabled in Correlation Pipeline")
+            )
+          ),
+
+          /* Footer */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-4 border-t border-[#1f293d] bg-[#131b2e] flex items-center justify-end space-x-2"
+          },
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => setRuleConfigModalOpen(false),
+              className: "px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+            }, "Cancel"),
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => handleSaveRuleConfig(editingRule.rule_id, {
+                window_seconds: editingRule.window_seconds,
+                threshold: editingRule.threshold,
+                cooldown_seconds: editingRule.cooldown_seconds,
+                severity: editingRule.severity,
+                enabled: editingRule.enabled
+              }),
+              className: "px-4 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-md shadow-purple-600/30"
+            }, "Save & Apply")
+          )
+        )
+      ),)));
 
 }
 

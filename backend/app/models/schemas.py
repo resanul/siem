@@ -29,6 +29,11 @@ class AlertSource(str, Enum):
     SURICATA = "suricata"
     SYSLOG = "syslog"
     ENDPOINT = "endpoint"
+    CORRELATION = "correlation"
+    SQUID = "squid"
+    CHECKPOINT = "checkpoint"
+    NETWITNESS = "netwitness"
+    ACTIVE_DIRECTORY = "active_directory"
 
 
 class AlertItem(BaseModel):

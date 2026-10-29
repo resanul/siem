@@ -56,8 +56,10 @@ from backend.app.services.network_telemetry import (
     get_network_dashboard_data,
     ingest_network_log,
 )
+from backend.app.api.v1 import correlation
 
 api_router = APIRouter()
+api_router.include_router(correlation.router, prefix="/correlation", tags=["Correlation Engine"])
 orchestrator = OrchestrationEngine()
 
 # Seed default mock users for testing and development

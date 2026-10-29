@@ -92,6 +92,21 @@ def on_startup():
     except Exception as e:
         print(f"Failed to start GitHub sync scheduler: {e}")
 
+    try:
+        from backend.app.services.correlation_engine.service import init_correlation_engine_on_startup
+        init_correlation_engine_on_startup()
+    except Exception as e:
+        print(f"Failed to init correlation engine: {e}")
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    try:
+        from backend.app.services.correlation_engine.service import shutdown_correlation_engine
+        shutdown_correlation_engine()
+    except Exception as e:
+        print(f"Failed to shutdown correlation engine: {e}")
+
 
 from fastapi.responses import RedirectResponse
 
