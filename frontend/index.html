@@ -447,6 +447,8 @@ function App() {
   const [timeRange, setTimeRange] = useState("Last 24 hours");
   const [timeRangeDropdownOpen, setTimeRangeDropdownOpen] = useState(false);
   const [globalThreatMap, setGlobalThreatMap] = useState(null);
+  const [threatMapMode, setThreatMapMode] = useState("global");
+  const [activeAttackIdx, setActiveAttackIdx] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -2238,6 +2240,9 @@ function App() {
 
 
   useEffect(() => {
+    const atkTimer = setInterval(() => {
+      setActiveAttackIdx(prev => (prev + 1) % 24);
+    }, 2500);
     const clockTimer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -2255,7 +2260,7 @@ function App() {
     window.addEventListener("keydown", handleGlobalKeyDown);
 
     return () => {
-      clearInterval(clockTimer);
+      clearInterval(clockTimer); clearInterval(atkTimer);
       window.removeEventListener("keydown", handleGlobalKeyDown);
     };
   }, []);
@@ -6549,35 +6554,58 @@ function App() {
   }, [
     /*#__PURE__*/React.createElement("div", {
       key: "gtm-card",
-      className: "lg:col-span-6 bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+      className: "lg:col-span-6 bg-[#080d1a]/95 backdrop-blur border border-[#162238] rounded-xl p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden"
     }, [
       /*#__PURE__*/React.createElement("div", {
+        key: "glow-1",
+        className: "absolute -top-10 -left-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"
+      }),
+      /*#__PURE__*/React.createElement("div", {
+        key: "glow-2",
+        className: "absolute -bottom-10 -right-10 w-40 h-40 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"
+      }),
+      /*#__PURE__*/React.createElement("div", {
         key: "gtm-hdr",
-        className: "flex items-center justify-between pb-3 border-b border-[#18233c]/80"
+        className: "flex flex-wrap items-center justify-between pb-3 border-b border-[#18233c]/80 gap-2 relative z-10"
       }, [
         /*#__PURE__*/React.createElement("div", {
           key: "gtm-title",
           className: "flex items-center space-x-2"
         }, [
           /*#__PURE__*/React.createElement("span", {
-            className: "text-sm font-bold text-slate-100"
-          }, "Global Threat Map"),
+            className: "text-sm font-bold text-slate-100 flex items-center space-x-1.5"
+          }, [
+            /*#__PURE__*/React.createElement("span", { className: "text-cyan-400 font-mono text-base" }, "◈"),
+            /*#__PURE__*/React.createElement("span", null, "Global Threat Matrix")
+          ]),
           /*#__PURE__*/React.createElement("span", {
             className: "px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-400 flex items-center space-x-1"
           }, [
-            /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" }),
-            /*#__PURE__*/React.createElement("span", null, "LIVE ATTACKS")
-          ])
+            /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" }),
+            /*#__PURE__*/React.createElement("span", null, "LIVE MESH")
+          ]),
+          /*#__PURE__*/React.createElement("span", {
+            className: "hidden sm:inline-block px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-mono text-cyan-300"
+          }, globalThreatMap?.matrix_stats?.attack_velocity ? `⚡ ${globalThreatMap.matrix_stats.attack_velocity}` : "⚡ 48.6 / sec")
         ]),
         /*#__PURE__*/React.createElement("div", {
           key: "gtm-actions",
           className: "flex items-center space-x-2"
         }, [
-          /*#__PURE__*/React.createElement("span", {
-            className: "px-2.5 py-1 rounded bg-[#0e1629] border border-[#1e2a44] text-[11px] font-medium text-slate-300 flex items-center space-x-1.5 cursor-pointer"
+          /*#__PURE__*/React.createElement("div", {
+            key: "mode-toggle",
+            className: "flex items-center bg-[#070d1a] border border-[#1b2742] rounded p-0.5 text-[10px] font-mono"
           }, [
-            /*#__PURE__*/React.createElement("span", null, "Live Attacks"),
-            /*#__PURE__*/React.createElement("span", { className: "text-[9px] text-slate-400" }, "▾")
+            /*#__PURE__*/React.createElement("button", {
+              key: "btn-mesh",
+              onClick: () => setThreatMapMode("global"),
+              className: `px-2 py-0.5 rounded transition-all ${threatMapMode === "global" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold" : "text-slate-400 hover:text-slate-200"}`
+            }, "🌐 Global Mesh"),
+            /*#__PURE__*/React.createElement("button", {
+              key: "btn-soc",
+              onClick: () => setThreatMapMode("soc"),
+              className: `px-2 py-0.5 rounded transition-all ${threatMapMode === "soc" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold" : "text-slate-400 hover:text-slate-200"}`
+            }, "🛡️ Target SOC")
           ]),
           /*#__PURE__*/React.createElement("button", {
             onClick: () => setCurrentScreen("threat_intel"),
@@ -6590,74 +6618,164 @@ function App() {
       ]),
       /*#__PURE__*/React.createElement("div", {
         key: "gtm-body",
-        className: "grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 items-center"
+        className: "grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 items-start relative z-10"
       }, [
         /*#__PURE__*/React.createElement("div", {
           key: "gtm-map-col",
-          className: "md:col-span-7 flex flex-col justify-between"
+          className: "md:col-span-7 flex flex-col justify-between space-y-2"
         }, [
           /*#__PURE__*/React.createElement("div", {
             key: "gtm-map-wrap",
-            className: "relative w-full aspect-[2/1] bg-[#070d1a] rounded-lg overflow-hidden border border-[#162238] flex items-center justify-center"
+            className: "relative w-full aspect-[2/1] bg-[#050a14] rounded-lg overflow-hidden border border-[#162238] flex items-center justify-center shadow-inner"
           }, [
             /*#__PURE__*/React.createElement("div", {
-              key: "zoom",
-              className: "absolute top-2 left-2 flex flex-col space-y-1 z-10 select-none"
+              key: "hud-top-left",
+              className: "absolute top-2 left-2 z-10 flex items-center space-x-2 select-none"
             }, [
-              /*#__PURE__*/React.createElement("button", { className: "w-5 h-5 bg-[#0e1629]/90 border border-[#1e2a44] rounded text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold shadow" }, "+"),
-              /*#__PURE__*/React.createElement("button", { className: "w-5 h-5 bg-[#0e1629]/90 border border-[#1e2a44] rounded text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold shadow" }, "−")
+              /*#__PURE__*/React.createElement("div", { className: "flex flex-col space-y-1" }, [
+                /*#__PURE__*/React.createElement("button", { className: "w-5 h-5 bg-[#0e1629]/90 border border-[#1e2a44] rounded text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold shadow" }, "+"),
+                /*#__PURE__*/React.createElement("button", { className: "w-5 h-5 bg-[#0e1629]/90 border border-[#1e2a44] rounded text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold shadow" }, "−")
+              ]),
+              /*#__PURE__*/React.createElement("span", {
+                className: "text-[9px] font-mono text-cyan-400/90 bg-[#070e1c]/80 px-1.5 py-0.5 rounded border border-cyan-500/20"
+              }, threatMapMode === "global" ? "MODE: GLOBAL ATTACK MESH" : "MODE: SOC PERIMETER DEFENSE")
+            ]),
+            /*#__PURE__*/React.createElement("div", {
+              key: "hud-top-right",
+              className: "absolute top-2 right-2 z-10 select-none"
+            }, [
+              /*#__PURE__*/React.createElement("span", {
+                className: "text-[9px] font-mono text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center space-x-1"
+              }, [
+                /*#__PURE__*/React.createElement("span", { className: "w-1 h-1 rounded-full bg-amber-400 animate-ping" }),
+                /*#__PURE__*/React.createElement("span", null, "DEFCON 2")
+              ])
             ]),
             /*#__PURE__*/React.createElement("svg", {
               key: "svg-map",
               viewBox: "0 0 1000 500",
               className: "w-full h-full select-none"
             }, [
-              /*#__PURE__*/React.createElement("g", { key: "grid", stroke: "#121d30", strokeWidth: "0.5", strokeDasharray: "2 4", fill: "none" }, [
-                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "125", x2: "1000", y2: "125" }),
-                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "250", x2: "1000", y2: "250" }),
-                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "375", x2: "1000", y2: "375" }),
-                /*#__PURE__*/React.createElement("line", { x1: "250", y1: "0", x2: "250", y2: "500" }),
-                /*#__PURE__*/React.createElement("line", { x1: "500", y1: "0", x2: "500", y2: "500" }),
-                /*#__PURE__*/React.createElement("line", { x1: "750", y1: "0", x2: "750", y2: "500" })
+              /*#__PURE__*/React.createElement("defs", { key: "defs" }, [
+                /*#__PURE__*/React.createElement("filter", { id: "matrix-glow", x: "-20%", y: "-20%", width: "140%", height: "140%" }, [
+                  /*#__PURE__*/React.createElement("feGaussianBlur", { stdDeviation: "1.5", result: "blur" }),
+                  /*#__PURE__*/React.createElement("feMerge", null, [
+                    /*#__PURE__*/React.createElement("feMergeNode", { in: "blur" }),
+                    /*#__PURE__*/React.createElement("feMergeNode", { in: "SourceGraphic" })
+                  ])
+                ]),
+                /*#__PURE__*/React.createElement("linearGradient", { id: "radar-sweep", x1: "0%", y1: "0%", x2: "100%", y2: "0%" }, [
+                  /*#__PURE__*/React.createElement("stop", { offset: "0%", stopColor: "rgba(56, 189, 248, 0)" }),
+                  /*#__PURE__*/React.createElement("stop", { offset: "90%", stopColor: "rgba(56, 189, 248, 0.06)" }),
+                  /*#__PURE__*/React.createElement("stop", { offset: "100%", stopColor: "rgba(56, 189, 248, 0.28)" })
+                ])
+              ]),
+              /*#__PURE__*/React.createElement("g", { key: "grid", stroke: "#0e1a2d", strokeWidth: "0.6", strokeDasharray: "2 4", fill: "none" }, [
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "83.3", x2: "1000", y2: "83.3" }),
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "166.6", x2: "1000", y2: "166.6" }),
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "250", x2: "1000", y2: "250", stroke: "#152540", strokeWidth: "0.8" }),
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "333.3", x2: "1000", y2: "333.3" }),
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "416.6", x2: "1000", y2: "416.6" }),
+                /*#__PURE__*/React.createElement("line", { x1: "166.6", y1: "0", x2: "166.6", y2: "500" }),
+                /*#__PURE__*/React.createElement("line", { x1: "333.3", y1: "0", x2: "333.3", y2: "500" }),
+                /*#__PURE__*/React.createElement("line", { x1: "500", y1: "0", x2: "500", y2: "500", stroke: "#152540", strokeWidth: "0.8" }),
+                /*#__PURE__*/React.createElement("line", { x1: "666.6", y1: "0", x2: "666.6", y2: "500" }),
+                /*#__PURE__*/React.createElement("line", { x1: "833.3", y1: "0", x2: "833.3", y2: "500" })
+              ]),
+              /*#__PURE__*/React.createElement("rect", {
+                key: "radar-beam",
+                x: "0",
+                y: "0",
+                width: "120",
+                height: "500",
+                fill: "url(#radar-sweep)"
+              }, [
+                /*#__PURE__*/React.createElement("animate", {
+                  attributeName: "x",
+                  from: "-120",
+                  to: "1000",
+                  dur: "6.5s",
+                  repeatCount: "indefinite"
+                })
               ]),
               /*#__PURE__*/React.createElement("path", {
                 key: "land",
                 d: window.WORLD_MAP_LAND || "M140,90 Q170,80 230,85 Q290,95 280,140 Q250,170 200,180 Q170,220 180,250 Q140,240 120,200 Q100,150 140,90 Z",
-                fill: "#0e182e",
-                stroke: "#1f3152",
-                strokeWidth: "0.85"
+                fill: "#091326",
+                stroke: "#1a2c4e",
+                strokeWidth: "0.8"
               }),
-              /*#__PURE__*/React.createElement("g", { key: "arcs" }, (globalThreatMap?.live_attacks || [
-                { path: "M 234 163 Q 492 110 751 184", severity: "critical", sx: 234, sy: 163 },
-                { path: "M 670 115 Q 710 80 751 184", severity: "critical", sx: 670, sy: 115 },
-                { path: "M 789 170 Q 770 120 751 184", severity: "high", sx: 789, sy: 170 },
-                { path: "M 514 122 Q 632 90 751 184", severity: "medium", sx: 514, sy: 122 },
-                { path: "M 529 125 Q 640 85 751 184", severity: "suspicious", sx: 529, sy: 125 }
+              /*#__PURE__*/React.createElement("g", { key: "laser-arcs" }, (globalThreatMap?.global_matrix_attacks || globalThreatMap?.live_attacks || [
+                { path: "M 161.4 146.3 Q 342.8 52.5 524.1 110.8", soc_path: "M 161.4 146.3 Q 456.2 35.0 751.1 183.9", severity: "critical", sx: 161.4, sy: 146.3, tx: 524.1, ty: 110.8, soc_tx: 751.1, soc_ty: 183.9 },
+                { path: "M 604.5 95.1 Q 445.2 43.6 286.0 141.9", soc_path: "M 604.5 95.1 Q 677.8 45.0 751.1 183.9", severity: "critical", sx: 604.5, sy: 95.1, tx: 286.0, ty: 141.9, soc_tx: 751.1, soc_ty: 183.9 },
+                { path: "M 823.4 139.2 Q 855.6 119.2 887.9 150.9", soc_path: "M 823.4 139.2 Q 787.2 110.0 751.1 183.9", severity: "high", sx: 823.4, sy: 139.2, tx: 887.9, ty: 150.9, soc_tx: 751.1, soc_ty: 183.9 },
+                { path: "M 513.6 104.5 Q 651.0 75.0 788.4 246.2", soc_path: "M 513.6 104.5 Q 632.3 80.0 751.1 183.9", severity: "medium", sx: 513.6, sy: 104.5, tx: 788.4, ty: 246.2, soc_tx: 751.1, soc_ty: 183.9 },
+                { path: "M 524.1 110.8 Q 515.3 65.0 506.5 114.3", soc_path: "M 524.1 110.8 Q 637.6 85.0 751.1 183.9", severity: "suspicious", sx: 524.1, sy: 110.8, tx: 506.5, ty: 114.3, soc_tx: 751.1, soc_ty: 183.9 },
+                { path: "M 370.5 315.4 Q 435.0 160.0 499.6 106.9", soc_path: "M 370.5 315.4 Q 560.8 150.0 751.1 183.9", severity: "high", sx: 370.5, sy: 315.4, tx: 499.6, ty: 106.9, soc_tx: 751.1, soc_ty: 183.9 }
               ]).map((atk, aIdx) => {
                 const sevColors = { critical: "#f43f5e", high: "#fb923c", medium: "#facc15", low: "#60a5fa", suspicious: "#10b981" };
                 const col = sevColors[atk.severity] || "#f43f5e";
-                return /*#__PURE__*/React.createElement("g", { key: aIdx }, [
+                const arcPath = threatMapMode === "soc" ? (atk.soc_path || atk.path) : atk.path;
+                const targetX = threatMapMode === "soc" ? (atk.soc_tx || 751.1) : atk.tx;
+                const targetY = threatMapMode === "soc" ? (atk.soc_ty || 183.9) : atk.ty;
+                const dur = `${(1.9 + (aIdx % 4) * 0.4).toFixed(1)}s`;
+
+                return /*#__PURE__*/React.createElement("g", { key: atk.id || aIdx }, [
                   /*#__PURE__*/React.createElement("path", {
-                    d: atk.path,
+                    d: arcPath,
                     fill: "none",
                     stroke: col,
-                    strokeWidth: "1.4",
+                    strokeWidth: "1.2",
                     strokeDasharray: "4 3",
-                    strokeOpacity: "0.8"
+                    strokeOpacity: "0.45"
                   }),
-                  /*#__PURE__*/React.createElement("circle", { cx: atk.sx, cy: atk.sy, r: "4", fill: col }),
-                  /*#__PURE__*/React.createElement("circle", { cx: atk.sx, cy: atk.sy, r: "7", fill: col, fillOpacity: "0.25" })
+                  /*#__PURE__*/React.createElement("circle", {
+                    r: "3.5",
+                    fill: col,
+                    filter: "url(#matrix-glow)"
+                  }, [
+                    /*#__PURE__*/React.createElement("animateMotion", {
+                      dur: dur,
+                      repeatCount: "indefinite",
+                      path: arcPath
+                    })
+                  ]),
+                  /*#__PURE__*/React.createElement("circle", { cx: atk.sx, cy: atk.sy, r: "3", fill: col }),
+                  /*#__PURE__*/React.createElement("circle", { cx: atk.sx, cy: atk.sy, r: "6", fill: col, fillOpacity: "0.2" }),
+                  /*#__PURE__*/React.createElement("circle", {
+                    cx: targetX,
+                    cy: targetY,
+                    r: "3",
+                    fill: "none",
+                    stroke: col,
+                    strokeWidth: "1"
+                  }, [
+                    /*#__PURE__*/React.createElement("animate", {
+                      attributeName: "r",
+                      from: "3",
+                      to: "14",
+                      dur: dur,
+                      repeatCount: "indefinite"
+                    }),
+                    /*#__PURE__*/React.createElement("animate", {
+                      attributeName: "opacity",
+                      from: "0.85",
+                      to: "0",
+                      dur: dur,
+                      repeatCount: "indefinite"
+                    })
+                  ])
                 ]);
               })),
-              /*#__PURE__*/React.createElement("g", { key: "target" }, [
+              /*#__PURE__*/React.createElement("g", { key: "soc-node" }, [
                 /*#__PURE__*/React.createElement("circle", { cx: "751.1", cy: "183.9", r: "5", fill: "#10b981", stroke: "#070d1a", strokeWidth: "1.5" }),
-                /*#__PURE__*/React.createElement("circle", { cx: "751.1", cy: "183.9", r: "10", fill: "none", stroke: "#10b981", strokeWidth: "1.2", strokeOpacity: "0.6" })
+                /*#__PURE__*/React.createElement("circle", { cx: "751.1", cy: "183.9", r: "11", fill: "none", stroke: "#10b981", strokeWidth: "1.2", strokeOpacity: "0.7" })
               ])
             ])
           ]),
           /*#__PURE__*/React.createElement("div", {
             key: "gtm-legend",
-            className: "flex items-center space-x-3 pt-2 text-[10px] text-slate-400 font-medium"
+            className: "flex items-center space-x-3 pt-1 text-[10px] text-slate-400 font-medium"
           }, [
             { label: "Critical", color: "bg-rose-500" },
             { label: "High", color: "bg-orange-500" },
@@ -6670,39 +6788,93 @@ function App() {
           ])))
         ]),
         /*#__PURE__*/React.createElement("div", {
-          key: "gtm-table-col",
-          className: "md:col-span-5 bg-[#0e1629]/60 border border-[#18233c] rounded-lg p-2.5"
+          key: "gtm-right-col",
+          className: "md:col-span-5 flex flex-col justify-between space-y-2.5"
         }, [
           /*#__PURE__*/React.createElement("div", {
-            key: "tbl-hdr",
-            className: "text-xs font-bold text-slate-200 mb-2 pb-1.5 border-b border-[#1f2d48] flex items-center justify-between"
+            key: "tbl-card",
+            className: "bg-[#0e1629]/70 border border-[#18233c] rounded-lg p-2.5"
           }, [
-            /*#__PURE__*/React.createElement("span", null, "Top Attacking Countries"),
-            /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-slate-400 font-mono" }, "SANS + OTX")
+            /*#__PURE__*/React.createElement("div", {
+              key: "tbl-hdr",
+              className: "text-xs font-bold text-slate-200 mb-1.5 pb-1 border-b border-[#1f2d48] flex items-center justify-between"
+            }, [
+              /*#__PURE__*/React.createElement("span", null, "Top Attacking Countries"),
+              /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-slate-400 font-mono" }, "SANS + OTX")
+            ]),
+            /*#__PURE__*/React.createElement("div", {
+              key: "tbl-rows",
+              className: "space-y-1 text-xs font-mono"
+            }, (globalThreatMap?.top_countries || [
+              { rank: 1, country: "United States", flag: "🇺🇸", events: 60650, trend: "↑ 34%" },
+              { rank: 2, country: "Russia", flag: "🇷🇺", events: 34432, trend: "↑ 21%" },
+              { rank: 3, country: "China", flag: "🇨🇳", events: 13330, trend: "↑ 18%" },
+              { rank: 4, country: "Netherlands", flag: "🇳🇱", events: 9896, trend: "↑ 12%" },
+              { rank: 5, country: "Germany", flag: "🇩🇪", events: 8745, trend: "↑ 11%" }
+            ]).map((item, tIdx) => /*#__PURE__*/React.createElement("div", {
+              key: tIdx,
+              className: "flex items-center justify-between py-0.5 px-1.5 rounded hover:bg-[#142038] transition-colors"
+            }, [
+              /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2" }, [
+                /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[11px] w-3" }, item.rank),
+                /*#__PURE__*/React.createElement("span", { className: "text-sm" }, item.flag),
+                /*#__PURE__*/React.createElement("span", { className: "text-slate-200 text-xs font-sans truncate max-w-[85px]" }, item.country)
+              ]),
+              /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2 text-right" }, [
+                /*#__PURE__*/React.createElement("span", { className: "text-slate-100 font-bold text-[11px]" }, item.events.toLocaleString()),
+                /*#__PURE__*/React.createElement("span", { className: "text-rose-400 font-semibold text-[10px]" }, item.trend)
+              ])
+            ])))
           ]),
           /*#__PURE__*/React.createElement("div", {
-            key: "tbl-rows",
-            className: "space-y-1.5 text-xs font-mono"
-          }, (globalThreatMap?.top_countries || [
-            { rank: 1, country: "United States", flag: "🇺🇸", events: 25432, trend: "↑ 34%" },
-            { rank: 2, country: "Russia", flag: "🇷🇺", events: 18921, trend: "↑ 21%" },
-            { rank: 3, country: "China", flag: "🇨🇳", events: 12334, trend: "↑ 18%" },
-            { rank: 4, country: "Netherlands", flag: "🇳🇱", events: 9872, trend: "↑ 12%" },
-            { rank: 5, country: "Germany", flag: "🇩🇪", events: 8721, trend: "↑ 11%" }
-          ]).map((item, tIdx) => /*#__PURE__*/React.createElement("div", {
-            key: tIdx,
-            className: "flex items-center justify-between py-1 px-1.5 rounded hover:bg-[#142038] transition-colors"
+            key: "ticker-card",
+            className: "bg-[#060c18] border border-[#16253e] rounded-lg p-2.5 flex flex-col justify-between"
           }, [
-            /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2" }, [
-              /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[11px] w-3" }, item.rank),
-              /*#__PURE__*/React.createElement("span", { className: "text-base" }, item.flag),
-              /*#__PURE__*/React.createElement("span", { className: "text-slate-200 text-xs font-sans truncate max-w-[90px]" }, item.country)
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center justify-between pb-1.5 border-b border-[#131f33] text-[10px] font-mono text-slate-400"
+            }, [
+              /*#__PURE__*/React.createElement("span", { className: "text-cyan-400 font-bold flex items-center space-x-1" }, [
+                /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" }),
+                /*#__PURE__*/React.createElement("span", null, "LIVE ATTACK STREAM")
+              ]),
+              /*#__PURE__*/React.createElement("span", { className: "text-[9px] text-slate-400 font-mono" }, "SANS • OTX • ABUSE.CH")
             ]),
-            /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2 text-right" }, [
-              /*#__PURE__*/React.createElement("span", { className: "text-slate-100 font-bold" }, item.events.toLocaleString()),
-              /*#__PURE__*/React.createElement("span", { className: "text-rose-400 font-semibold text-[11px]" }, item.trend)
-            ])
-          ])))
+            /*#__PURE__*/React.createElement("div", {
+              className: "space-y-1 pt-1.5 text-[10px] font-mono"
+            }, ((list) => {
+              const start = activeAttackIdx % Math.max(1, list.length - 3);
+              return list.slice(start, start + 3);
+            })(globalThreatMap?.terminal_ticker || [
+              { id: "t1", time: "18:22:10", src_flag: "🇺🇸", src_cc: "US", tgt_flag: "🇩🇪", tgt_cc: "DE", signature: "Log4j RCE", severity: "critical" },
+              { id: "t2", time: "18:22:09", src_flag: "🇷🇺", src_cc: "RU", tgt_flag: "🇺🇸", tgt_cc: "US", signature: "LockBit C2", severity: "critical" },
+              { id: "t3", time: "18:22:08", src_flag: "🇨🇳", src_cc: "CN", tgt_flag: "🇯🇵", tgt_cc: "JP", signature: "SSH Brute", severity: "high" }
+            ]).map((tick, kIdx) => {
+              const sevColors = {
+                critical: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+                high: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+                medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+                low: "text-blue-400 bg-blue-500/10 border-blue-500/20"
+              };
+              const badgeStyle = sevColors[tick.severity] || sevColors.critical;
+              return /*#__PURE__*/React.createElement("div", {
+                key: tick.id || kIdx,
+                className: `px-1.5 py-1 rounded bg-[#0b1325]/70 border border-[#182744] flex items-center justify-between gap-1 transition-all ${kIdx === 0 ? "border-cyan-500/40 bg-[#0d1830]" : ""}`
+              }, [
+                /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1 truncate max-w-[170px]" }, [
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[9px]" }, tick.time ? tick.time.split(":").slice(0, 2).join(":") : "18:22"),
+                  /*#__PURE__*/React.createElement("span", null, tick.src_flag || "🌐"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-semibold" }, tick.src_cc || "US"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-cyan-400" }, "➔"),
+                  /*#__PURE__*/React.createElement("span", null, tick.tgt_flag || "🌐"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-300" }, tick.tgt_cc || "DE"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-400 truncate text-[9px]" }, tick.signature)
+                ]),
+                /*#__PURE__*/React.createElement("span", {
+                  className: `px-1 py-0.5 rounded text-[8px] uppercase font-bold border ${badgeStyle}`
+                }, tick.severity)
+              ]);
+            }))
+          ])
         ])
       ])
     ]),
