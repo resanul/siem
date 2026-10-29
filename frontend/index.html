@@ -7330,12 +7330,12 @@ function App() {
           /*#__PURE__*/React.createElement("tbody", {
             className: "divide-y divide-[#101b30] text-xs font-sans"
           }, (overview?.ingestion_status || [
-            { source: "Windows (AD)", icon: "🪟", eps: "4,321", status: "Healthy", time: "18:59:12" },
-            { source: "Linux (Syslog)", icon: "🐧", eps: "3,112", status: "Healthy", time: "18:59:10" },
-            { source: "Firewall (Check Point)", icon: "🧱", eps: "2,445", status: "Healthy", time: "18:59:08" },
-            { source: "Proxy (Squid/WSA)", icon: "🌐", eps: "1,893", status: "Healthy", time: "18:59:05" },
-            { source: "EDR (Trellix/Sophos)", icon: "🛡️", eps: "1,225", status: "Healthy", time: "18:59:04" },
-            { source: "Cloud (Azure/AWS)", icon: "☁️", eps: "987", status: "Warning", time: "18:58:58" }
+            { source: "Windows AD (TBLBD.COM)", icon: "🪟", eps: "284", status: "Healthy", time: "19:05:12" },
+            { source: "Linux HIDS (Wazuh Agents)", icon: "🐧", eps: "216", status: "Healthy", time: "19:05:10" },
+            { source: "Firewall (Check Point / NW)", icon: "🧱", icon_nw: true, eps: "168", status: "Healthy", time: "19:05:08" },
+            { source: "Proxy (Squid Web Gateway)", icon: "🌐", eps: "124", status: "Healthy", time: "19:05:05" },
+            { source: "Endpoint Posture (Sophos & FIM)", icon: "🛡️", eps: "86", status: "Healthy", time: "19:05:04" },
+            { source: "Global Threat Feeds (SANS/OTX)", icon: "🌐", eps: "48", status: "Healthy", time: "19:05:00" }
           ]).map((ing, iIdx) => /*#__PURE__*/React.createElement("tr", {
             key: iIdx,
             className: "hover:bg-[#101b33] transition-colors"
@@ -7388,15 +7388,14 @@ function App() {
             className: "w-full h-full -rotate-90"
           }, [
             /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#121d33", strokeWidth: "16" }),
-            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#ef4444", strokeWidth: "16", strokeDasharray: "136.1 272.3", strokeDashoffset: "0.0" }),
-            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#f97316", strokeWidth: "16", strokeDasharray: "90.8 317.6", strokeDashoffset: "-136.1" }),
-            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#3b82f6", strokeWidth: "16", strokeDasharray: "113.4 295.0", strokeDashoffset: "-226.9" }),
-            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#10b981", strokeWidth: "16", strokeDasharray: "68.1 340.3", strokeDashoffset: "-340.3" })
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#ef4444", strokeWidth: "16", strokeDasharray: "204.2 204.2", strokeDashoffset: "0.0" }),
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#f97316", strokeWidth: "16", strokeDasharray: "102.1 306.3", strokeDashoffset: "-204.2" }),
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#3b82f6", strokeWidth: "16", strokeDasharray: "102.1 306.3", strokeDashoffset: "-306.3" })
           ]),
           /*#__PURE__*/React.createElement("div", {
             className: "absolute flex flex-col items-center justify-center select-none"
           }, [
-            /*#__PURE__*/React.createElement("span", { className: "text-lg font-bold font-mono text-slate-100" }, "36"),
+            /*#__PURE__*/React.createElement("span", { className: "text-lg font-bold font-mono text-slate-100" }, "2"),
             /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-slate-400 font-sans" }, "Open")
           ])
         ]),
@@ -7457,11 +7456,11 @@ function App() {
           /*#__PURE__*/React.createElement("tbody", {
             className: "divide-y divide-[#101b30]"
           }, (overview?.top_users_suspicious || [
-            { rank: 1, user: "johndoe", events: "1,234", risk: "High", riskCol: "bg-rose-500/20 text-rose-400 border border-rose-500/30" },
-            { rank: 2, user: "svc-backup", events: "892", risk: "High", riskCol: "bg-orange-500/20 text-orange-400 border border-orange-500/30" },
-            { rank: 3, user: "admin", events: "764", risk: "Medium", riskCol: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
-            { rank: 4, user: "hr.user", events: "445", risk: "Medium", riskCol: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
-            { rank: 5, user: "it.support", events: "312", risk: "Low", riskCol: "bg-blue-500/20 text-blue-400 border border-blue-500/30" }
+            { rank: 1, user: "resanul (Platform Admin)", events: "246", risk: "High", riskCol: "bg-rose-500/20 text-rose-400 border border-rose-500/30" },
+            { rank: 2, user: "Administrator@TBLBD.COM", events: "184", risk: "High", riskCol: "bg-orange-500/20 text-orange-400 border border-orange-500/30" },
+            { rank: 3, user: "proxy-131\\squid_svc", events: "152", risk: "Medium", riskCol: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
+            { rank: 4, user: "tbl.backup_operator", events: "98", risk: "Medium", riskCol: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
+            { rank: 5, user: "audit.collector", events: "42", risk: "Low", riskCol: "bg-blue-500/20 text-blue-400 border border-blue-500/30" }
           ]).map((usr, uIdx) => /*#__PURE__*/React.createElement("tr", {
             key: uIdx,
             className: "hover:bg-[#101b33] transition-colors"
@@ -7516,11 +7515,11 @@ function App() {
           /*#__PURE__*/React.createElement("tbody", {
             className: "divide-y divide-[#101b30] text-xs font-sans"
           }, (overview?.recent_incidents || [
-            { id: "INC-10023", title: "Ransomware Activity", sev: "Critical", status: "Open" },
-            { id: "INC-10022", title: "Brute Force Attack", sev: "High", status: "In Progress" },
-            { id: "INC-10021", title: "Data Exfiltration", sev: "Critical", status: "Open" },
-            { id: "INC-10020", title: "Privilege Escalation", sev: "Medium", status: "Contained" },
-            { id: "INC-10019", title: "Suspicious Login", sev: "High", status: "Resolved" }
+            { id: "CASE-2026-001", title: "Potential RCE & Lateral Movement via Log4j", sev: "Critical", status: "In Progress" },
+            { id: "INC-262890", title: "Squid: Multiple attempts to access forbidden directory", sev: "Critical", status: "Open" },
+            { id: "INC-262881", title: "Listened ports status (netstat) changed (new port)", sev: "High", status: "Open" },
+            { id: "INC-262875", title: "Suricata NIDS: Inbound SSH Connection Intercepted", sev: "High", status: "Open" },
+            { id: "INC-262860", title: "Windows FIM: Critical registry modification observed", sev: "High", status: "Contained" }
           ]).map((inc, nIdx) => {
             const sevStyles = {
               Critical: "bg-rose-500/20 text-rose-400 border border-rose-500/30",
