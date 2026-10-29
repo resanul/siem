@@ -7071,6 +7071,219 @@ function App() {
       ])))
     ])
   ]), /*#__PURE__*/React.createElement("div", {
+    key: "overview-row-critical-mitre-assets",
+    className: "grid grid-cols-1 lg:grid-cols-3 gap-4"
+  }, [
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-recent-critical-alerts",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2.5 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Recent Critical Alerts"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("alerts"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "overflow-x-auto pt-2"
+      }, [
+        /*#__PURE__*/React.createElement("table", {
+          className: "w-full text-left text-xs font-mono"
+        }, [
+          /*#__PURE__*/React.createElement("thead", {
+            className: "text-[10px] text-slate-400 border-b border-[#142035]"
+          }, [
+            /*#__PURE__*/React.createElement("tr", null, [
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium" }, "Time"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium" }, "Title"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium" }, "Source"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-center" }, "Severity"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-right" }, "Status")
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("tbody", {
+            className: "divide-y divide-[#101b30] text-xs font-sans"
+          }, [
+            { time: "10:32:15", title: "Ransomware Behavior Detected", source: "HOST-WS-023", sev: "Critical", status: "Open" },
+            { time: "10:18:42", title: "Brute Force Attack", source: "VPN-GW-01", sev: "High", status: "In Progress" },
+            { time: "10:07:11", title: "Suspicious PowerShell Execution", source: "ENDPOINT-017", sev: "High", status: "Open" },
+            { time: "09:58:21", title: "Data Exfiltration to Unknown IP", source: "PROXY-01", sev: "Critical", status: "Investigating" },
+            { time: "09:51:14", title: "C2 Communication to Known Malicious IP", source: "FIREWALL-01", sev: "High", status: "Open" }
+          ].map((alt, aIdx) => {
+            const sevStyles = {
+              Critical: "bg-rose-500/20 text-rose-400 border border-rose-500/30",
+              High: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
+              Medium: "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+            };
+            const statusStyles = {
+              "Open": "bg-rose-500/15 text-rose-400 border border-rose-500/30",
+              "In Progress": "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+              "Investigating": "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+            };
+            return /*#__PURE__*/React.createElement("tr", {
+              key: aIdx,
+              className: "hover:bg-[#101b33] transition-colors"
+            }, [
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-slate-400 text-[11px] font-mono whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", { className: "inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" }),
+                alt.time
+              ]),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-slate-200 text-xs font-medium truncate max-w-[150px]" }, alt.title),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-slate-400 font-mono text-[11px] whitespace-nowrap" }, alt.source),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-center whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", {
+                  className: `px-2 py-0.5 rounded text-[10px] font-semibold ${sevStyles[alt.sev] || sevStyles.High}`
+                }, alt.sev)
+              ]),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-right whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", {
+                  className: `px-2 py-0.5 rounded text-[10px] font-semibold ${statusStyles[alt.status] || statusStyles.Open}`
+                }, alt.status)
+              ])
+            ]);
+          }))
+        ])
+      ])
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-top-mitre-techniques",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2.5 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Top MITRE ATT&CK Techniques"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("mitre_heatmap"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "pt-2"
+      }, [
+        /*#__PURE__*/React.createElement("table", {
+          className: "w-full text-left text-xs font-mono"
+        }, [
+          /*#__PURE__*/React.createElement("thead", {
+            className: "text-[10px] text-slate-400 border-b border-[#142035]"
+          }, [
+            /*#__PURE__*/React.createElement("tr", null, [
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium w-14" }, "ID"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium" }, "Technique"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-right w-14" }, "Events")
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("tbody", {
+            className: "divide-y divide-[#101b30]"
+          }, [
+            { id: "T1059", name: "Command and Scripting Interpreter", events: 324, pct: 100 },
+            { id: "T1110", name: "Brute Force", events: 198, pct: 61 },
+            { id: "T1078", name: "Valid Accounts", events: 176, pct: 54 },
+            { id: "T1041", name: "Exfiltration Over C2 Channel", events: 102, pct: 31 },
+            { id: "T1021", name: "Remote Services", events: 88, pct: 27 }
+          ].map((tec, tIdx) => /*#__PURE__*/React.createElement("tr", {
+            key: tIdx,
+            className: "hover:bg-[#101b33] transition-colors"
+          }, [
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-slate-400 text-[11px] font-mono whitespace-nowrap" }, tec.id),
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-2" }, [
+              /*#__PURE__*/React.createElement("div", { className: "text-slate-200 text-xs font-sans font-medium truncate max-w-[130px] mb-1" }, tec.name),
+              /*#__PURE__*/React.createElement("div", { className: "w-full h-2 bg-[#0c1322] rounded-full overflow-hidden" }, [
+                /*#__PURE__*/React.createElement("div", {
+                  className: "h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-400",
+                  style: { width: `${tec.pct}%` }
+                })
+              ])
+            ]),
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-right text-slate-300 font-mono text-xs font-bold" }, tec.events)
+          ])))
+        ])
+      ])
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-affected-assets-top5",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2.5 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Affected Assets (Top 5)"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("hosts"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "pt-2"
+      }, [
+        /*#__PURE__*/React.createElement("table", {
+          className: "w-full text-left text-xs font-mono"
+        }, [
+          /*#__PURE__*/React.createElement("thead", {
+            className: "text-[10px] text-slate-400 border-b border-[#142035]"
+          }, [
+            /*#__PURE__*/React.createElement("tr", null, [
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium" }, "Asset"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium text-center" }, "Alerts"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium text-center" }, "Risk"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-right" }, "Last Seen")
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("tbody", {
+            className: "divide-y divide-[#101b30]"
+          }, [
+            { asset: "HOST-WS-023", icon: "🖥️", alerts: 142, risk: "Critical", lastSeen: "3 min ago" },
+            { asset: "SRV-DB-01", icon: "🖴", alerts: 98, risk: "High", lastSeen: "12 min ago" },
+            { asset: "ENDPOINT-017", icon: "📱", alerts: 76, risk: "High", lastSeen: "18 min ago" },
+            { asset: "VPN-GW-01", icon: "🌐", alerts: 65, risk: "Medium", lastSeen: "25 min ago" },
+            { asset: "APP-SRV-02", icon: "🖴", alerts: 54, risk: "Medium", lastSeen: "37 min ago" }
+          ].map((ast, iIdx) => {
+            const riskStyles = {
+              Critical: "bg-rose-500/20 text-rose-400 border border-rose-500/30",
+              High: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
+              Medium: "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+            };
+            return /*#__PURE__*/React.createElement("tr", {
+              key: iIdx,
+              className: "hover:bg-[#101b33] transition-colors"
+            }, [
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-slate-200 text-xs font-medium whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", { className: "mr-1.5 text-sm" }, ast.icon),
+                ast.asset
+              ]),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-center text-slate-300 font-mono font-bold" }, ast.alerts),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-center whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", {
+                  className: `px-2 py-0.5 rounded text-[10px] font-semibold ${riskStyles[ast.risk] || riskStyles.High}`
+                }, ast.risk)
+              ]),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-right text-slate-400 text-[11px] whitespace-nowrap" }, ast.lastSeen)
+            ]);
+          }))
+        ])
+      ])
+    ])
+  ]), /*#__PURE__*/React.createElement("div", {
 
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
 
