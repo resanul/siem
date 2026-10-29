@@ -1024,6 +1024,13 @@ def get_mitre_matrix(current_user: Dict[str, Any] = Depends(require_permission("
 
 
 # ===================== THREAT INTELLIGENCE & PROCESS TREE =====================
+@api_router.get("/threat-intel/global-threat-map")
+def get_global_threat_map():
+    """Returns real-time global cyber attack arcs, top countries, and severity statistics."""
+    from backend.app.services.global_threat_feed import fetch_live_global_threats
+    return fetch_live_global_threats()
+
+
 @api_router.get("/threat-intel/feeds")
 def get_threat_intel(
     force_refresh: bool = False,

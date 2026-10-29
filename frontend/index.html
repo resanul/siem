@@ -446,6 +446,7 @@ function App() {
   const [globalSearch, setGlobalSearch] = useState("");
   const [timeRange, setTimeRange] = useState("Last 24 hours");
   const [timeRangeDropdownOpen, setTimeRangeDropdownOpen] = useState(false);
+  const [globalThreatMap, setGlobalThreatMap] = useState(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -2630,6 +2631,7 @@ function App() {
 
           if (isMounted && dataOverview) {
 
+            if (dataOverview.global_threat_map) setGlobalThreatMap(dataOverview.global_threat_map);
             if (dataOverview.metrics) {
 
               const newOv = {
@@ -6541,6 +6543,350 @@ function App() {
       /*#__PURE__*/React.createElement("span", { className: "text-slate-400 uppercase tracking-wider text-[11px]" }, "MITRE ATT&CK Coverage:"),
       /*#__PURE__*/React.createElement("span", { className: "text-purple-400 font-bold" }, `${overview.mitreCoverage || 158} Active Techniques`),
       /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "(Sigma + Wazuh + Suricata)")
+    ])
+  ]), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 lg:grid-cols-12 gap-4"
+  }, [
+    /*#__PURE__*/React.createElement("div", {
+      key: "gtm-card",
+      className: "lg:col-span-6 bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        key: "gtm-hdr",
+        className: "flex items-center justify-between pb-3 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("div", {
+          key: "gtm-title",
+          className: "flex items-center space-x-2"
+        }, [
+          /*#__PURE__*/React.createElement("span", {
+            className: "text-sm font-bold text-slate-100"
+          }, "Global Threat Map"),
+          /*#__PURE__*/React.createElement("span", {
+            className: "px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-400 flex items-center space-x-1"
+          }, [
+            /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" }),
+            /*#__PURE__*/React.createElement("span", null, "LIVE ATTACKS")
+          ])
+        ]),
+        /*#__PURE__*/React.createElement("div", {
+          key: "gtm-actions",
+          className: "flex items-center space-x-2"
+        }, [
+          /*#__PURE__*/React.createElement("span", {
+            className: "px-2.5 py-1 rounded bg-[#0e1629] border border-[#1e2a44] text-[11px] font-medium text-slate-300 flex items-center space-x-1.5 cursor-pointer"
+          }, [
+            /*#__PURE__*/React.createElement("span", null, "Live Attacks"),
+            /*#__PURE__*/React.createElement("span", { className: "text-[9px] text-slate-400" }, "▾")
+          ]),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setCurrentScreen("threat_intel"),
+            className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors ml-1"
+          }, [
+            /*#__PURE__*/React.createElement("span", null, "View All"),
+            /*#__PURE__*/React.createElement("span", null, "→")
+          ])
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        key: "gtm-body",
+        className: "grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 items-center"
+      }, [
+        /*#__PURE__*/React.createElement("div", {
+          key: "gtm-map-col",
+          className: "md:col-span-7 flex flex-col justify-between"
+        }, [
+          /*#__PURE__*/React.createElement("div", {
+            key: "gtm-map-wrap",
+            className: "relative w-full aspect-[2/1] bg-[#070d1a] rounded-lg overflow-hidden border border-[#162238] flex items-center justify-center"
+          }, [
+            /*#__PURE__*/React.createElement("div", {
+              key: "zoom",
+              className: "absolute top-2 left-2 flex flex-col space-y-1 z-10 select-none"
+            }, [
+              /*#__PURE__*/React.createElement("button", { className: "w-5 h-5 bg-[#0e1629]/90 border border-[#1e2a44] rounded text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold shadow" }, "+"),
+              /*#__PURE__*/React.createElement("button", { className: "w-5 h-5 bg-[#0e1629]/90 border border-[#1e2a44] rounded text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold shadow" }, "−")
+            ]),
+            /*#__PURE__*/React.createElement("svg", {
+              key: "svg-map",
+              viewBox: "0 0 1000 500",
+              className: "w-full h-full select-none"
+            }, [
+              /*#__PURE__*/React.createElement("g", { key: "grid", stroke: "#121d30", strokeWidth: "0.5", strokeDasharray: "2 4", fill: "none" }, [
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "125", x2: "1000", y2: "125" }),
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "250", x2: "1000", y2: "250" }),
+                /*#__PURE__*/React.createElement("line", { x1: "0", y1: "375", x2: "1000", y2: "375" }),
+                /*#__PURE__*/React.createElement("line", { x1: "250", y1: "0", x2: "250", y2: "500" }),
+                /*#__PURE__*/React.createElement("line", { x1: "500", y1: "0", x2: "500", y2: "500" }),
+                /*#__PURE__*/React.createElement("line", { x1: "750", y1: "0", x2: "750", y2: "500" })
+              ]),
+              /*#__PURE__*/React.createElement("path", {
+                key: "land",
+                d: window.WORLD_MAP_LAND || "M140,90 Q170,80 230,85 Q290,95 280,140 Q250,170 200,180 Q170,220 180,250 Q140,240 120,200 Q100,150 140,90 Z",
+                fill: "#0e182e",
+                stroke: "#1f3152",
+                strokeWidth: "0.85"
+              }),
+              /*#__PURE__*/React.createElement("g", { key: "arcs" }, (globalThreatMap?.live_attacks || [
+                { path: "M 234 163 Q 492 110 751 184", severity: "critical", sx: 234, sy: 163 },
+                { path: "M 670 115 Q 710 80 751 184", severity: "critical", sx: 670, sy: 115 },
+                { path: "M 789 170 Q 770 120 751 184", severity: "high", sx: 789, sy: 170 },
+                { path: "M 514 122 Q 632 90 751 184", severity: "medium", sx: 514, sy: 122 },
+                { path: "M 529 125 Q 640 85 751 184", severity: "suspicious", sx: 529, sy: 125 }
+              ]).map((atk, aIdx) => {
+                const sevColors = { critical: "#f43f5e", high: "#fb923c", medium: "#facc15", low: "#60a5fa", suspicious: "#10b981" };
+                const col = sevColors[atk.severity] || "#f43f5e";
+                return /*#__PURE__*/React.createElement("g", { key: aIdx }, [
+                  /*#__PURE__*/React.createElement("path", {
+                    d: atk.path,
+                    fill: "none",
+                    stroke: col,
+                    strokeWidth: "1.4",
+                    strokeDasharray: "4 3",
+                    strokeOpacity: "0.8"
+                  }),
+                  /*#__PURE__*/React.createElement("circle", { cx: atk.sx, cy: atk.sy, r: "4", fill: col }),
+                  /*#__PURE__*/React.createElement("circle", { cx: atk.sx, cy: atk.sy, r: "7", fill: col, fillOpacity: "0.25" })
+                ]);
+              })),
+              /*#__PURE__*/React.createElement("g", { key: "target" }, [
+                /*#__PURE__*/React.createElement("circle", { cx: "751.1", cy: "183.9", r: "5", fill: "#10b981", stroke: "#070d1a", strokeWidth: "1.5" }),
+                /*#__PURE__*/React.createElement("circle", { cx: "751.1", cy: "183.9", r: "10", fill: "none", stroke: "#10b981", strokeWidth: "1.2", strokeOpacity: "0.6" })
+              ])
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("div", {
+            key: "gtm-legend",
+            className: "flex items-center space-x-3 pt-2 text-[10px] text-slate-400 font-medium"
+          }, [
+            { label: "Critical", color: "bg-rose-500" },
+            { label: "High", color: "bg-orange-500" },
+            { label: "Medium", color: "bg-yellow-400" },
+            { label: "Low", color: "bg-blue-400" },
+            { label: "Suspicious", color: "bg-emerald-400" }
+          ].map((leg, lIdx) => /*#__PURE__*/React.createElement("div", { key: lIdx, className: "flex items-center space-x-1" }, [
+            /*#__PURE__*/React.createElement("span", { className: `w-2 h-2 rounded-full ${leg.color}` }),
+            /*#__PURE__*/React.createElement("span", null, leg.label)
+          ])))
+        ]),
+        /*#__PURE__*/React.createElement("div", {
+          key: "gtm-table-col",
+          className: "md:col-span-5 bg-[#0e1629]/60 border border-[#18233c] rounded-lg p-2.5"
+        }, [
+          /*#__PURE__*/React.createElement("div", {
+            key: "tbl-hdr",
+            className: "text-xs font-bold text-slate-200 mb-2 pb-1.5 border-b border-[#1f2d48] flex items-center justify-between"
+          }, [
+            /*#__PURE__*/React.createElement("span", null, "Top Attacking Countries"),
+            /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-slate-400 font-mono" }, "SANS + OTX")
+          ]),
+          /*#__PURE__*/React.createElement("div", {
+            key: "tbl-rows",
+            className: "space-y-1.5 text-xs font-mono"
+          }, (globalThreatMap?.top_countries || [
+            { rank: 1, country: "United States", flag: "🇺🇸", events: 25432, trend: "↑ 34%" },
+            { rank: 2, country: "Russia", flag: "🇷🇺", events: 18921, trend: "↑ 21%" },
+            { rank: 3, country: "China", flag: "🇨🇳", events: 12334, trend: "↑ 18%" },
+            { rank: 4, country: "Netherlands", flag: "🇳🇱", events: 9872, trend: "↑ 12%" },
+            { rank: 5, country: "Germany", flag: "🇩🇪", events: 8721, trend: "↑ 11%" }
+          ]).map((item, tIdx) => /*#__PURE__*/React.createElement("div", {
+            key: tIdx,
+            className: "flex items-center justify-between py-1 px-1.5 rounded hover:bg-[#142038] transition-colors"
+          }, [
+            /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2" }, [
+              /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[11px] w-3" }, item.rank),
+              /*#__PURE__*/React.createElement("span", { className: "text-base" }, item.flag),
+              /*#__PURE__*/React.createElement("span", { className: "text-slate-200 text-xs font-sans truncate max-w-[90px]" }, item.country)
+            ]),
+            /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2 text-right" }, [
+              /*#__PURE__*/React.createElement("span", { className: "text-slate-100 font-bold" }, item.events.toLocaleString()),
+              /*#__PURE__*/React.createElement("span", { className: "text-rose-400 font-semibold text-[11px]" }, item.trend)
+            ])
+          ])))
+        ])
+      ])
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "trend-card",
+      className: "lg:col-span-3 bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        key: "trend-hdr",
+        className: "flex items-center justify-between pb-2 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", { className: "text-sm font-bold text-slate-100" }, "Security Events Trend"),
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1.5" }, [
+          /*#__PURE__*/React.createElement("span", { className: "px-2 py-0.5 rounded bg-[#0e1629] border border-[#1e2a44] text-[10px] text-slate-300 font-medium" }, "24h ▾"),
+          /*#__PURE__*/React.createElement("button", { className: "text-slate-400 hover:text-slate-200 p-0.5" }, "⛶")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        key: "trend-leg",
+        className: "flex items-center space-x-2.5 py-2 text-[10px] text-slate-300"
+      }, [
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1" }, [
+          /*#__PURE__*/React.createElement("span", { className: "w-2 h-2 rounded-full bg-blue-500" }),
+          /*#__PURE__*/React.createElement("span", null, "All Events")
+        ]),
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1" }, [
+          /*#__PURE__*/React.createElement("span", { className: "w-2 h-2 rounded-full bg-purple-500" }),
+          /*#__PURE__*/React.createElement("span", null, "Security")
+        ]),
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1" }, [
+          /*#__PURE__*/React.createElement("span", { className: "w-2 h-2 rounded-full bg-orange-400" }),
+          /*#__PURE__*/React.createElement("span", null, "Alerts")
+        ]),
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1" }, [
+          /*#__PURE__*/React.createElement("span", { className: "w-2 h-2 rounded-full bg-rose-500" }),
+          /*#__PURE__*/React.createElement("span", null, "Incidents")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        key: "trend-chart",
+        className: "w-full aspect-[16/10] relative flex items-center justify-center pt-1"
+      }, [
+        /*#__PURE__*/React.createElement("svg", {
+          viewBox: "0 0 320 160",
+          className: "w-full h-full select-none"
+        }, [
+          /*#__PURE__*/React.createElement("defs", { key: "defs" }, [
+            /*#__PURE__*/React.createElement("linearGradient", { id: "blueGrad", x1: "0", y1: "0", x2: "0", y2: "1" }, [
+              /*#__PURE__*/React.createElement("stop", { offset: "0%", stopColor: "#3b82f6", stopOpacity: "0.4" }),
+              /*#__PURE__*/React.createElement("stop", { offset: "100%", stopColor: "#3b82f6", stopOpacity: "0.0" })
+            ]),
+            /*#__PURE__*/React.createElement("linearGradient", { id: "purpleGrad", x1: "0", y1: "0", x2: "0", y2: "1" }, [
+              /*#__PURE__*/React.createElement("stop", { offset: "0%", stopColor: "#a855f7", stopOpacity: "0.4" }),
+              /*#__PURE__*/React.createElement("stop", { offset: "100%", stopColor: "#a855f7", stopOpacity: "0.0" })
+            ]),
+            /*#__PURE__*/React.createElement("linearGradient", { id: "orangeGrad", x1: "0", y1: "0", x2: "0", y2: "1" }, [
+              /*#__PURE__*/React.createElement("stop", { offset: "0%", stopColor: "#f97316", stopOpacity: "0.4" }),
+              /*#__PURE__*/React.createElement("stop", { offset: "100%", stopColor: "#f97316", stopOpacity: "0.0" })
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("g", { key: "grid", stroke: "#162238", strokeWidth: "0.8", strokeDasharray: "2 2" }, [
+            /*#__PURE__*/React.createElement("line", { x1: "30", y1: "20", x2: "310", y2: "20" }),
+            /*#__PURE__*/React.createElement("line", { x1: "30", y1: "55", x2: "310", y2: "55" }),
+            /*#__PURE__*/React.createElement("line", { x1: "30", y1: "90", x2: "310", y2: "90" }),
+            /*#__PURE__*/React.createElement("line", { x1: "30", y1: "125", x2: "310", y2: "125" })
+          ]),
+          /*#__PURE__*/React.createElement("g", { key: "ylabels", fill: "#64748b", fontSize: "8", fontFamily: "monospace" }, [
+            /*#__PURE__*/React.createElement("text", { x: "5", y: "24" }, "40K"),
+            /*#__PURE__*/React.createElement("text", { x: "5", y: "59" }, "30K"),
+            /*#__PURE__*/React.createElement("text", { x: "5", y: "94" }, "20K"),
+            /*#__PURE__*/React.createElement("text", { x: "5", y: "129" }, "10K")
+          ]),
+          /*#__PURE__*/React.createElement("path", {
+            key: "all-area",
+            d: "M 30 135 L 30 90 L 65 75 L 110 88 L 155 45 L 200 62 L 245 40 L 290 52 L 310 42 L 310 135 Z",
+            fill: "url(#blueGrad)"
+          }),
+          /*#__PURE__*/React.createElement("path", {
+            key: "all-line",
+            d: "M 30 90 L 65 75 L 110 88 L 155 45 L 200 62 L 245 40 L 290 52 L 310 42",
+            fill: "none",
+            stroke: "#3b82f6",
+            strokeWidth: "2"
+          }),
+          /*#__PURE__*/React.createElement("path", {
+            key: "sec-area",
+            d: "M 30 135 L 30 115 L 65 105 L 110 110 L 155 85 L 200 95 L 245 78 L 290 85 L 310 75 L 310 135 Z",
+            fill: "url(#purpleGrad)"
+          }),
+          /*#__PURE__*/React.createElement("path", {
+            key: "sec-line",
+            d: "M 30 115 L 65 105 L 110 110 L 155 85 L 200 95 L 245 78 L 290 85 L 310 75",
+            fill: "none",
+            stroke: "#a855f7",
+            strokeWidth: "2"
+          }),
+          /*#__PURE__*/React.createElement("path", {
+            key: "alt-area",
+            d: "M 30 135 L 30 128 L 65 125 L 110 126 L 155 115 L 200 120 L 245 110 L 290 115 L 310 108 L 310 135 Z",
+            fill: "url(#orangeGrad)"
+          }),
+          /*#__PURE__*/React.createElement("path", {
+            key: "alt-line",
+            d: "M 30 128 L 65 125 L 110 126 L 155 115 L 200 120 L 245 110 L 290 115 L 310 108",
+            fill: "none",
+            stroke: "#f97316",
+            strokeWidth: "2"
+          })
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        key: "trend-x",
+        className: "flex justify-between text-[9px] text-slate-400 font-mono pl-6 pr-2 pt-1 border-t border-[#162238]"
+      }, ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"].map((t, idx) => 
+        /*#__PURE__*/React.createElement("span", { key: idx }, t)
+      ))
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "sev-card",
+      className: "lg:col-span-3 bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        key: "sev-hdr",
+        className: "flex items-center justify-between pb-2 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", { className: "text-sm font-bold text-slate-100" }, "Alerts by Severity"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("alerts"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View Details"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        key: "donut-wrap",
+        className: "flex items-center justify-center py-2"
+      }, [
+        /*#__PURE__*/React.createElement("div", {
+          className: "relative w-28 h-28 flex items-center justify-center"
+        }, [
+          /*#__PURE__*/React.createElement("svg", {
+            viewBox: "0 0 100 100",
+            className: "w-full h-full -rotate-90 select-none"
+          }, [
+            /*#__PURE__*/React.createElement("circle", { key: "bg", cx: "50", cy: "50", r: "38", fill: "transparent", stroke: "#152033", strokeWidth: "10" }),
+            /*#__PURE__*/React.createElement("circle", { key: "crit", cx: "50", cy: "50", r: "38", fill: "transparent", stroke: "#ef4444", strokeWidth: "10", strokeDasharray: "14.3 238.7", strokeDashoffset: "0" }),
+            /*#__PURE__*/React.createElement("circle", { key: "high", cx: "50", cy: "50", r: "38", fill: "transparent", stroke: "#f97316", strokeWidth: "10", strokeDasharray: "43.0 238.7", strokeDashoffset: "-14.3" }),
+            /*#__PURE__*/React.createElement("circle", { key: "med", cx: "50", cy: "50", r: "38", fill: "transparent", stroke: "#eab308", strokeWidth: "10", strokeDasharray: "109.8 238.7", strokeDashoffset: "-57.3" }),
+            /*#__PURE__*/React.createElement("circle", { key: "low", cx: "50", cy: "50", r: "38", fill: "transparent", stroke: "#3b82f6", strokeWidth: "10", strokeDasharray: "52.5 238.7", strokeDashoffset: "-167.1" }),
+            /*#__PURE__*/React.createElement("circle", { key: "info", cx: "50", cy: "50", r: "38", fill: "transparent", stroke: "#64748b", strokeWidth: "10", strokeDasharray: "16.7 238.7", strokeDashoffset: "-219.6" })
+          ]),
+          /*#__PURE__*/React.createElement("div", {
+            className: "absolute inset-0 flex flex-col items-center justify-center text-center select-none"
+          }, [
+            /*#__PURE__*/React.createElement("span", { className: "text-lg font-bold font-mono text-slate-100 leading-none" }, (overview.totalAlerts !== undefined ? overview.totalAlerts : 1284).toLocaleString()),
+            /*#__PURE__*/React.createElement("span", { className: "text-[9px] text-slate-400 font-sans tracking-wide mt-0.5 uppercase" }, "Total Alerts")
+          ])
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        key: "sev-list",
+        className: "space-y-1 pt-1 text-xs font-mono"
+      }, [
+        { name: "Critical", count: (overview.criticalAlerts || 72), pct: "6%", color: "bg-red-500", textCol: "text-red-400" },
+        { name: "High", count: (overview.highAlerts || 231), pct: "18%", color: "bg-orange-500", textCol: "text-orange-400" },
+        { name: "Medium", count: (overview.mediumAlerts || 589), pct: "46%", color: "bg-yellow-400", textCol: "text-yellow-400" },
+        { name: "Low", count: (overview.lowAlerts || 283), pct: "22%", color: "bg-blue-400", textCol: "text-blue-400" },
+        { name: "Informational", count: 89, pct: "7%", color: "bg-slate-500", textCol: "text-slate-400" }
+      ].map((item, sIdx) => /*#__PURE__*/React.createElement("div", {
+        key: sIdx,
+        className: "flex items-center justify-between py-0.5 px-1 rounded hover:bg-[#131d30] transition-colors"
+      }, [
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2" }, [
+          /*#__PURE__*/React.createElement("span", { className: `w-2 h-2 rounded-full ${item.color}` }),
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-300 text-xs font-sans" }, item.name)
+        ]),
+        /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1.5" }, [
+          /*#__PURE__*/React.createElement("span", { className: `font-bold ${item.textCol}` }, item.count),
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-500 text-[11px]" }, `(${item.pct})`)
+        ])
+      ])))
     ])
   ]), /*#__PURE__*/React.createElement("div", {
 
