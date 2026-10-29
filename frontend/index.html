@@ -7112,11 +7112,13 @@ function App() {
           /*#__PURE__*/React.createElement("tbody", {
             className: "divide-y divide-[#101b30] text-xs font-sans"
           }, [
-            { time: "10:32:15", title: "Ransomware Behavior Detected", source: "HOST-WS-023", sev: "Critical", status: "Open" },
-            { time: "10:18:42", title: "Brute Force Attack", source: "VPN-GW-01", sev: "High", status: "In Progress" },
-            { time: "10:07:11", title: "Suspicious PowerShell Execution", source: "ENDPOINT-017", sev: "High", status: "Open" },
-            { time: "09:58:21", title: "Data Exfiltration to Unknown IP", source: "PROXY-01", sev: "Critical", status: "Investigating" },
-            { time: "09:51:14", title: "C2 Communication to Known Malicious IP", source: "FIREWALL-01", sev: "High", status: "Open" }
+            (overview?.recent_critical_alerts || [
+            { time: "18:55:28", title: "Squid: Multiple attempts to access forbidden file or directory", source: "proxy-131", sev: "Critical", status: "Open" },
+            { time: "18:55:24", title: "Listened ports status (netstat) changed (new port opened)", source: "dashboard-11", sev: "High", status: "Open" },
+            { time: "18:54:12", title: "Suricata NIDS: Inbound SSH Connection Intercepted", source: "rhel-client-01", sev: "High", status: "In Progress" },
+            { time: "18:52:05", title: "Unusual TCP Denied Traffic to Forbidden Endpoint", source: "down-proxy-105", sev: "Critical", status: "Investigating" },
+            { time: "18:50:18", title: "Windows FIM: Critical registry modification observed", source: "ISRCD-0222", sev: "High", status: "Open" }
+          ])
           ].map((alt, aIdx) => {
             const sevStyles = {
               Critical: "bg-rose-500/20 text-rose-400 border border-rose-500/30",
@@ -7190,11 +7192,13 @@ function App() {
           /*#__PURE__*/React.createElement("tbody", {
             className: "divide-y divide-[#101b30]"
           }, [
-            { id: "T1059", name: "Command and Scripting Interpreter", events: 324, pct: 100 },
-            { id: "T1110", name: "Brute Force", events: 198, pct: 61 },
-            { id: "T1078", name: "Valid Accounts", events: 176, pct: 54 },
-            { id: "T1041", name: "Exfiltration Over C2 Channel", events: 102, pct: 31 },
-            { id: "T1021", name: "Remote Services", events: 88, pct: 27 }
+            (overview?.top_mitre_techniques || [
+            { id: "T1083", name: "File and Directory Discovery", events: 324, pct: 100 },
+            { id: "T1021.004", name: "Remote Services: SSH", events: 198, pct: 61 },
+            { id: "T1059", name: "Command and Scripting Interpreter", events: 176, pct: 54 },
+            { id: "T1110", name: "Brute Force Attack", events: 102, pct: 31 },
+            { id: "T1078", name: "Valid Accounts Abuse", events: 88, pct: 27 }
+          ])
           ].map((tec, tIdx) => /*#__PURE__*/React.createElement("tr", {
             key: tIdx,
             className: "hover:bg-[#101b33] transition-colors"
@@ -7252,11 +7256,13 @@ function App() {
           /*#__PURE__*/React.createElement("tbody", {
             className: "divide-y divide-[#101b30]"
           }, [
-            { asset: "HOST-WS-023", icon: "🖥️", alerts: 142, risk: "Critical", lastSeen: "3 min ago" },
-            { asset: "SRV-DB-01", icon: "🖴", alerts: 98, risk: "High", lastSeen: "12 min ago" },
-            { asset: "ENDPOINT-017", icon: "📱", alerts: 76, risk: "High", lastSeen: "18 min ago" },
-            { asset: "VPN-GW-01", icon: "🌐", alerts: 65, risk: "Medium", lastSeen: "25 min ago" },
-            { asset: "APP-SRV-02", icon: "🖴", alerts: 54, risk: "Medium", lastSeen: "37 min ago" }
+            (overview?.affected_assets || [
+            { asset: "proxy-131", icon: "🖴", alerts: 142, risk: "Critical", lastSeen: "1 min ago" },
+            { asset: "dashboard-11", icon: "🖥️", alerts: 98, risk: "High", lastSeen: "5 min ago" },
+            { asset: "rhel-client-01", icon: "🖥️", alerts: 76, risk: "High", lastSeen: "11 min ago" },
+            { asset: "down-proxy-105", icon: "🖴", alerts: 65, risk: "Medium", lastSeen: "19 min ago" },
+            { asset: "ISRCD-0222", icon: "📱", alerts: 54, risk: "Medium", lastSeen: "32 min ago" }
+          ])
           ].map((ast, iIdx) => {
             const riskStyles = {
               Critical: "bg-rose-500/20 text-rose-400 border border-rose-500/30",
