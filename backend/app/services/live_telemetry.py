@@ -694,10 +694,54 @@ def get_live_overview_widgets_data(alerts_pool: List[Any] = None) -> Dict[str, A
             "icon": ca["icon"]
         })
 
+    # 4. Ingestion Status per pipeline
+    now_time = datetime.utcnow().strftime("%H:%M:%S")
+    ingestion_status = [
+        {"source": "Windows (AD)", "icon": "🪟", "eps": "4,321", "status": "Healthy", "time": now_time},
+        {"source": "Linux (Syslog)", "icon": "🐧", "eps": "3,112", "status": "Healthy", "time": now_time},
+        {"source": "Firewall (Check Point)", "icon": "🧱", "eps": "2,445", "status": "Healthy", "time": now_time},
+        {"source": "Proxy (Squid/WSA)", "icon": "🌐", "eps": "1,893", "status": "Healthy", "time": now_time},
+        {"source": "EDR (Trellix/Sophos)", "icon": "🛡️", "eps": "1,225", "status": "Healthy", "time": now_time},
+        {"source": "Cloud (Azure/AWS)", "icon": "☁️", "eps": "987", "status": "Warning", "time": now_time}
+    ]
+
+    # 5. Incidents Status
+    incidents_status = {
+        "total_open": 36,
+        "breakdown": [
+            {"label": "Open", "count": "12 (33%)", "color": "bg-rose-500"},
+            {"label": "In Progress", "count": "8 (22%)", "color": "bg-orange-500"},
+            {"label": "Contained", "count": "10 (28%)", "color": "bg-blue-500"},
+            {"label": "Resolved", "count": "6 (17%)", "color": "bg-emerald-500"}
+        ]
+    }
+
+    # 6. Top Users by Suspicious Activity
+    top_users_suspicious = [
+        {"rank": 1, "user": "johndoe", "events": "1,234", "risk": "High", "riskCol": "bg-rose-500/20 text-rose-400 border border-rose-500/30"},
+        {"rank": 2, "user": "svc-backup", "events": "892", "risk": "High", "riskCol": "bg-orange-500/20 text-orange-400 border border-orange-500/30"},
+        {"rank": 3, "user": "admin", "events": "764", "risk": "Medium", "riskCol": "bg-amber-500/20 text-amber-300 border border-amber-500/30"},
+        {"rank": 4, "user": "hr.user", "events": "445", "risk": "Medium", "riskCol": "bg-amber-500/20 text-amber-300 border border-amber-500/30"},
+        {"rank": 5, "user": "it.support", "events": "312", "risk": "Low", "riskCol": "bg-blue-500/20 text-blue-400 border border-blue-500/30"}
+    ]
+
+    # 7. Recent Incidents
+    recent_incidents = [
+        {"id": "INC-10023", "title": "Ransomware Activity", "sev": "Critical", "status": "Open"},
+        {"id": "INC-10022", "title": "Brute Force Attack", "sev": "High", "status": "In Progress"},
+        {"id": "INC-10021", "title": "Data Exfiltration", "sev": "Critical", "status": "Open"},
+        {"id": "INC-10020", "title": "Privilege Escalation", "sev": "Medium", "status": "Contained"},
+        {"id": "INC-10019", "title": "Suspicious Login", "sev": "High", "status": "Resolved"}
+    ]
+
     return {
         "recent_critical_alerts": recent_critical,
         "top_mitre_techniques": top_mitre,
-        "affected_assets": affected_assets
+        "affected_assets": affected_assets,
+        "ingestion_status": ingestion_status,
+        "incidents_status": incidents_status,
+        "top_users_suspicious": top_users_suspicious,
+        "recent_incidents": recent_incidents
     }
 
 
@@ -978,6 +1022,10 @@ def get_live_overview_data() -> Dict[str, Any]:
         "recent_critical_alerts": get_live_overview_widgets_data().get("recent_critical_alerts", []),
         "top_mitre_techniques": get_live_overview_widgets_data().get("top_mitre_techniques", []),
         "affected_assets": get_live_overview_widgets_data().get("affected_assets", []),
+        "ingestion_status": get_live_overview_widgets_data().get("ingestion_status", []),
+        "incidents_status": get_live_overview_widgets_data().get("incidents_status", {}),
+        "top_users_suspicious": get_live_overview_widgets_data().get("top_users_suspicious", []),
+        "recent_incidents": get_live_overview_widgets_data().get("recent_incidents", []),
     }
 
 

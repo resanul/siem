@@ -7290,6 +7290,271 @@ function App() {
       ])
     ])
   ]), /*#__PURE__*/React.createElement("div", {
+    key: "overview-row-ingestion-incidents-users",
+    className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+  }, [
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-ingestion-status",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Ingestion Status"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("network"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "overflow-x-auto pt-1"
+      }, [
+        /*#__PURE__*/React.createElement("table", {
+          className: "w-full text-left text-xs font-mono"
+        }, [
+          /*#__PURE__*/React.createElement("thead", {
+            className: "text-[10px] text-slate-400 border-b border-[#142035]"
+          }, [
+            /*#__PURE__*/React.createElement("tr", null, [
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium" }, "Data Source"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-center" }, "EPS"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-center" }, "Status"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-right" }, "Last Event")
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("tbody", {
+            className: "divide-y divide-[#101b30] text-xs font-sans"
+          }, (overview?.ingestion_status || [
+            { source: "Windows (AD)", icon: "🪟", eps: "4,321", status: "Healthy", time: "18:59:12" },
+            { source: "Linux (Syslog)", icon: "🐧", eps: "3,112", status: "Healthy", time: "18:59:10" },
+            { source: "Firewall (Check Point)", icon: "🧱", eps: "2,445", status: "Healthy", time: "18:59:08" },
+            { source: "Proxy (Squid/WSA)", icon: "🌐", eps: "1,893", status: "Healthy", time: "18:59:05" },
+            { source: "EDR (Trellix/Sophos)", icon: "🛡️", eps: "1,225", status: "Healthy", time: "18:59:04" },
+            { source: "Cloud (Azure/AWS)", icon: "☁️", eps: "987", status: "Warning", time: "18:58:58" }
+          ]).map((ing, iIdx) => /*#__PURE__*/React.createElement("tr", {
+            key: iIdx,
+            className: "hover:bg-[#101b33] transition-colors"
+          }, [
+            /*#__PURE__*/React.createElement("td", { className: "py-1.5 px-1 text-slate-200 text-xs font-medium whitespace-nowrap" }, [
+              /*#__PURE__*/React.createElement("span", { className: "mr-1 text-xs" }, ing.icon),
+              ing.source
+            ]),
+            /*#__PURE__*/React.createElement("td", { className: "py-1.5 px-1 text-center text-slate-300 font-mono text-xs font-bold" }, ing.eps),
+            /*#__PURE__*/React.createElement("td", { className: "py-1.5 px-1 text-center whitespace-nowrap" }, [
+              /*#__PURE__*/React.createElement("span", {
+                className: `inline-flex items-center space-x-1 text-[11px] font-medium ${ing.status === "Healthy" ? "text-emerald-400" : "text-amber-400"}`
+              }, [
+                /*#__PURE__*/React.createElement("span", { className: `w-1.5 h-1.5 rounded-full ${ing.status === "Healthy" ? "bg-emerald-400" : "bg-amber-400"}` }),
+                /*#__PURE__*/React.createElement("span", null, ing.status)
+              ])
+            ]),
+            /*#__PURE__*/React.createElement("td", { className: "py-1.5 px-1 text-right text-slate-400 font-mono text-[11px] whitespace-nowrap" }, ing.time)
+          ])))
+        ])
+      ])
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-incidents-status",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Incidents Status"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("cases"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "grid grid-cols-12 gap-2 items-center pt-2"
+      }, [
+        /*#__PURE__*/React.createElement("div", {
+          className: "col-span-6 relative aspect-square flex items-center justify-center max-w-[140px] mx-auto"
+        }, [
+          /*#__PURE__*/React.createElement("svg", {
+            viewBox: "0 0 160 160",
+            className: "w-full h-full -rotate-90"
+          }, [
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#121d33", strokeWidth: "16" }),
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#ef4444", strokeWidth: "16", strokeDasharray: "136.1 272.3", strokeDashoffset: "0.0" }),
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#f97316", strokeWidth: "16", strokeDasharray: "90.8 317.6", strokeDashoffset: "-136.1" }),
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#3b82f6", strokeWidth: "16", strokeDasharray: "113.4 295.0", strokeDashoffset: "-226.9" }),
+            /*#__PURE__*/React.createElement("circle", { cx: "80", cy: "80", r: "65", fill: "none", stroke: "#10b981", strokeWidth: "16", strokeDasharray: "68.1 340.3", strokeDashoffset: "-340.3" })
+          ]),
+          /*#__PURE__*/React.createElement("div", {
+            className: "absolute flex flex-col items-center justify-center select-none"
+          }, [
+            /*#__PURE__*/React.createElement("span", { className: "text-lg font-bold font-mono text-slate-100" }, "36"),
+            /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-slate-400 font-sans" }, "Open")
+          ])
+        ]),
+        /*#__PURE__*/React.createElement("div", {
+          className: "col-span-6 space-y-2 text-xs font-sans pl-1"
+        }, [
+          { label: "Open", count: "12 (33%)", color: "bg-rose-500" },
+          { label: "In Progress", count: "8 (22%)", color: "bg-orange-500" },
+          { label: "Contained", count: "10 (28%)", color: "bg-blue-500" },
+          { label: "Resolved", count: "6 (17%)", color: "bg-emerald-500" }
+        ].map((st, sIdx) => /*#__PURE__*/React.createElement("div", {
+          key: sIdx,
+          className: "flex items-center justify-between text-xs"
+        }, [
+          /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1.5" }, [
+            /*#__PURE__*/React.createElement("span", { className: `w-2.5 h-2.5 rounded-full ${st.color}` }),
+            /*#__PURE__*/React.createElement("span", { className: "text-slate-300 text-xs" }, st.label)
+          ]),
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-400 font-mono text-[11px]" }, st.count)
+        ])))
+      ])
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-top-users-suspicious",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Top Users by Suspicious Activity"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("identity"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "overflow-x-auto pt-1"
+      }, [
+        /*#__PURE__*/React.createElement("table", {
+          className: "w-full text-left text-xs font-mono"
+        }, [
+          /*#__PURE__*/React.createElement("thead", {
+            className: "text-[10px] text-slate-400 border-b border-[#142035]"
+          }, [
+            /*#__PURE__*/React.createElement("tr", null, [
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium w-6" }, "#"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium" }, "User"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium text-center" }, "Events"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-right" }, "Risk")
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("tbody", {
+            className: "divide-y divide-[#101b30]"
+          }, (overview?.top_users_suspicious || [
+            { rank: 1, user: "johndoe", events: "1,234", risk: "High", riskCol: "bg-rose-500/20 text-rose-400 border border-rose-500/30" },
+            { rank: 2, user: "svc-backup", events: "892", risk: "High", riskCol: "bg-orange-500/20 text-orange-400 border border-orange-500/30" },
+            { rank: 3, user: "admin", events: "764", risk: "Medium", riskCol: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
+            { rank: 4, user: "hr.user", events: "445", risk: "Medium", riskCol: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
+            { rank: 5, user: "it.support", events: "312", risk: "Low", riskCol: "bg-blue-500/20 text-blue-400 border border-blue-500/30" }
+          ]).map((usr, uIdx) => /*#__PURE__*/React.createElement("tr", {
+            key: uIdx,
+            className: "hover:bg-[#101b33] transition-colors"
+          }, [
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-slate-400 text-[11px]" }, usr.rank),
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-slate-200 text-xs font-sans font-medium" }, usr.user),
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-center text-slate-300 font-mono text-xs font-bold" }, usr.events),
+            /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-right whitespace-nowrap" }, [
+              /*#__PURE__*/React.createElement("span", {
+                className: `px-2 py-0.5 rounded text-[10px] font-semibold ${usr.riskCol || "bg-orange-500/20 text-orange-400 border border-orange-500/30"}`
+              }, usr.risk)
+            ])
+          ])))
+        ])
+      ])
+    ]),
+
+    /*#__PURE__*/React.createElement("div", {
+      key: "card-recent-incidents",
+      className: "bg-[#0b1224]/90 backdrop-blur border border-[#18233c] rounded-xl p-4 flex flex-col justify-between shadow-lg"
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center justify-between pb-2 border-b border-[#18233c]/80"
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-slate-100 font-sans"
+        }, "Recent Incidents"),
+        /*#__PURE__*/React.createElement("button", {
+          onClick: () => setCurrentScreen("cases"),
+          className: "text-[11px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center space-x-1 transition-colors cursor-pointer"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, "View All"),
+          /*#__PURE__*/React.createElement("span", null, "→")
+        ])
+      ]),
+      /*#__PURE__*/React.createElement("div", {
+        className: "overflow-x-auto pt-1"
+      }, [
+        /*#__PURE__*/React.createElement("table", {
+          className: "w-full text-left text-xs font-mono"
+        }, [
+          /*#__PURE__*/React.createElement("thead", {
+            className: "text-[10px] text-slate-400 border-b border-[#142035]"
+          }, [
+            /*#__PURE__*/React.createElement("tr", null, [
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium" }, "ID"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-2 font-medium" }, "Title"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-center" }, "Severity"),
+              /*#__PURE__*/React.createElement("th", { className: "py-1.5 px-1 font-medium text-right" }, "Status")
+            ])
+          ]),
+          /*#__PURE__*/React.createElement("tbody", {
+            className: "divide-y divide-[#101b30] text-xs font-sans"
+          }, (overview?.recent_incidents || [
+            { id: "INC-10023", title: "Ransomware Activity", sev: "Critical", status: "Open" },
+            { id: "INC-10022", title: "Brute Force Attack", sev: "High", status: "In Progress" },
+            { id: "INC-10021", title: "Data Exfiltration", sev: "Critical", status: "Open" },
+            { id: "INC-10020", title: "Privilege Escalation", sev: "Medium", status: "Contained" },
+            { id: "INC-10019", title: "Suspicious Login", sev: "High", status: "Resolved" }
+          ]).map((inc, nIdx) => {
+            const sevStyles = {
+              Critical: "bg-rose-500/20 text-rose-400 border border-rose-500/30",
+              High: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
+              Medium: "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+            };
+            const stStyles = {
+              "Open": "bg-rose-500/15 text-rose-400 border border-rose-500/30",
+              "In Progress": "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+              "Contained": "bg-blue-500/15 text-blue-400 border border-blue-500/30",
+              "Resolved": "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+            };
+            return /*#__PURE__*/React.createElement("tr", {
+              key: nIdx,
+              className: "hover:bg-[#101b33] transition-colors"
+            }, [
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-cyan-400 font-mono text-[11px] font-bold whitespace-nowrap cursor-pointer hover:underline", onClick: () => setCurrentScreen("cases") }, inc.id),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-2 text-slate-200 text-xs font-medium truncate max-w-[120px]" }, inc.title),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-center whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", {
+                  className: `px-2 py-0.5 rounded text-[10px] font-semibold ${sevStyles[inc.sev] || sevStyles.High}`
+                }, inc.sev)
+              ]),
+              /*#__PURE__*/React.createElement("td", { className: "py-2 px-1 text-right whitespace-nowrap" }, [
+                /*#__PURE__*/React.createElement("span", {
+                  className: `px-2 py-0.5 rounded text-[10px] font-semibold ${stStyles[inc.status] || stStyles.Open}`
+                }, inc.status)
+              ])
+            ]);
+          }))
+        ])
+      ])
+    ])
+  ]), /*#__PURE__*/React.createElement("div", {
 
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
 
