@@ -232,9 +232,11 @@ class CorrelationEngine:
         self,
         raw_data: Union[Dict[str, Any], str],
         source: Optional[str] = None,
+        source_hint: Optional[str] = None,
     ) -> List[CorrelatedIncident]:
         """Convenience method: normalizes raw payload and executes correlation logic."""
-        normalized = normalize_event(raw_data, source_hint=source)
+        hint = source or source_hint
+        normalized = normalize_event(raw_data, source_hint=hint)
         return self.process_event(normalized)
 
     def process_event(self, event: NormalizedEvent) -> List[CorrelatedIncident]:

@@ -121,11 +121,36 @@ def bridge_incident_to_alerts(incident: CorrelatedIncident) -> AlertItem:
 
 
 def _background_worker_loop() -> None:
-    """Continuous background worker maintaining correlation engine state."""
+    """Continuous background worker maintaining correlation engine state and ingesting live telemetry."""
     logger.info("Correlation Engine background daemon loop initialized.")
+    processed_alert_ids = set()
+
     while _RUNNING:
         try:
-            time.sleep(2.0)
+            engine = get_correlation_engine()
+            from backend.app.services.live_telemetry import get_live_alerts_pool
+            pool = get_live_alerts_pool()
+            for alert in pool:
+                src_val = getattr(alert, "source", None)
+                src_str = getattr(src_val, "value", str(src_val)) if src_val else ""
+                aid = getattr(alert, "id", "")
+                
+                # Skip already correlated alerts
+                if src_str == "correlation" or aid.startswith("ALT-inc-"):
+                    continue
+
+                if aid and aid not in processed_alert_ids:
+                    processed_alert_ids.add(aid)
+                    if len(processed_alert_ids) > 10000:
+                        processed_alert_ids.clear()
+
+                    raw_data = alert.model_dump() if hasattr(alert, "model_dump") else (alert.dict() if hasattr(alert, "dict") else dict(alert))
+                    engine.process_raw(raw_data, source_hint=src_str)
+        except Exception as exc:
+            logger.debug(f"Correlation daemon telemetry polling error: {exc}")
+
+        try:
+            time.sleep(3.0)
         except Exception:
             break
 
