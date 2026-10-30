@@ -406,6 +406,24 @@ def get_live_alerts_pool() -> List[AlertItem]:
     # 4. Real Suricata alerts from EVE log
     pool.extend(fetch_suricata_events(limit=15))
 
+    # 5. Live Incidents & Cross-Source Detections from Correlation Engine
+    try:
+        from backend.app.services.correlation_engine import get_correlation_engine
+        from backend.app.services.correlation_engine.service import bridge_incident_to_alerts
+        corr_engine = get_correlation_engine()
+        existing_ids = {a.id for a in pool}
+        for inc in corr_engine.get_incidents(limit=50):
+            alt_id = inc.id if inc.id.startswith("ALT-") else f"ALT-{inc.id}"
+            if alt_id not in existing_ids and inc.id not in existing_ids:
+                try:
+                    bridged = bridge_incident_to_alerts(inc)
+                    pool.insert(0, bridged)
+                    existing_ids.add(alt_id)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     return pool
 
 _ENDPOINTS_CACHE: Dict[str, Any] = {"ts": 0.0, "active": 7, "total": 8}
