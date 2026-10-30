@@ -812,7 +812,7 @@ function App() {
   const [nwSelectedEvent, setNwSelectedEvent] = useState(null);
 
   // Universal Table Sorting States
-  const [alertSortField, setAlertSortField] = useState("time");
+  const [alertSortField, setAlertSortField] = useState("timestamp");
   const [alertSortOrder, setAlertSortOrder] = useState("desc");
 
   const [hostsSortField, setHostsSortField] = useState("host");
@@ -6277,11 +6277,16 @@ function App() {
       setAlertSortOrder(alertSortOrder === "asc" ? "desc" : "asc");
     } else {
       setAlertSortField(field);
-      setAlertSortOrder(field === "severity" ? "desc" : "asc");
+      setAlertSortOrder(field === "severity" || field === "timestamp" || field === "time" ? "desc" : "asc");
     }
   };
 
   const sortedAlerts = [...filteredAlerts].sort((a, b) => {
+    if (alertSortField === "timestamp" || alertSortField === "time") {
+      const timeA = new Date(a.timestamp || a.time || 0).getTime();
+      const timeB = new Date(b.timestamp || b.time || 0).getTime();
+      return alertSortOrder === "asc" ? timeA - timeB : timeB - timeA;
+    }
     if (alertSortField === "severity") {
       const rank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 };
       const valA = rank[(a.severity || "").toUpperCase()] || 0;
@@ -8441,6 +8446,9 @@ function App() {
     className: "bg-[#131b2e] text-slate-400 font-mono text-[11px] border-b border-[#1f293d]"
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    onClick: () => handleSortAlerts("timestamp"),
+    className: "p-3 cursor-pointer hover:text-slate-200 transition select-none font-mono"
+  }, "TIME", (alertSortField === "timestamp" || alertSortField === "time") ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
     onClick: () => handleSortAlerts("severity"),
     className: "p-3 cursor-pointer hover:text-slate-200 transition select-none"
   }, "SEVERITY", alertSortField === "severity" ? (alertSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
@@ -8469,6 +8477,20 @@ function App() {
     className: "hover:bg-[#131b2e]/60 transition"
 
   }, /*#__PURE__*/React.createElement("td", {
+
+    className: "p-3 font-mono text-[11px] text-slate-400 whitespace-nowrap"
+
+  }, (function() {
+    const ts = a.timestamp || a.time || "";
+    if (!ts) return "—";
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return ts.substring(0, 19).replace("T", " ");
+      return d.toISOString().replace("T", " ").substring(0, 19);
+    } catch(e) {
+      return ts.substring(0, 19).replace("T", " ");
+    }
+  })()), /*#__PURE__*/React.createElement("td", {
 
     className: "p-3"
 

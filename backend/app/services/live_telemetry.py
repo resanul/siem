@@ -316,6 +316,18 @@ def fetch_suricata_events(limit: int = 15) -> List[AlertItem]:
     if not os.path.exists(SURICATA_LOG_PATH):
         return alerts
 
+    # Suricata service & log freshness check:
+    # If the suricata systemd service is inactive or eve.json hasn't been written to in 2 hours,
+    # do NOT emit stale or phantom alerts.
+    try:
+        s_stat = get_service_status("suricata")
+        if not s_stat.get("active", False):
+            return alerts
+        if (time.time() - os.path.getmtime(SURICATA_LOG_PATH)) > 7200:
+            return alerts
+    except Exception:
+        pass
+
     try:
         lines = _tail_lines(SURICATA_LOG_PATH, max_lines=200, chunk_size=262144)
         for line in reversed(lines):
@@ -327,7 +339,7 @@ def fetch_suricata_events(limit: int = 15) -> List[AlertItem]:
                 continue
 
             etype = ev.get("event_type")
-            if etype not in ["alert", "anomaly", "ssh"]:
+            if etype not in ["alert", "anomaly"]:
                 continue
 
             src_ip = ev.get("src_ip", "-")
@@ -348,13 +360,6 @@ def fetch_suricata_events(limit: int = 15) -> List[AlertItem]:
                 severity = AlertSeverity.MEDIUM
                 mitre_id = "T1046"
                 mitre_tac = "Discovery"
-            elif etype == "ssh":
-                ssh_info = ev.get("ssh", {})
-                client_ver = ssh_info.get("client", {}).get("software_version", "")
-                title = f"Suricata NIDS: Inbound SSH Connection Intercepted ({client_ver})"
-                severity = AlertSeverity.LOW
-                mitre_id = "T1021.004"
-                mitre_tac = "Lateral Movement"
             else:
                 continue
 
@@ -424,6 +429,17 @@ def get_live_alerts_pool() -> List[AlertItem]:
     except Exception:
         pass
 
+    def _parse_ts(ts_val: Any) -> float:
+        if not ts_val:
+            return 0.0
+        if isinstance(ts_val, (int, float)):
+            return float(ts_val)
+        try:
+            return datetime.fromisoformat(str(ts_val).replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return 0.0
+
+    pool.sort(key=lambda a: _parse_ts(a.timestamp), reverse=True)
     return pool
 
 _ENDPOINTS_CACHE: Dict[str, Any] = {"ts": 0.0, "active": 7, "total": 8}
