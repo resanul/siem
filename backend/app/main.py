@@ -98,6 +98,14 @@ def on_startup():
     except Exception as e:
         print(f"Failed to init correlation engine: {e}")
 
+    try:
+        from backend.app.services.netwitness_storage import init_storage
+        init_storage()
+        from backend.app.services.netwitness_siem import start_netwitness_daemon
+        start_netwitness_daemon()
+    except Exception as e:
+        print(f"Failed to init NetWitness 30-day telemetry storage: {e}")
+
 
 @app.on_event("shutdown")
 def on_shutdown():
@@ -106,6 +114,12 @@ def on_shutdown():
         shutdown_correlation_engine()
     except Exception as e:
         print(f"Failed to shutdown correlation engine: {e}")
+
+    try:
+        from backend.app.services.netwitness_siem import stop_netwitness_daemon
+        stop_netwitness_daemon()
+    except Exception as e:
+        print(f"Failed to stop NetWitness daemon: {e}")
 
 
 from fastapi.responses import RedirectResponse

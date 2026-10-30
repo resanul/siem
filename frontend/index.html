@@ -5008,7 +5008,7 @@ function App() {
         setNwClusterStatus(dataStatus);
       }
       
-      const resEvents = await fetch(`/api/v1/netwitness/events?endpoint_type=${nwTab}&limit=50&hours=48`, { headers });
+      const resEvents = await fetch(`/api/v1/netwitness/events?endpoint_type=${nwTab}&limit=50&hours=720`, { headers });
       if (resEvents.ok) {
         const dataEvents = await resEvents.json();
         setNwEvents(dataEvents.events || []);
@@ -5025,7 +5025,7 @@ function App() {
     try {
       const token = localStorage.getItem("opensoc_token");
       const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-      const res = await fetch("/api/v1/netwitness/sync?log_limit=100&net_limit=50", {
+      const res = await fetch("/api/v1/netwitness/sync?log_limit=500&net_limit=250&hours=720", {
         method: "POST",
         headers
       });
@@ -9637,11 +9637,15 @@ function App() {
           ),
           React.createElement("div", { className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]" },
             React.createElement("div", { className: "flex items-center justify-between text-xs font-mono text-slate-400 mb-1" },
-              React.createElement("span", null, "LOG SESSIONS (24H)"),
-              React.createElement("i", { "data-lucide": "file-text", className: "w-4 h-4 text-sky-400" })
+              React.createElement("span", null, "30-DAY STORED LOGS"),
+              React.createElement("i", { "data-lucide": "database", className: "w-4 h-4 text-sky-400" })
             ),
-            React.createElement("div", { className: "text-xl font-bold font-mono text-sky-300" }, "100,000+"),
-            React.createElement("div", { className: "text-[11px] font-mono text-slate-400 mt-1" }, "52.9 Billion Historical")
+            React.createElement("div", { className: "text-xl font-bold font-mono text-sky-300" }, 
+              nwClusterStatus && nwClusterStatus.storage && nwClusterStatus.storage.total_records ? nwClusterStatus.storage.total_records.toLocaleString() : "100,000+"
+            ),
+            React.createElement("div", { className: "text-[11px] font-mono text-emerald-400 mt-1" }, 
+              nwClusterStatus && nwClusterStatus.storage ? `${nwClusterStatus.storage.db_size_mb || 0} MB • 30-Day Retention Active` : "30-Day Rolling Storage"
+            )
           ),
           React.createElement("div", { className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d]" },
             React.createElement("div", { className: "flex items-center justify-between text-xs font-mono text-slate-400 mb-1" },

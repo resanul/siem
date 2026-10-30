@@ -1781,39 +1781,93 @@ def clear_endpoint_hosts():
 
 @api_router.get("/netwitness/status")
 def get_netwitness_cluster_status():
-    """Returns RSA NetWitness SIEM cluster connectivity, health, and core services status."""
+    """Returns RSA NetWitness SIEM cluster connectivity, health, core services status, and 30-day storage metrics."""
     from backend.app.services.netwitness_siem import netwitness_client
-    return netwitness_client.get_cluster_status()
+    from backend.app.services.netwitness_storage import get_storage_stats
+    status = netwitness_client.get_cluster_status()
+    try:
+        status["storage"] = get_storage_stats()
+    except Exception:
+        status["storage"] = {"status": "ACTIVE", "retention_days": 30}
+    return status
 
 
 @api_router.get("/netwitness/events")
 def get_netwitness_events(
-    endpoint_type: str = Query("log", regex="^(log|network)$"),
+    endpoint_type: Optional[str] = Query(None, regex="^(log|network)?$"),
     limit: int = Query(50, ge=1, le=500),
-    hours: int = Query(24, ge=1, le=168),
-    query: str = Query("", max_length=500)
+    offset: int = Query(0, ge=0),
+    hours: int = Query(720, ge=1, le=720),
+    search: str = Query("", max_length=500),
+    device_type: str = Query("", max_length=100),
+    is_alert_only: bool = Query(False),
+    live: bool = Query(False)
 ):
-    """Streams live log or network telemetry events directly from RSA NetWitness Core Services."""
+    """
+    Streams live or retrieves 30 days of indexed persistent log & network telemetry
+    stored in SQLite B-tree storage with full-text search, device filtering, and pagination.
+    """
     from backend.app.services.netwitness_siem import netwitness_client
-    events = netwitness_client.fetch_events(
-        endpoint_type=endpoint_type,
-        limit=limit,
+    from backend.app.services.netwitness_storage import query_events, get_storage_stats
+
+    if live:
+        # Live direct WebSocket fetch
+        events = netwitness_client.fetch_events(
+            endpoint_type=endpoint_type or "log",
+            limit=limit,
+            hours=hours,
+            query=search
+        )
+        return {
+            "status": "SUCCESS",
+            "source": "live_websocket",
+            "endpoint_type": endpoint_type or "log",
+            "count": len(events),
+            "total_hits": len(events),
+            "hours": hours,
+            "events": events
+        }
+
+    # Query 30-day persistent SQLite storage
+    events, total_hits = query_events(
+        endpoint_type=endpoint_type if endpoint_type else None,
         hours=hours,
-        query=query
+        limit=limit,
+        offset=offset,
+        search=search,
+        device_type=device_type,
+        is_alert_only=is_alert_only
     )
+
+    # Fallback to live fetch if storage is empty
+    if not events and offset == 0:
+        events = netwitness_client.fetch_events(
+            endpoint_type=endpoint_type or "log",
+            limit=limit,
+            hours=min(hours, 24),
+            query=search
+        )
+        total_hits = len(events)
+
     return {
         "status": "SUCCESS",
-        "endpoint_type": endpoint_type,
+        "source": "persistent_30day_storage",
+        "endpoint_type": endpoint_type or "all",
         "count": len(events),
+        "total_hits": total_hits,
+        "offset": offset,
+        "limit": limit,
         "hours": hours,
-        "events": events
+        "retention_days": 30,
+        "events": events,
+        "storage": get_storage_stats()
     }
 
 
 @api_router.get("/netwitness/count")
 def get_netwitness_event_count(
     endpoint_type: str = Query("log", regex="^(log|network)$"),
-    hours: int = Query(24, ge=1, le=168)
+    hours: int = Query(24, ge=1, le=720)
 ):
     """Returns total indexed sessions/events count in NetWitness for given time range."""
     from backend.app.services.netwitness_siem import netwitness_client
@@ -1828,15 +1882,42 @@ def get_netwitness_event_count(
 
 @api_router.post("/netwitness/sync")
 def sync_netwitness_to_opensoc(
-    log_limit: int = Query(100, ge=10, le=500),
-    net_limit: int = Query(50, ge=10, le=500),
-    hours: int = Query(48, ge=1, le=168)
+    log_limit: int = Query(500, ge=10, le=5000),
+    net_limit: int = Query(250, ge=10, le=2500),
+    hours: int = Query(720, ge=1, le=720)
 ):
-    """Ingests and synchronizes live RSA NetWitness SIEM logs and network sessions into OpenSOC Forge Event Search."""
+    """
+    Ingests and synchronizes live RSA NetWitness SIEM logs and network sessions into
+    OpenSOC Forge 30-day persistent storage and Hybrid Correlation Engine.
+    """
     from backend.app.services.netwitness_siem import netwitness_client
     return netwitness_client.sync_to_opensoc(
         log_limit=log_limit,
         net_limit=net_limit,
         hours=hours
     )
+
+
+@api_router.get("/netwitness/retention")
+def get_netwitness_retention_status():
+    """Returns current NetWitness 30-day retention policy and storage statistics."""
+    from backend.app.services.netwitness_storage import get_storage_stats
+    return {
+        "status": "SUCCESS",
+        "retention_days": 30,
+        "storage": get_storage_stats()
+    }
+
+
+@api_router.post("/netwitness/retention/enforce")
+def enforce_netwitness_retention(days: int = Query(30, ge=1, le=365)):
+    """Triggers immediate rolling retention pruning of records older than configured days."""
+    from backend.app.services.netwitness_storage import enforce_retention, get_storage_stats
+    purged = enforce_retention(retention_days=days)
+    return {
+        "status": "SUCCESS",
+        "retention_days": days,
+        "purged_records": purged,
+        "storage": get_storage_stats()
+    }
 

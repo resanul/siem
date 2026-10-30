@@ -25,6 +25,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
     "hot_days": 7,
     "warm_days": 30,
     "cold_snapshot_days": 90,
+    "netwitness_retention_days": 30,
     "purge_targets": {
         "elasticsearch_indices": True,
         "raw_sensor_logs": True,
@@ -174,6 +175,15 @@ def enforce_retention_policy() -> Dict[str, Any]:
                         purged_count += int(idx.get("docs.count", 0) or 1)
                 except Exception:
                     pass
+    except Exception:
+        pass
+
+    # 4. Prune NetWitness 30-day persistent telemetry
+    try:
+        from backend.app.services.netwitness_storage import enforce_retention as enforce_nw_retention
+        nw_days = int(policy.get("netwitness_retention_days", 30))
+        nw_purged = enforce_nw_retention(nw_days)
+        purged_count += nw_purged
     except Exception:
         pass
 

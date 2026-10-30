@@ -1,3 +1,4 @@
+import threading
 """
 OpenSOC Forge - RSA NetWitness SIEM Integration Adapter.
 Authenticates against RSA NetWitness Platform 12.5.1.3 over OAuth2 and STOMP-over-WebSocket,
@@ -428,25 +429,42 @@ class NetWitnessClient:
 
         return normalized
 
-    def sync_to_opensoc(self, log_limit: int = 100, net_limit: int = 50, hours: int = 48) -> Dict[str, Any]:
-        """Fetches both log and network events from NetWitness and persists them for OpenSOC Forge Event Search."""
-        existing = load_synced_netwitness_events()
-        
+    def sync_to_opensoc(self, log_limit: int = 200, net_limit: int = 100, hours: int = 720) -> Dict[str, Any]:
+        """Fetches both log and network events from NetWitness and persists them for 30-day storage and OpenSOC search."""
         # 1. Fetch Log Concentrator Events
         log_events = self.fetch_events(endpoint_type="log", limit=log_limit, hours=hours)
         
         # 2. Fetch Network Concentrator Sessions
         net_events = self.fetch_events(endpoint_type="network", limit=net_limit, hours=hours)
         
-        combined = existing + log_events + net_events
+        combined = log_events + net_events
         save_synced_netwitness_events(combined)
         
+        # Enforce 30-day retention
+        purged = enforce_retention(30)
+        stats = get_storage_stats()
+        
+        # Bridge any alerts
+        alert_count = 0
+        try:
+            from backend.app.services.correlation_engine.hybrid_coordinator import get_hybrid_coordinator
+            coord = get_hybrid_coordinator()
+            for ev in combined:
+                if ev.get("is_alert") or str(ev.get("severity")).upper() in ("HIGH", "CRITICAL"):
+                    coord.process_raw(ev, source_hint="netwitness")
+                    alert_count += 1
+        except Exception:
+            pass
+
         return {
             "status": "SUCCESS",
             "synced_logs": len(log_events),
             "synced_network": len(net_events),
-            "total_synced": len(log_events) + len(net_events),
-            "total_persisted": len(load_synced_netwitness_events()),
+            "total_synced": len(combined),
+            "alerts_bridged": alert_count,
+            "purged_expired": purged,
+            "storage_stats": stats,
+            "retention_days": 30,
             "synced_at": datetime_now_iso()
         }
 
@@ -454,35 +472,61 @@ class NetWitnessClient:
 # Global Singleton Client
 netwitness_client = NetWitnessClient()
 
+# ---------------------------------------------------------
+# 30-Day Storage & Daemon Integration for NetWitness SIEM
+# ---------------------------------------------------------
+from backend.app.services.netwitness_storage import (
+    init_storage,
+    insert_events,
+    query_events,
+    get_storage_stats,
+    enforce_retention
+)
+
+_DAEMON_THREAD = None
+_DAEMON_RUNNING = False
+_DAEMON_LOCK = threading.Lock()
+
 
 def datetime_now_iso() -> str:
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
 
 
-# File path for persisting NetWitness synced events
+# File path for persisting NetWitness synced events (legacy fallback)
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 CONFIGS_DIR = os.path.join(REPO_ROOT, "configs")
 NETWITNESS_SYNC_FILE = os.path.join(CONFIGS_DIR, "netwitness_synced_events.json")
 
 
-def load_synced_netwitness_events() -> List[Dict[str, Any]]:
-    """Loads previously synchronized NetWitness events from local JSON storage."""
-    if not os.path.exists(NETWITNESS_SYNC_FILE):
-        return []
+def load_synced_netwitness_events(limit: int = 500) -> List[Dict[str, Any]]:
+    """Loads 30 days of synced NetWitness events from persistent SQLite B-tree storage."""
     try:
-        with open(NETWITNESS_SYNC_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        events, _ = query_events(limit=limit, hours=720)
+        if events:
+            return events
     except Exception as e:
-        logger.error(f"Error loading NetWitness synced events: {e}")
-        return []
+        logger.debug(f"Error querying SQLite NetWitness events: {e}")
+
+    # Fallback to legacy JSON if SQLite is just initializing
+    if os.path.exists(NETWITNESS_SYNC_FILE):
+        try:
+            with open(NETWITNESS_SYNC_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
 
 
 def save_synced_netwitness_events(events: List[Dict[str, Any]]) -> bool:
-    """Persists synced NetWitness events to disk."""
+    """Persists synced NetWitness events into 30-day SQLite storage & JSON snapshot."""
     try:
+        if events:
+            insert_events(events)
+            enforce_retention(30)
+
+        # Legacy JSON snapshot
         os.makedirs(CONFIGS_DIR, exist_ok=True)
-        # Deduplicate by session_id + endpoint_type
         seen = set()
         deduped = []
         for ev in events:
@@ -490,13 +534,70 @@ def save_synced_netwitness_events(events: List[Dict[str, Any]]) -> bool:
             if key not in seen:
                 seen.add(key)
                 deduped.append(ev)
-        
-        # Keep latest 1000 events
         deduped = deduped[-1000:]
         with open(NETWITNESS_SYNC_FILE, "w", encoding="utf-8") as f:
             json.dump(deduped, f, indent=2, default=str)
         return True
     except Exception as e:
-        logger.error(f"Error saving NetWitness synced events: {e}")
+        logger.error(f"Error saving NetWitness events: {e}")
         return False
 
+
+def _netwitness_daemon_loop():
+    """Continuous background ingestion thread pulling live NetWitness logs into 30-day storage."""
+    logger.info("NetWitness 30-Day Continuous Ingestion Daemon started.")
+    last_prune = 0.0
+
+    while _DAEMON_RUNNING:
+        try:
+            # Sync latest events from Concentrators
+            log_events = netwitness_client.fetch_events(endpoint_type="log", limit=50, hours=2)
+            net_events = netwitness_client.fetch_events(endpoint_type="network", limit=30, hours=2)
+
+            batch = log_events + net_events
+            if batch:
+                inserted = insert_events(batch)
+                logger.debug(f"NetWitness Daemon ingested {inserted} events into 30-day storage.")
+
+                # Bridge suspicious / alert events into Hybrid Correlation Engine
+                try:
+                    from backend.app.services.correlation_engine.hybrid_coordinator import get_hybrid_coordinator
+                    coord = get_hybrid_coordinator()
+                    for ev in batch:
+                        if ev.get("is_alert") or str(ev.get("severity")).upper() in ("HIGH", "CRITICAL"):
+                            coord.process_raw(ev, source_hint="netwitness")
+                except Exception as ce:
+                    logger.debug(f"NetWitness correlation feed error: {ce}")
+
+            # Enforce 30-day retention every 6 hours
+            now = time.time()
+            if now - last_prune > 21600:
+                enforce_retention(30)
+                last_prune = now
+        except Exception as err:
+            logger.debug(f"NetWitness daemon iteration error: {err}")
+
+        # Sleep 60 seconds between ingest cycles
+        for _ in range(60):
+            if not _DAEMON_RUNNING:
+                break
+            time.sleep(1.0)
+
+
+def start_netwitness_daemon():
+    """Starts the background continuous ingestion daemon for NetWitness 30-day storage."""
+    global _DAEMON_THREAD, _DAEMON_RUNNING
+    with _DAEMON_LOCK:
+        if _DAEMON_THREAD and _DAEMON_THREAD.is_alive():
+            return
+        _DAEMON_RUNNING = True
+        _DAEMON_THREAD = threading.Thread(target=_netwitness_daemon_loop, name="NetWitnessDaemon", daemon=True)
+        _DAEMON_THREAD.start()
+        logger.info("NetWitness background ingestion daemon initialized.")
+
+
+def stop_netwitness_daemon():
+    """Gracefully terminates the background ingestion daemon."""
+    global _DAEMON_RUNNING
+    with _DAEMON_LOCK:
+        _DAEMON_RUNNING = False
