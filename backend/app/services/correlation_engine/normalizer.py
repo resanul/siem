@@ -775,6 +775,79 @@ def _normalize_active_directory(raw: Dict[str, Any]) -> NormalizedEvent:
     )
 
 
+
+
+def _normalize_sophos(raw: Dict[str, Any]) -> NormalizedEvent:
+    """Normalize Sophos Central XDR / MDR threat telemetry into NormalizedEvent."""
+    event_id = str(raw.get("id") or f"sophos-{uuid.uuid4().hex[:12]}")
+    timestamp = _parse_iso_or_epoch(raw.get("timestamp") or raw.get("when") or datetime.now(timezone.utc))
+    severity_str = str(raw.get("severity") or "high").upper()
+    sev = NormalizedSeverity.CRITICAL if severity_str in ("CRITICAL", "HIGH") else NormalizedSeverity.MEDIUM
+
+    host = raw.get("endpoint") or raw.get("endpoint_id") or raw.get("hostname") or "workstation-xdr"
+    user = raw.get("user") or raw.get("username")
+    threat = raw.get("title") or raw.get("threat_name") or raw.get("name") or "Sophos XDR Behavioral Detection"
+
+    proc = None
+    if raw.get("process") or raw.get("path") or raw.get("command_line"):
+        proc = ProcessEntity(
+            name=raw.get("process") or raw.get("process_name"),
+            path=raw.get("path"),
+            command_line=raw.get("command_line") or raw.get("cmdline") or threat,
+            user=user
+        )
+
+    return NormalizedEvent(
+        event_id=event_id,
+        timestamp=timestamp,
+        source_type="sophos_xdr",
+        original_id=str(raw.get("id", "")),
+        event_category=EventCategory.PROCESS if proc else EventCategory.THREAT,
+        event_action="xdr_threat_detected",
+        event_outcome=NormalizedOutcome.BLOCKED if raw.get("action") == "clean" else NormalizedOutcome.SUCCESS,
+        severity=sev,
+        source=EndpointEntity(ip=raw.get("src_ip")),
+        destination=EndpointEntity(ip=raw.get("dest_ip")),
+        user=UserEntity(name=str(user).strip().lower() if user else None),
+        host=EndpointEntity(host=host),
+        process=proc,
+        signature=threat,
+        mitre_tactics=["Execution", "Defense Evasion"],
+        mitre_techniques=["T1059", "T1003"],
+        raw_payload=raw,
+    )
+
+
+def _normalize_crowdstrike(raw: Dict[str, Any]) -> NormalizedEvent:
+    """Normalize CrowdStrike Falcon ITDR / EDR detection into NormalizedEvent."""
+    event_id = str(raw.get("id") or raw.get("composite_id") or f"falcon-{uuid.uuid4().hex[:12]}")
+    timestamp = _parse_iso_or_epoch(raw.get("timestamp") or raw.get("created_timestamp") or datetime.now(timezone.utc))
+    severity_str = str(raw.get("severity") or raw.get("max_severity") or "high").upper()
+    sev = NormalizedSeverity.CRITICAL if severity_str in ("CRITICAL", "HIGH") else NormalizedSeverity.MEDIUM
+
+    host = raw.get("device") or raw.get("hostname") or "falcon-endpoint"
+    user = raw.get("user_name") or raw.get("user")
+    title = raw.get("name") or raw.get("title") or "CrowdStrike Falcon Identity Threat Detection"
+
+    return NormalizedEvent(
+        event_id=event_id,
+        timestamp=timestamp,
+        source_type="crowdstrike_falcon",
+        original_id=str(raw.get("id", "")),
+        event_category=EventCategory.AUTHENTICATION,
+        event_action="falcon_identity_alert",
+        event_outcome=NormalizedOutcome.FAILURE if "fail" in title.lower() else NormalizedOutcome.SUCCESS,
+        severity=sev,
+        source=EndpointEntity(ip=raw.get("ip")),
+        destination=EndpointEntity(host=host),
+        user=UserEntity(name=str(user).strip().lower() if user else None),
+        host=EndpointEntity(host=host),
+        signature=title,
+        mitre_tactics=["Credential Access", "Identity Threat"],
+        mitre_techniques=["T1110", "T1078"],
+        raw_payload=raw,
+    )
+
 def normalize_event(
     raw_event: Union[Dict[str, Any], str], source_hint: Optional[str] = None
 ) -> NormalizedEvent:
@@ -815,6 +888,12 @@ def normalize_event(
         elif hint in ("active_directory", "ad", "windows", "security_log"):
             if isinstance(target, dict):
                 return _normalize_active_directory(target)
+        elif hint in ("sophos", "xdr", "sophos_xdr", "central"):
+            if isinstance(target, dict):
+                return _normalize_sophos(target)
+        elif hint in ("crowdstrike", "falcon", "itdr", "edr"):
+            if isinstance(target, dict):
+                return _normalize_crowdstrike(target)
 
         # Auto-detection heuristic if hint not provided or matched
         if isinstance(target, dict):

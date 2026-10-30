@@ -8739,7 +8739,7 @@ function App() {
               ),
               /*#__PURE__*/React.createElement("p", {
                 className: "text-xs text-slate-400 mt-1"
-              }, "Tier 1: Stream FSM | Tier 2: EQL Temporal Sequences | Tier 3: Sigma Community Rules across Wazuh, Suricata, Active Directory & Firewalls")
+              }, "Tier 1: Stream FSM | Tier 2: EQL Temporal Sequences | Tier 3: Sigma Community Rules across Wazuh, Suricata, Active Directory, Firewalls & Cloud XDR (Sophos / CrowdStrike)")
             )
           ),
           /* Action Controls */
@@ -9511,10 +9511,12 @@ function App() {
             className: "space-y-3"
           },
             /*#__PURE__*/React.createElement("h4", {
-              className: "text-xs font-bold text-slate-200 font-mono uppercase tracking-wider"
-            }, "Telemetry Ingestion Pipeline Health (6 Sources)"),
+              className: "text-xs font-bold text-slate-200 font-mono uppercase tracking-wider flex items-center justify-between"
+            }, /*#__PURE__*/React.createElement("span", null, "Telemetry Ingestion Pipeline Health (8 Sources - Including Endpoint & Cloud XDR)"),
+               /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-purple-400 font-mono font-normal lowercase tracking-normal" }, "all 8 telemetry pipelines synchronized")
+            ),
             /*#__PURE__*/React.createElement("div", {
-              className: "grid grid-cols-1 md:grid-cols-3 gap-3"
+              className: "grid grid-cols-1 md:grid-cols-4 gap-3"
             },
               [
                 { name: "Wazuh HIDS", icon: "server", type: "Endpoint Auth, FIM & Rootcheck", proto: "ossec-remoted:1514", status: "HEALTHY", drops: 0 },
@@ -9522,7 +9524,9 @@ function App() {
                 { name: "Squid Gateway", icon: "globe", type: "Web Proxy & Data Exfiltration", proto: "access.log / TCP 3128", status: "HEALTHY", drops: 0 },
                 { name: "Check Point FW", icon: "shield-alert", type: "Perimeter Packet Drops & Sweeps", proto: "OPSEC LEA / Syslog:514", status: "HEALTHY", drops: 0 },
                 { name: "RSA NetWitness", icon: "database", type: "Correlated Meta & Threat Indicators", proto: "REST API / 12.5 Live", status: "HEALTHY", drops: 0 },
-                { name: "Active Directory", icon: "users", type: "Kerberos & Windows Security Log", proto: "WEF / Event 4624/4625", status: "HEALTHY", drops: 0 }
+                { name: "Active Directory", icon: "users", type: "Kerberos & Windows Security Log", proto: "WEF / Event 4624/4625", status: "HEALTHY", drops: 0 },
+                { name: "Sophos Central XDR", icon: "shield-check", type: "Endpoint XDR / MDR Threat Telemetry", proto: "Central Cloud / API v1", status: "HEALTHY", drops: 0 },
+                { name: "CrowdStrike Falcon", icon: "crosshair", type: "Identity Threat Detection (ITDR) & EDR", proto: "api.us-2 / HTTPS:443", status: "HEALTHY", drops: 0 }
               ].map(src => /*#__PURE__*/React.createElement("div", {
                 key: src.name,
                 className: "p-3.5 rounded-xl bg-[#0e1422] border border-[#1f293d] space-y-2 shadow-sm"
