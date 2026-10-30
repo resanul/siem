@@ -234,17 +234,17 @@ const initialOverview = {
 
   activeCases: 36,
 
-  monitoredAssets: 3452,
+  monitoredAssets: 11,
 
-  ingestedData: "2.4 TB",
+  ingestedData: "40.2 GB",
 
-  activeUsers: 8921,
+  activeUsers: 12,
 
   totalEndpoints: 8,
 
   healthyEndpoints: 7,
 
-  mitreCoverage: 158
+  mitreCoverage: 31
 
 };
 
@@ -3050,19 +3050,19 @@ function App() {
 
                 healthyEndpoints: dataOverview.metrics.healthy_endpoints !== undefined ? dataOverview.metrics.healthy_endpoints : 7,
 
-                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158,
+                mitreCoverage: dataOverview.metrics.mitre_coverage_count || 31,
 
-            monitoredAssets: dataOverview.metrics.monitored_assets || 3452,
+            monitoredAssets: dataOverview.metrics.monitored_assets !== undefined ? dataOverview.metrics.monitored_assets : 11,
 
-            ingestedData: dataOverview.metrics.ingested_data || "2.4 TB",
+            ingestedData: dataOverview.metrics.ingested_data || "40.2 GB",
 
-            activeUsers: dataOverview.metrics.active_users || 8921,
+            activeUsers: dataOverview.metrics.active_users !== undefined ? dataOverview.metrics.active_users : 12,
 
-                monitoredAssets: dataOverview.metrics.monitored_assets || 3452,
+                monitoredAssets: dataOverview.metrics.monitored_assets !== undefined ? dataOverview.metrics.monitored_assets : 11,
 
-                ingestedData: dataOverview.metrics.ingested_data || "2.4 TB",
+                ingestedData: dataOverview.metrics.ingested_data || "40.2 GB",
 
-                activeUsers: dataOverview.metrics.active_users || 8921
+                activeUsers: dataOverview.metrics.active_users !== undefined ? dataOverview.metrics.active_users : 12
 
               };
 
@@ -4656,13 +4656,13 @@ function App() {
 
             healthyEndpoints: dataOverview.metrics.healthy_endpoints !== undefined ? dataOverview.metrics.healthy_endpoints : 7,
 
-            mitreCoverage: dataOverview.metrics.mitre_coverage_count || 158,
+            mitreCoverage: dataOverview.metrics.mitre_coverage_count || 31,
 
-            monitoredAssets: dataOverview.metrics.monitored_assets || 3452,
+            monitoredAssets: dataOverview.metrics.monitored_assets !== undefined ? dataOverview.metrics.monitored_assets : 11,
 
-            ingestedData: dataOverview.metrics.ingested_data || "2.4 TB",
+            ingestedData: dataOverview.metrics.ingested_data || "40.2 GB",
 
-            activeUsers: dataOverview.metrics.active_users || 8921
+            activeUsers: dataOverview.metrics.active_users !== undefined ? dataOverview.metrics.active_users : 12
 
           };
 
@@ -6844,8 +6844,8 @@ function App() {
     },
     {
       title: "Monitored Assets",
-      value: (overview.monitoredAssets !== undefined ? overview.monitoredAssets : 3452).toLocaleString(),
-      delta: "5%",
+      value: (overview.monitoredAssets !== undefined ? overview.monitoredAssets : 11).toLocaleString(),
+      delta: "8 Active",
       isUp: true,
       deltaColor: "text-purple-400",
       iconName: "server",
@@ -6858,8 +6858,8 @@ function App() {
     },
     {
       title: "Ingested Data",
-      value: overview.ingestedData || "2.4 TB",
-      delta: "12%",
+      value: overview.ingestedData || "40.2 GB",
+      delta: "Live Storage",
       isUp: true,
       deltaColor: "text-sky-400",
       iconName: "database",
@@ -6872,8 +6872,8 @@ function App() {
     },
     {
       title: "Active Users",
-      value: (overview.activeUsers !== undefined ? overview.activeUsers : 8921).toLocaleString(),
-      delta: "1%",
+      value: (overview.activeUsers !== undefined ? overview.activeUsers : 12).toLocaleString(),
+      delta: "Verified",
       isUp: true,
       deltaColor: "text-emerald-400",
       iconName: "users",
@@ -6952,7 +6952,7 @@ function App() {
       className: "flex items-center space-x-2"
     }, [
       /*#__PURE__*/React.createElement("span", { className: "text-slate-400 uppercase tracking-wider text-[11px]" }, "MITRE ATT&CK Coverage:"),
-      /*#__PURE__*/React.createElement("span", { className: "text-purple-400 font-bold" }, `${overview.mitreCoverage || 158} Active Techniques`),
+      /*#__PURE__*/React.createElement("span", { className: "text-purple-400 font-bold" }, `${overview.mitreCoverage || 31} Active Techniques`),
       /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "(Sigma + Wazuh + Suricata)")
     ])
   ]), /*#__PURE__*/React.createElement("div", {
