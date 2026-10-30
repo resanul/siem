@@ -164,6 +164,26 @@ class NormalizedEvent(BaseModel):
     def hostname(self) -> Optional[str]:
         return self.host.host or self.source.host or self.destination.host
 
+    @property
+    def id(self) -> str:
+        return self.event_id
+
+    @property
+    def category(self) -> EventCategory:
+        return self.event_category
+
+    @property
+    def action(self) -> str:
+        return self.event_action
+
+    @property
+    def outcome(self) -> NormalizedOutcome:
+        return self.event_outcome
+
+    @property
+    def message(self) -> str:
+        return self.signature or str(self.raw_payload.get("message") or self.raw_payload.get("full_log", ""))
+
 
 class CorrelatedIncident(BaseModel):
     """

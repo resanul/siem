@@ -643,3 +643,79 @@ def get_capability_matrix() -> Dict[str, Any]:
             "Explainable incident evidence dossiers linking root-cause raw telemetry events",
         ],
     }
+
+
+# ==============================================================================
+# Enterprise Hybrid Correlation Engine (Stream + EQL Sequences + Sigma Rules)
+# ==============================================================================
+
+@router.get("/hybrid/status", summary="Get Enterprise Hybrid Correlation Engine Status")
+def get_hybrid_status() -> Dict[str, Any]:
+    """
+    Returns unified telemetry and metrics for the 3-tier Hybrid Correlation Engine:
+    - Tier 1: Real-time In-Memory Stream & Entity Risk Graph Engine
+    - Tier 2: EQL Sequence Temporal Engine
+    - Tier 3: Sigma Rule Community Engine
+    """
+    from backend.app.services.correlation_engine.hybrid_coordinator import get_hybrid_coordinator
+    coordinator = get_hybrid_coordinator()
+    return coordinator.get_status()
+
+
+@router.get("/hybrid/rules", summary="List All Active Rules Across Hybrid Tiers")
+def list_hybrid_rules() -> Dict[str, Any]:
+    """
+    Lists all active detection rules across:
+    1. Built-in Multi-Source Stream Rules
+    2. EQL Multi-Stage Temporal Sequence Rules
+    3. Community Sigma Detection Rules
+    """
+    from backend.app.services.correlation_engine.hybrid_coordinator import get_hybrid_coordinator
+    coordinator = get_hybrid_coordinator()
+    stream_rules = [r.config.model_dump() for r in coordinator.stream_engine.rules.values()]
+    eql_status = coordinator.eql_engine.get_status()
+    sigma_status = coordinator.sigma_engine.get_status()
+
+    return {
+        "tier1_stream_rules": stream_rules,
+        "tier2_eql_sequence_rules": eql_status.get("rules", []),
+        "tier3_sigma_rules": sigma_status.get("rules", []),
+        "total_rules_count": len(stream_rules) + len(eql_status.get("rules", [])) + len(sigma_status.get("rules", []))
+    }
+
+
+@router.post("/hybrid/sigma/reload", summary="Hot-Reload Sigma Community Rules")
+def reload_sigma_rules() -> Dict[str, Any]:
+    """Hot-reloads community Sigma rules from disk without server restart."""
+    from backend.app.services.correlation_engine.sigma_engine import get_sigma_engine
+    sigma_engine = get_sigma_engine()
+    loaded_count = sigma_engine.load_rules()
+    return {
+        "status": "success",
+        "message": f"Successfully reloaded {loaded_count} Sigma community rules from {sigma_engine.rules_dir}",
+        "loaded_rules_count": loaded_count
+    }
+
+
+@router.post("/hybrid/evaluate", summary="Evaluate Telemetry against Hybrid Engine Tiers")
+def evaluate_hybrid_telemetry(payload: EvaluateRequest) -> Dict[str, Any]:
+    """Ingests raw or normalized events through all 3 hybrid correlation tiers."""
+    from backend.app.services.correlation_engine.hybrid_coordinator import get_hybrid_coordinator
+    coordinator = get_hybrid_coordinator()
+    generated_incidents = []
+
+    for item in payload.events:
+        raw_dict = item if isinstance(item, dict) else {"message": str(item)}
+        incs = coordinator.process_raw(raw_dict, source_hint=payload.source_hint)
+        if incs:
+            generated_incidents.extend(incs)
+
+    return {
+        "status": "success",
+        "events_evaluated": len(payload.events),
+        "incidents_count": len(generated_incidents),
+        "incidents": [
+            inc.model_dump() if hasattr(inc, "model_dump") else dict(inc)
+            for inc in generated_incidents
+        ]
+    }

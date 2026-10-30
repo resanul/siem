@@ -8705,8 +8705,12 @@ function App() {
                 className: "flex items-center space-x-3 flex-wrap gap-y-1"
               },
                 /*#__PURE__*/React.createElement("h2", {
-                  className: "text-lg font-bold text-slate-100 font-mono tracking-tight"
-                }, "Cross-Source Real-Time Correlation Engine"),
+                  className: "text-lg font-bold text-slate-100 font-mono tracking-tight flex items-center gap-2"
+                }, "Enterprise Hybrid SIEM Correlation Engine",
+                   /*#__PURE__*/React.createElement("span", {
+                     className: "text-[10px] font-bold px-2 py-0.5 rounded bg-gradient-to-r from-purple-500/20 to-sky-500/20 text-purple-300 border border-purple-500/40 uppercase tracking-widest"
+                   }, "HYBRID ARCHITECTURE")
+                ),
                 /* Status Indicator */
                 /*#__PURE__*/React.createElement("span", {
                   className: "px-2.5 py-0.5 rounded-full text-xs font-mono font-bold flex items-center " +
@@ -8718,8 +8722,16 @@ function App() {
                     className: "w-2 h-2 rounded-full mr-1.5 " +
                       (correlationStatus && correlationStatus.running ? "bg-emerald-400 animate-pulse" : "bg-rose-400")
                   }),
-                  correlationStatus && correlationStatus.running ? "ENGINE RUNNING" : "ENGINE STOPPED"
+                  correlationStatus && correlationStatus.running ? "STREAM ENGINE RUNNING" : "ENGINE STOPPED"
                 ),
+                /* EQL Badge */
+                /*#__PURE__*/React.createElement("span", {
+                  className: "px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1"
+                }, /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" }), "EQL SEQUENCES ACTIVE"),
+                /* Sigma Badge */
+                /*#__PURE__*/React.createElement("span", {
+                  className: "px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1"
+                }, /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-amber-400" }), "SIGMA RULES LOADED"),
                 /* Incident Count Badge */
                 /*#__PURE__*/React.createElement("span", {
                   className: "px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40"
@@ -8727,7 +8739,7 @@ function App() {
               ),
               /*#__PURE__*/React.createElement("p", {
                 className: "text-xs text-slate-400 mt-1"
-              }, "Stateful multi-stage event correlation across Wazuh HIDS, Suricata NIDS, Squid Gateway, Check Point FW, NetWitness SIEM & Active Directory")
+              }, "Tier 1: Stream FSM | Tier 2: EQL Temporal Sequences | Tier 3: Sigma Community Rules across Wazuh, Suricata, Active Directory & Firewalls")
             )
           ),
           /* Action Controls */

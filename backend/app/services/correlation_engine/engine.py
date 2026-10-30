@@ -478,3 +478,15 @@ class CorrelationEngine:
     def get_entities(self) -> Dict[str, Any]:
         """Retrieve entity store state and summary."""
         return self.entity_store.export_summary()
+
+_GLOBAL_ENGINE: Optional[CorrelationEngine] = None
+_ENGINE_LOCK = threading.Lock()
+
+def get_correlation_engine() -> CorrelationEngine:
+    global _GLOBAL_ENGINE
+    if _GLOBAL_ENGINE is None:
+        with _ENGINE_LOCK:
+            if _GLOBAL_ENGINE is None:
+                _GLOBAL_ENGINE = CorrelationEngine()
+    return _GLOBAL_ENGINE
+

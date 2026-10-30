@@ -1,7 +1,8 @@
 """
 OpenSOC Forge SIEM Correlation Engine - Service Lifecycle & Alert Bridging.
-Manages the background correlation daemon and bridges synthesized CorrelatedIncidents
-into OpenSOC Forge's native LIVE_SIMULATION_ALERTS and persistent alert storage.
+Manages the background hybrid correlation daemon and bridges synthesized CorrelatedIncidents
+(from Stream FSM, EQL Sequences, and Sigma Community Rules) into OpenSOC Forge's
+native LIVE_SIMULATION_ALERTS and persistent alert storage.
 """
 
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from backend.app.models.schemas import AlertItem, AlertSeverity, AlertSource, AlertStatus
-from backend.app.services.correlation_engine import get_correlation_engine
+from backend.app.services.correlation_engine.hybrid_coordinator import get_hybrid_coordinator
 from backend.app.services.correlation_engine.schema import CorrelatedIncident
 from backend.app.services.live_telemetry import LIVE_SIMULATION_ALERTS
 from backend.app.services.retention_policy import load_persisted_alerts, save_persisted_alerts
@@ -89,13 +90,12 @@ def bridge_incident_to_alerts(incident: CorrelatedIncident) -> AlertItem:
         mitre_tactic=incident.mitre_tactic,
         status=AlertStatus.NEW,
         raw_payload=raw_payload,
-        is_demo=True,
+        is_demo=False,
     )
 
     with _LOCK:
         # 1. Surface in LIVE_SIMULATION_ALERTS
         try:
-            # Check if alert already exists, replace or insert at top
             existing_idx = next((i for i, a in enumerate(LIVE_SIMULATION_ALERTS) if a.id == alert_item.id), None)
             if existing_idx is not None:
                 LIVE_SIMULATION_ALERTS[existing_idx] = alert_item
@@ -121,13 +121,13 @@ def bridge_incident_to_alerts(incident: CorrelatedIncident) -> AlertItem:
 
 
 def _background_worker_loop() -> None:
-    """Continuous background worker maintaining correlation engine state and ingesting live telemetry."""
-    logger.info("Correlation Engine background daemon loop initialized.")
+    """Continuous background worker maintaining hybrid correlation engine state and ingesting live telemetry."""
+    logger.info("Hybrid Correlation Engine background daemon loop initialized.")
     processed_alert_ids = set()
 
     while _RUNNING:
         try:
-            engine = get_correlation_engine()
+            coordinator = get_hybrid_coordinator()
             from backend.app.services.live_telemetry import get_live_alerts_pool
             pool = get_live_alerts_pool()
             for alert in pool:
@@ -145,9 +145,9 @@ def _background_worker_loop() -> None:
                         processed_alert_ids.clear()
 
                     raw_data = alert.model_dump() if hasattr(alert, "model_dump") else (alert.dict() if hasattr(alert, "dict") else dict(alert))
-                    engine.process_raw(raw_data, source_hint=src_str)
+                    coordinator.process_raw(raw_data, source_hint=src_str)
         except Exception as exc:
-            logger.debug(f"Correlation daemon telemetry polling error: {exc}")
+            logger.debug(f"Hybrid correlation daemon telemetry polling error: {exc}")
 
         try:
             time.sleep(3.0)
@@ -157,27 +157,26 @@ def _background_worker_loop() -> None:
 
 def init_correlation_engine_on_startup() -> None:
     """
-    FastAPI startup hook initializing the correlation engine singleton,
+    FastAPI startup hook initializing the hybrid correlation engine,
     registering the alert bridging hook, and launching the background daemon.
     """
     global _WORKER_THREAD, _RUNNING
     with _LOCK:
-        engine = get_correlation_engine()
-        engine.start()
+        coordinator = get_hybrid_coordinator()
+        coordinator.stream_engine.start()
 
-        # Register alert bridge callback if not already registered
-        if bridge_incident_to_alerts not in engine.incident_callbacks:
-            engine.register_incident_callback(bridge_incident_to_alerts)
+        # Register alert bridge callback across all correlation tiers
+        coordinator.register_incident_callback(bridge_incident_to_alerts)
 
         if not _RUNNING:
             _RUNNING = True
             _WORKER_THREAD = threading.Thread(
                 target=_background_worker_loop,
                 daemon=True,
-                name="CorrelationEngineDaemon",
+                name="HybridCorrelationDaemon",
             )
             _WORKER_THREAD.start()
-            logger.info("Correlation Engine background daemon worker started.")
+            logger.info("Hybrid Correlation Engine background daemon worker started.")
 
 
 def shutdown_correlation_engine() -> None:
@@ -186,8 +185,9 @@ def shutdown_correlation_engine() -> None:
     with _LOCK:
         _RUNNING = False
         try:
-            engine = get_correlation_engine()
-            engine.stop()
+            coordinator = get_hybrid_coordinator()
+            coordinator.stream_engine.stop()
+            coordinator.save_state()
         except Exception as exc:
-            logger.warning(f"Error stopping correlation engine: {exc}")
-        logger.info("Correlation Engine shutdown completed.")
+            logger.warning(f"Error stopping hybrid correlation engine: {exc}")
+        logger.info("Hybrid Correlation Engine shutdown completed.")

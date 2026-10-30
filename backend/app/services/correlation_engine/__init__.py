@@ -2,6 +2,7 @@
 OpenSOC Forge Enterprise SIEM Correlation Engine Package.
 Provides multi-source stateful event correlation, canonical normalization,
 sliding-window analysis, threshold and sequence detection, and explainable incident synthesis.
+Includes Hybrid Model: Stream FSM + EQL Sequence Engine + Sigma Community Rules.
 """
 
 from typing import Optional
@@ -37,6 +38,20 @@ from backend.app.services.correlation_engine.datasets import (
     generate_all_datasets,
     generate_attack_dataset,
     generate_benign_dataset,
+)
+from backend.app.services.correlation_engine.eql_engine import (
+    EQLSequenceEngine,
+    EQLSequenceRule,
+    get_eql_engine,
+)
+from backend.app.services.correlation_engine.sigma_engine import (
+    SigmaCompiledRule,
+    SigmaRuleEngine,
+    get_sigma_engine,
+)
+from backend.app.services.correlation_engine.hybrid_coordinator import (
+    HybridCorrelationCoordinator,
+    get_hybrid_coordinator,
 )
 
 # Global Engine Singleton
@@ -95,6 +110,15 @@ __all__ = [
     "EntityStore",
     "get_correlation_engine",
     "init_correlation_engine",
+    # Hybrid Coordination
+    "EQLSequenceEngine",
+    "EQLSequenceRule",
+    "get_eql_engine",
+    "SigmaCompiledRule",
+    "SigmaRuleEngine",
+    "get_sigma_engine",
+    "HybridCorrelationCoordinator",
+    "get_hybrid_coordinator",
     # Datasets
     "generate_benign_dataset",
     "generate_attack_dataset",

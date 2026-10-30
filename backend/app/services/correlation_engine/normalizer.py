@@ -171,12 +171,14 @@ def _normalize_wazuh(raw: Dict[str, Any]) -> NormalizedEvent:
         category = EventCategory.THREAT
         action = "rootcheck_detected"
         outcome = NormalizedOutcome.UNKNOWN
-    elif "process" in groups or "command" in data or raw.get("full_log", "").startswith("command"):
+    elif "process" in groups or "command" in data or "process" in raw or raw.get("full_log", "").startswith("command") or "powershell" in description.lower() or "mimikatz" in description.lower():
         category = EventCategory.PROCESS
         action = "process_started"
         outcome = NormalizedOutcome.SUCCESS
-        cmd = data.get("command") or raw.get("full_log")
-        process = ProcessEntity(command_line=cmd, name=data.get("process"), user=user_name)
+        proc_raw = raw.get("process", {}) if isinstance(raw.get("process"), dict) else {}
+        cmd = proc_raw.get("command_line") or data.get("command") or raw.get("full_log") or description
+        p_name = proc_raw.get("name") or data.get("process") or ("mimikatz.exe" if "mimikatz" in description.lower() else None)
+        process = ProcessEntity(command_line=cmd, name=p_name, user=user_name)
     else:
         category = EventCategory.CONFIGURATION
         action = "wazuh_alert"
@@ -857,19 +859,65 @@ def normalize_event(
 
         # Fallback if dictionary has enough generic fields
         if isinstance(target, dict):
+            cat_str = str(target.get("category") or target.get("event_category") or ("process" if "process" in target else "configuration")).lower()
+            try:
+                cat = EventCategory(cat_str)
+            except Exception:
+                cat = EventCategory.CONFIGURATION
+
+            out_str = str(target.get("outcome") or target.get("event_outcome") or "unknown").lower()
+            try:
+                outcome = NormalizedOutcome(out_str)
+            except Exception:
+                outcome = NormalizedOutcome.UNKNOWN
+
+            proc_val = target.get("process")
+            proc_entity = None
+            if isinstance(proc_val, dict):
+                proc_entity = ProcessEntity(
+                    name=proc_val.get("name"),
+                    command_line=proc_val.get("command_line"),
+                    user=proc_val.get("user")
+                )
+            elif target.get("command_line") or target.get("process_name"):
+                proc_entity = ProcessEntity(
+                    name=target.get("process_name") or target.get("process"),
+                    command_line=target.get("command_line"),
+                    user=target.get("user")
+                )
+
+            http_val = target.get("http")
+            http_entity = None
+            if isinstance(http_val, dict):
+                http_entity = HttpEntity(
+                    url=http_val.get("url"),
+                    method=http_val.get("method"),
+                    status_code=http_val.get("status_code")
+                )
+            elif target.get("url"):
+                http_entity = HttpEntity(
+                    url=target.get("url"),
+                    status_code=target.get("status_code")
+                )
+
+            user_obj = target.get("user")
+            user_name = user_obj.get("name") if isinstance(user_obj, dict) else (user_obj or target.get("username", ""))
+
             return NormalizedEvent(
                 event_id=f"generic-{uuid.uuid4().hex[:12]}",
                 timestamp=_parse_iso_or_epoch(target.get("timestamp") or datetime.now(timezone.utc)),
-                source_type=hint or "generic",
+                source_type=hint or target.get("source_type") or "generic",
                 original_id=str(target.get("id", "")),
-                event_category=EventCategory.CONFIGURATION,
-                event_action=str(target.get("action", "unknown")),
-                event_outcome=NormalizedOutcome.UNKNOWN,
+                event_category=cat,
+                event_action=str(target.get("action") or target.get("event_action") or "unknown"),
+                event_outcome=outcome,
                 severity=NormalizedSeverity.LOW,
                 source=EndpointEntity(ip=target.get("src_ip") or target.get("srcip")),
                 destination=EndpointEntity(ip=target.get("dest_ip") or target.get("dstip")),
-                user=UserEntity(name=str(target.get("user") or target.get("username", "")).strip().lower() or None),
+                user=UserEntity(name=str(user_name).strip().lower() if user_name else None),
                 host=EndpointEntity(host=target.get("host")),
+                process=proc_entity,
+                http=http_entity,
                 signature=str(target.get("signature") or target.get("summary") or target.get("title", "")),
                 raw_payload=target,
             )

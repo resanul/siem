@@ -1,0 +1,103 @@
+title: Mimikatz LSASS Memory Dumping
+id: SIGMA-WIN-001
+status: production
+description: Detects process memory dumping of lsass.exe via procdump, comsvcs.dll, or mimikatz
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+logsource:
+  category: process
+detection:
+  selection:
+    process_name:
+      - procdump.exe
+      - mimikatz.exe
+      - dump64.exe
+    command_line|contains:
+      - comsvcs.dll
+      - MiniDump
+      - lsass
+      - sekurlsa
+  condition: selection
+level: critical
+---
+title: Suspicious Encoded PowerShell Execution
+id: SIGMA-WIN-002
+status: production
+description: Detects execution of PowerShell with base64 encoded command arguments
+tags:
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  category: process
+detection:
+  selection:
+    process_name:
+      - powershell.exe
+      - pwsh.exe
+    command_line|contains:
+      - -enc
+      - -encodedcommand
+      - -e
+      - FromBase64String
+  condition: selection
+level: high
+---
+title: Volume Shadow Copy Deletion via VSSAdmin
+id: SIGMA-RANSOM-001
+status: production
+description: Detects deletion of Windows volume shadow copies typically preceding ransomware encryption
+tags:
+  - attack.impact
+  - attack.t1490
+logsource:
+  category: process
+detection:
+  selection:
+    command_line|contains:
+      - delete shadows
+      - resize shadowstorage
+      - shadowcopy delete
+  condition: selection
+level: critical
+---
+title: Linux SUID and Sudoers Privilege Escalation
+id: SIGMA-LNX-001
+status: production
+description: Detects unauthorized modification of /etc/sudoers or setting SUID bit on sensitive binaries
+tags:
+  - attack.privilege_escalation
+  - attack.t1548.001
+logsource:
+  category: process
+detection:
+  selection:
+    command_line|contains:
+      - chmod u+s
+      - chmod +s
+      - /etc/sudoers
+      - NOPASSWD
+  condition: selection
+level: high
+---
+title: Web Shell Invocation and Script Execution
+id: SIGMA-WEB-001
+status: production
+description: Detects web requests targeting known web shells or anomalous system commands
+tags:
+  - attack.persistence
+  - attack.t1505.003
+logsource:
+  category: http
+detection:
+  selection:
+    url|contains:
+      - c99.php
+      - r57.php
+      - cmd.jsp
+      - b374k
+      - whoami
+      - /bin/sh
+      - /bin/bash
+  condition: selection
+level: critical
