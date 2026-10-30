@@ -2719,15 +2719,6 @@ function App() {
       fetchCorrelationData();
     }
 
-  useEffect(() => {
-    if (currentScreen !== "correlation" && currentScreen !== "correlation_incidents" && currentScreen !== "correlation_rules" && currentScreen !== "correlation_engine") return;
-    const timer = setInterval(() => {
-      fetchCorrelationIncidents();
-      fetchCorrelationStatus();
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [currentScreen]);
-
 
     if (currentScreen === "identity") {
 
@@ -2747,6 +2738,15 @@ function App() {
 
     }
 
+  }, [currentScreen]);
+
+  useEffect(() => {
+    if (currentScreen !== "correlation" && currentScreen !== "correlation_incidents" && currentScreen !== "correlation_rules" && currentScreen !== "correlation_engine") return;
+    const timer = setInterval(() => {
+      fetchCorrelationIncidents();
+      fetchCorrelationStatus();
+    }, 3000);
+    return () => clearInterval(timer);
   }, [currentScreen]);
 
 
