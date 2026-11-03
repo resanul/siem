@@ -1026,6 +1026,45 @@ def get_mitre_matrix(current_user: Dict[str, Any] = Depends(require_permission("
 
 
 # ===================== THREAT INTELLIGENCE & PROCESS TREE =====================
+@api_router.get("/threat-intel/news")
+def get_cyber_threat_news(
+    source: Optional[str] = Query(None, description="Filter by source ID (thn, securityweek, darkreading, krebsonsecurity, sans_isc, helpnetsecurity)"),
+    category: Optional[str] = Query(None, description="Filter by threat category"),
+    search: Optional[str] = Query(None, description="Search term for title/summary"),
+    limit: int = Query(30, ge=1, le=100),
+    force_refresh: bool = Query(False),
+):
+    """
+    Returns live cyber security news, breaking threat reports, and forum intelligence from:
+    - The Hacker News (THN)
+    - SecurityWeek
+    - Dark Reading
+    - Krebs on Security
+    - SANS ISC Diary
+    - Help Net Security
+    """
+    from backend.app.services.threat_news_service import get_all_threat_news, FEED_SOURCES
+    items = get_all_threat_news(force_refresh=force_refresh)
+
+    if source and source.strip() and source.strip().lower() != "all":
+        items = [x for x in items if x.get("source_id") == source.strip().lower()]
+
+    if category and category.strip() and category.strip().lower() != "all":
+        items = [x for x in items if x.get("category", "").lower() == category.strip().lower()]
+
+    if search and search.strip():
+        q = search.strip().lower()
+        items = [x for x in items if q in x.get("title", "").lower() or q in x.get("summary", "").lower()]
+
+    return {
+        "status": "SUCCESS",
+        "total": len(items),
+        "limit": limit,
+        "sources": FEED_SOURCES,
+        "news": items[:limit]
+    }
+
+
 @api_router.get("/threat-intel/global-threat-map")
 def get_global_threat_map():
     """Returns real-time global cyber attack arcs, top countries, and severity statistics."""
