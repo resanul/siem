@@ -6512,21 +6512,32 @@ function App() {
 
   const filteredThreatNews = threatNews.filter(item => {
     if (cveFilterOnly) {
-      const hasCve = (item.cves && item.cves.length > 0) || (item.category === "EXPLOIT / CVE");
+      const hasCve = item.source_id === "cve" || (item.cves && item.cves.length > 0) || (item.category === "EXPLOIT / CVE") || item.is_cve;
       if (!hasCve) return false;
     }
     if (threatNewsSource && threatNewsSource !== "all") {
-      if (item.source_id !== threatNewsSource) return false;
+      if (threatNewsSource === "cve") {
+        const isCve = item.source_id === "cve" || (item.cves && item.cves.length > 0) || item.is_cve;
+        if (!isCve) return false;
+      } else if (item.source_id !== threatNewsSource) {
+        return false;
+      }
     }
     if (threatNewsCategory && threatNewsCategory !== "all") {
-      if ((item.category || "").toLowerCase() !== threatNewsCategory.toLowerCase()) return false;
+      if (threatNewsCategory.toUpperCase() === "UPDATED CVE") {
+        const isCve = item.source_id === "cve" || (item.cves && item.cves.length > 0) || item.is_cve;
+        if (!isCve) return false;
+      } else if ((item.category || "").toLowerCase() !== threatNewsCategory.toLowerCase()) {
+        return false;
+      }
     }
     if (threatNewsSearch && threatNewsSearch.trim()) {
       const q = threatNewsSearch.trim().toLowerCase();
       const match = (item.title || "").toLowerCase().includes(q) ||
                     (item.summary || "").toLowerCase().includes(q) ||
                     (item.source_name || "").toLowerCase().includes(q) ||
-                    (item.category || "").toLowerCase().includes(q);
+                    (item.category || "").toLowerCase().includes(q) ||
+                    ((item.cves || []).some(c => c.toLowerCase().includes(q)));
       if (!match) return false;
     }
     return true;
@@ -8274,24 +8285,31 @@ function App() {
     React.createElement("div", { className: "flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs font-mono" }, [
       React.createElement("span", { className: "text-slate-500 text-[11px] mr-1 shrink-0" }, "SOURCES:"),
       [
-        { id: "all", label: "All Feeds (80+)" },
+        { id: "all", label: "All Feeds (120+ Items)" },
         { id: "thn", label: "The Hacker News" },
         { id: "securityweek", label: "SecurityWeek" },
         { id: "darkreading", label: "Dark Reading" },
         { id: "krebsonsecurity", label: "Krebs on Security" },
         { id: "sans_isc", label: "SANS ISC" },
-        { id: "helpnetsecurity", label: "Help Net Security" }
+        { id: "helpnetsecurity", label: "Help Net Security" },
+        { id: "cve", label: "🚨 Updated CVEs (CISA KEV)" }
       ].map(src => {
         const active = threatNewsSource === src.id;
+        const isCve = src.id === "cve";
         return React.createElement("button", {
           key: src.id,
           onClick: () => setThreatNewsSource(src.id),
-          className: `px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition ${
+          className: `px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition flex items-center space-x-1 ${
             active 
-              ? "bg-red-500/20 text-red-300 border border-red-500/50 font-bold" 
-              : "bg-[#131b2e] hover:bg-[#1a253e] text-slate-400 border border-[#1f293d]"
+              ? "bg-red-600 text-white border border-red-400 font-bold shadow-md shadow-red-500/30" 
+              : isCve
+                ? "bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/40 font-semibold"
+                : "bg-[#131b2e] hover:bg-[#1a253e] text-slate-400 border border-[#1f293d]"
           }`
-        }, src.label);
+        }, [
+          isCve && React.createElement("span", { key: "dot", className: "w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse mr-1" }),
+          React.createElement("span", { key: "txt" }, src.label)
+        ]);
       })
     ]),
 
@@ -10431,7 +10449,7 @@ function App() {
             /* Category Filter */
             React.createElement("div", { className: "flex items-center space-x-1 text-xs font-mono" }, [
               React.createElement("span", { className: "text-slate-500 text-[11px] mr-1" }, "CATEGORY:"),
-              ["all", "RANSOMWARE", "EXPLOIT / CVE", "MALWARE / C2", "APT / THREAT ACTOR", "IDENTITY / AUTH"].map(cat => {
+              ["all", "UPDATED CVE", "RANSOMWARE", "EXPLOIT / CVE", "MALWARE / C2", "APT / THREAT ACTOR", "IDENTITY / AUTH"].map(cat => {
                 const active = threatNewsCategory.toLowerCase() === cat.toLowerCase();
                 return React.createElement("button", {
                   key: cat,
@@ -10450,24 +10468,31 @@ function App() {
           React.createElement("div", { className: "flex items-center space-x-1.5 overflow-x-auto pt-1 text-xs font-mono" }, [
             React.createElement("span", { className: "text-slate-500 text-[11px] mr-1 shrink-0" }, "SOURCES:"),
             [
-              { id: "all", label: "All Feeds (80+ Articles)" },
+              { id: "all", label: "All Feeds (120+ Items)" },
               { id: "thn", label: "The Hacker News" },
               { id: "securityweek", label: "SecurityWeek" },
               { id: "darkreading", label: "Dark Reading" },
               { id: "krebsonsecurity", label: "Krebs on Security" },
               { id: "sans_isc", label: "SANS ISC Diary" },
-              { id: "helpnetsecurity", label: "Help Net Security" }
+              { id: "helpnetsecurity", label: "Help Net Security" },
+              { id: "cve", label: "🚨 Updated CVEs (CISA KEV)" }
             ].map(src => {
               const active = threatNewsSource === src.id;
+              const isCve = src.id === "cve";
               return React.createElement("button", {
                 key: src.id,
                 onClick: () => setThreatNewsSource(src.id),
-                className: `px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition ${
+                className: `px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition flex items-center space-x-1 ${
                   active 
-                    ? "bg-red-500/20 text-red-300 border border-red-500/50 font-bold" 
-                    : "bg-[#131b2e] hover:bg-[#1a253e] text-slate-400 border border-[#1f293d]"
+                    ? "bg-red-600 text-white border border-red-400 font-bold shadow-md shadow-red-500/30" 
+                    : isCve
+                      ? "bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/40 font-semibold"
+                      : "bg-[#131b2e] hover:bg-[#1a253e] text-slate-400 border border-[#1f293d]"
                 }`
-              }, src.label);
+              }, [
+                isCve && React.createElement("span", { key: "dot", className: "w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse mr-1" }),
+                React.createElement("span", { key: "txt" }, src.label)
+              ]);
             })
           ])
         ]),

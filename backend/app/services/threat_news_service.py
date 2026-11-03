@@ -79,6 +79,14 @@ FEED_SOURCES = [
         "type": "rss"
     },
     {
+        "id": "cve",
+        "name": "Updated CVEs (CISA KEV)",
+        "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+        "color": "#ef4444", # Red
+        "badge": "UPDATED CVE",
+        "type": "cve_kev"
+    },
+    {
         "id": "reddit_netsec",
         "name": "Reddit r/netsec",
         "url": "https://www.reddit.com/r/netsec/.rss",
@@ -183,11 +191,42 @@ def _parse_pub_date(pub_str: str) -> Tuple[str, int]:
 
 
 def fetch_source_feed(source: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Fetches and parses a single RSS or Atom feed."""
+    """Fetches and parses a single RSS or Atom feed, or CISA KEV entries."""
     items_out: List[Dict[str, Any]] = []
     url = source["url"]
     source_name = source["name"]
     source_id = source["id"]
+
+    if source.get("type") == "cve_kev":
+        try:
+            kevs = fetch_cisa_kev()
+            for v in kevs:
+                cid = v.get("cve_id", "")
+                date_str = v.get("date_added", "")
+                action = v.get("action", "")
+                remed = f"Remediation: {action}" if action else ""
+                summary_text = f"{v.get('vendor', '')} {v.get('product', '')}. {v.get('summary', '')} {remed}".strip()
+                iso_date, epoch_ts = _parse_pub_date(date_str)
+                items_out.append({
+                    "id": f"cve-{cid}",
+                    "source_id": "cve",
+                    "source_name": "Updated CVEs (CISA KEV)",
+                    "source_color": "#ef4444",
+                    "source_badge": "UPDATED CVE",
+                    "title": f"[{cid}] {v.get('vendor', '')}: {v.get('title', '')}",
+                    "link": v.get("link", f"https://nvd.nist.gov/vuln/detail/{cid}"),
+                    "published_at": iso_date,
+                    "epoch_time": epoch_ts,
+                    "summary": summary_text[:280],
+                    "category": "EXPLOIT / CVE",
+                    "cves": [cid],
+                    "image_url": None,
+                    "is_cve": True,
+                    "remediation": action
+                })
+        except Exception as exc:
+            logger.warning(f"Failed to parse CISA KEV as feed: {exc}")
+        return items_out
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
