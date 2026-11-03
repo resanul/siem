@@ -1043,25 +1043,60 @@ def get_cyber_threat_news(
     - SANS ISC Diary
     - Help Net Security
     """
-    from backend.app.services.threat_news_service import get_all_threat_news, FEED_SOURCES
+    from backend.app.services.threat_news_service import get_all_threat_news, get_breaking_cves, FEED_SOURCES
     items = get_all_threat_news(force_refresh=force_refresh)
+    breaking_cves = get_breaking_cves(force_refresh=force_refresh, limit=15)
 
-    if source and source.strip() and source.strip().lower() != "all":
+    if isinstance(source, str) and source.strip() and source.strip().lower() != "all":
         items = [x for x in items if x.get("source_id") == source.strip().lower()]
 
-    if category and category.strip() and category.strip().lower() != "all":
+    if isinstance(category, str) and category.strip() and category.strip().lower() != "all":
         items = [x for x in items if x.get("category", "").lower() == category.strip().lower()]
 
-    if search and search.strip():
+    if isinstance(search, str) and search.strip():
         q = search.strip().lower()
-        items = [x for x in items if q in x.get("title", "").lower() or q in x.get("summary", "").lower()]
+        items = [x for x in items if q in x.get("title", "").lower() or q in x.get("summary", "").lower() or any(q in c.lower() for c in x.get("cves", []))]
 
     return {
         "status": "SUCCESS",
         "total": len(items),
         "limit": limit,
         "sources": FEED_SOURCES,
-        "news": items[:limit]
+        "news": items[:limit],
+        "breaking_cves": breaking_cves
+    }
+
+
+@api_router.get("/threat-intel/cves")
+def get_breaking_cves_endpoint(
+    search: Optional[str] = Query(None, description="Search term for CVE ID, vendor, or product"),
+    ransomware_only: bool = Query(False),
+    limit: int = Query(25, ge=1, le=100),
+    force_refresh: bool = Query(False),
+):
+    """
+    Returns real-time breaking CVEs, actively exploited zero-days, and CISA KEV catalog advisories.
+    """
+    from backend.app.services.threat_news_service import get_breaking_cves
+    cves = get_breaking_cves(force_refresh=force_refresh, limit=limit)
+
+    if ransomware_only is True:
+        cves = [c for c in cves if c.get("ransomware")]
+
+    if isinstance(search, str) and search.strip():
+        q = search.strip().lower()
+        cves = [
+            c for c in cves
+            if q in c.get("cve_id", "").lower()
+            or q in c.get("vendor", "").lower()
+            or q in c.get("product", "").lower()
+            or q in c.get("title", "").lower()
+        ]
+
+    return {
+        "status": "SUCCESS",
+        "total": len(cves),
+        "cves": cves[:limit]
     }
 
 
