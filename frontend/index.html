@@ -6652,7 +6652,7 @@ function App() {
         try { localStorage.setItem("opensoc_sidebar_collapsed", String(next)); } catch(e) {}
       },
       title: sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : "Close / Collapse Sidebar (Ctrl+B)",
-      className: `p-1.5 rounded-lg hover:bg-[#1a253e] text-slate-400 hover:text-white transition flex items-center justify-center shrink-0 cursor-pointer`
+      className: `p-1.5 rounded-lg border border-[#1f293d] bg-[#131b2e] hover:bg-[#1a253e] text-slate-300 hover:text-cyan-400 transition flex items-center justify-center shrink-0 cursor-pointer shadow-xs`
     }, [
       /*#__PURE__*/React.createElement("i", {
         "data-lucide": sidebarCollapsed ? "panel-left-open" : "panel-left-close",
@@ -6686,21 +6686,8 @@ function App() {
         })
       : /*#__PURE__*/React.createElement("p", {
           key: "title",
-          className: "px-3 text-[10px] font-bold text-slate-400 tracking-wider mb-1.5 uppercase font-mono flex items-center justify-between"
-        }, [
-          /*#__PURE__*/React.createElement("span", null, sec.title),
-          idx === 0 && /*#__PURE__*/React.createElement("button", {
-            key: "collapse-arrow",
-            onClick: () => {
-              setSidebarCollapsed(true);
-              try { localStorage.setItem("opensoc_sidebar_collapsed", "true"); } catch(e) {}
-            },
-            title: "Collapse Menu (Ctrl+B)",
-            className: "p-0.5 rounded hover:bg-[#1a253e] text-slate-500 hover:text-cyan-400 transition cursor-pointer"
-          }, [
-            /*#__PURE__*/React.createElement("i", { "data-lucide": "chevrons-left", className: "w-3.5 h-3.5" })
-          ])
-        ]),
+          className: "px-3 text-[10px] font-bold text-slate-400 tracking-wider mb-1.5 uppercase font-mono"
+        }, sec.title),
     /*#__PURE__*/React.createElement("div", {
       className: "space-y-0.5"
     }, sec.items.map(item => {
@@ -6770,23 +6757,7 @@ function App() {
     className: "h-16 bg-[#0b101d] border-b border-[#182338] px-6 flex items-center justify-between shrink-0 z-30"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center flex-1 max-w-xl mr-4"
-  }, [
-    /*#__PURE__*/React.createElement("button", {
-      key: "sidebar-toggle-btn",
-      onClick: () => {
-        const next = !sidebarCollapsed;
-        setSidebarCollapsed(next);
-        try { localStorage.setItem("opensoc_sidebar_collapsed", String(next)); } catch(e) {}
-      },
-      title: sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : "Close / Collapse Sidebar (Ctrl+B)",
-      className: "mr-3 p-1.5 rounded-lg border border-[#1f293d] bg-[#131b2e] hover:bg-[#1c2842] text-slate-400 hover:text-white transition flex items-center justify-center shrink-0 cursor-pointer"
-    }, [
-      /*#__PURE__*/React.createElement("i", {
-        "data-lucide": sidebarCollapsed ? "panel-left-open" : "panel-left-close",
-        className: "w-4 h-4 text-slate-300 hover:text-cyan-400 transition"
-      })
-    ]),
-    /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
       key: "search-box",
       className: "relative w-full flex items-center"
     }, /*#__PURE__*/React.createElement("i", {
@@ -6809,7 +6780,7 @@ function App() {
     className: "w-full bg-[#0e1526] border border-[#1d2942] focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/30 rounded-lg pl-9 pr-16 py-2 text-xs text-slate-200 placeholder-slate-400 focus:outline-none transition-all shadow-inner"
   }), /*#__PURE__*/React.createElement("span", {
     className: "absolute right-2.5 px-1.5 py-0.5 rounded bg-[#162035] border border-[#23314d] text-[10px] font-mono text-slate-400 pointer-events-none shadow-xs"
-  }, "Ctrl + K"))]), /*#__PURE__*/React.createElement("div", {
+  }, "Ctrl + K"))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 shrink-0"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: triggerGitUpdate,
