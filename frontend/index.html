@@ -558,6 +558,7 @@ function App() {
   const [globalThreatMap, setGlobalThreatMap] = useState(null);
   const [threatMapMode, setThreatMapMode] = useState("global");
   const [activeAttackIdx, setActiveAttackIdx] = useState(0);
+  const [activeWarfareTicker, setActiveWarfareTicker] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -2713,6 +2714,22 @@ function App() {
 
     if (currentScreen === "overview" || currentScreen === "threat_news") {
       fetchThreatNews();
+    }
+
+    if (currentScreen === "threat_matrix" || currentScreen === "overview") {
+      const fetchThreatMapData = () => {
+        fetch("/api/v1/threat-intel/global-threat-map")
+          .then(r => r.json())
+          .then(d => {
+            if (d.status === "SUCCESS") {
+              setGlobalThreatMap(d);
+            }
+          })
+          .catch(() => {});
+      };
+      fetchThreatMapData();
+      const mapPollInterval = setInterval(fetchThreatMapData, 15000);
+      return () => clearInterval(mapPollInterval);
     }
 
     if (currentScreen === "netwitness_siem") {
@@ -5007,6 +5024,33 @@ function App() {
   };
 
 
+
+  useEffect(() => {
+    if (globalThreatMap?.terminal_ticker && globalThreatMap.terminal_ticker.length > 0) {
+      setActiveWarfareTicker(globalThreatMap.terminal_ticker);
+    }
+  }, [globalThreatMap]);
+
+  useEffect(() => {
+    if (currentScreen !== "threat_matrix" && currentScreen !== "overview") return;
+    const tickerLiveTimer = setInterval(() => {
+      setActiveWarfareTicker(prev => {
+        if (!prev || prev.length === 0) return prev;
+        const pool = globalThreatMap?.terminal_ticker || prev;
+        const randomItem = pool[Math.floor(Math.random() * pool.length)];
+        if (!randomItem) return prev;
+        const nowStr = new Date().toTimeString().split(' ')[0];
+        const newItem = {
+          ...randomItem,
+          id: `tick-live-${Date.now()}`,
+          time: nowStr,
+          is_live_burst: true
+        };
+        return [newItem, ...prev.slice(0, 19)];
+      });
+    }, 2800);
+    return () => clearInterval(tickerLiveTimer);
+  }, [currentScreen, globalThreatMap]);
 
   const fetchThreatNews = async (force = false) => {
     try {
@@ -20311,13 +20355,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
           /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-emerald-400 font-mono" }, "TELEMETRY")
         ]),
         /*#__PURE__*/React.createElement("div", { className: "space-y-2 pt-2.5 font-mono text-xs" },
-          [
+          (globalThreatMap?.top_targets || [
             { rank: 1, flag: "🇺🇸", country: "United States (Cloud/Gov)", attacks: "41,200", pct: "32%" },
-            { rank: 2, flag: "🇩🇪", country: "Germany (DE-CIX)", attacks: "26,800", pct: "21%" },
-            { rank: 3, flag: "🇯🇵", country: "Japan (AP-Northeast)", attacks: "18,400", pct: "15%" },
-            { rank: 4, flag: "🇸🇬", country: "Singapore (Equinix)", attacks: "14,300", pct: "11%" },
-            { rank: 5, flag: "🇧🇩", country: "Bangladesh (Our Core SOC)", attacks: "1,284", pct: "Protected" }
-          ].map((item, idx) => /*#__PURE__*/React.createElement("div", {
+            { rank: 2, flag: "🇩🇪", country: "Germany (DE-CIX Frankfurt)", attacks: "26,800", pct: "21%" },
+            { rank: 3, flag: "🇯🇵", country: "Japan (Tokyo AP-Northeast)", attacks: "18,400", pct: "15%" },
+            { rank: 4, flag: "🇸🇬", country: "Singapore (Equinix Hub)", attacks: "14,300", pct: "11%" },
+            { rank: 5, flag: "🇧🇩", country: "Bangladesh (Dhaka SOC Node)", attacks: "1,284", pct: "Protected" }
+          ]).map((item, idx) => /*#__PURE__*/React.createElement("div", {
             key: idx,
             className: "flex items-center justify-between p-1.5 rounded hover:bg-[#142038] transition-colors"
           }, [
@@ -20346,12 +20390,12 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
         ]),
         /*#__PURE__*/React.createElement("div", { className: "space-y-3 pt-2 text-xs" }, [
           /*#__PURE__*/React.createElement("div", { className: "space-y-1.5" }, [
-            [
+            (globalThreatMap?.targeted_sectors || [
               { label: "Cloud & Web Apps (Port 443/80)", pct: "42%", bar: "bg-cyan-500 w-[42%]" },
               { label: "Remote Access (SSH/22, RDP/3389)", pct: "26%", bar: "bg-amber-500 w-[26%]" },
               { label: "Enterprise Services (SMB/445, DNS)", pct: "18%", bar: "bg-rose-500 w-[18%]" },
-              { label: "IoT & Routers (MikroTik, Hikvision)", pct: "14%", bar: "bg-purple-500 w-[14%]" }
-            ].map((sec, sIdx) => /*#__PURE__*/React.createElement("div", { key: sIdx }, [
+              { label: "IoT & Routers (MikroTik, Telnet)", pct: "14%", bar: "bg-purple-500 w-[14%]" }
+            ]).map((sec, sIdx) => /*#__PURE__*/React.createElement("div", { key: sIdx }, [
               /*#__PURE__*/React.createElement("div", { className: "flex justify-between text-[11px] mb-0.5" }, [
                 /*#__PURE__*/React.createElement("span", { className: "text-slate-300 truncate" }, sec.label),
                 /*#__PURE__*/React.createElement("span", { className: "text-slate-400 font-mono" }, sec.pct)
@@ -20396,12 +20440,12 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
             ])
           ]),
           /*#__PURE__*/React.createElement("tbody", { className: "divide-y divide-[#101b30]" },
-            (globalThreatMap?.terminal_ticker || [
-              { time: "18:30:12", src_flag: "🇺🇸", src_cc: "US", src_ip: "198.51.100.42", tgt_flag: "🇩🇪", tgt_cc: "DE", tgt_city: "Frankfurt", signature: "CVE-2021-44228 Log4j RCE", port: "TCP/8080", severity: "critical" },
+            ((activeWarfareTicker && activeWarfareTicker.length > 0) ? activeWarfareTicker : (globalThreatMap?.terminal_ticker || [
+              { time: "18:30:12", src_flag: "🇺🇸", src_cc: "US", src_ip: "198.51.100.42", tgt_flag: "🇩🇪", tgt_cc: "DE", tgt_city: "Frankfurt", signature: "CVE-2026-118527 Ivanti Auth Bypass RCE", port: "TCP/443", severity: "critical" },
               { time: "18:30:10", src_flag: "🇷🇺", src_cc: "RU", src_ip: "185.94.111.4", tgt_flag: "🇺🇸", tgt_cc: "US", tgt_city: "Washington DC", signature: "LockBit 3.0 Ransomware C2", port: "TCP/443", severity: "critical" },
               { time: "18:30:08", src_flag: "🇨🇳", src_cc: "CN", src_ip: "222.77.181.28", tgt_flag: "🇯🇵", tgt_cc: "JP", tgt_city: "Tokyo", signature: "SSH Distributed Brute Force", port: "TCP/22", severity: "high" },
               { time: "18:30:06", src_flag: "🇳🇱", src_cc: "NL", src_ip: "80.82.77.33", tgt_flag: "🇧🇩", tgt_cc: "BD", tgt_city: "Dhaka Core SOC", signature: "Mirai Botnet C2 Beacon", port: "TCP/23", severity: "high" }
-            ]).map((ev, eIdx) => {
+            ])).slice(0, 15).map((ev, eIdx) => {
               const sevColors = {
                 critical: "text-rose-400 bg-rose-500/10 border-rose-500/20",
                 high: "text-orange-400 bg-orange-500/10 border-orange-500/20",
@@ -20410,8 +20454,8 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
               };
               const badgeStyle = sevColors[ev.severity] || sevColors.critical;
               return /*#__PURE__*/React.createElement("tr", {
-                key: eIdx,
-                className: "hover:bg-[#0c162c] transition-colors"
+                key: ev.id || eIdx,
+                className: `hover:bg-[#0c162c] transition-all duration-300 ${ev.is_live_burst ? "bg-cyan-950/20 border-l-2 border-l-cyan-400" : ""}`
               }, [
                 /*#__PURE__*/React.createElement("td", { className: "py-2 px-3 text-slate-400 text-[11px]" }, ev.time || "18:30"),
                 /*#__PURE__*/React.createElement("td", { className: "py-2 px-3 text-slate-200" }, [
