@@ -126,6 +126,14 @@
 
     }
 
+    .search-icon-fixed {
+      position: absolute !important;
+      left: 0.75rem !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      pointer-events: none !important;
+    }
+
   </style>
 
   <script>
@@ -558,6 +566,13 @@ function App() {
   const [globalThreatMap, setGlobalThreatMap] = useState(null);
   const [threatMapMode, setThreatMapMode] = useState("global");
   const [activeAttackIdx, setActiveAttackIdx] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("opensoc_sidebar_collapsed") === "true";
+    } catch(e) {
+      return false;
+    }
+  });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -2669,9 +2684,24 @@ function App() {
 
     }
 
-  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, enrollMode, enrollOS, agentPackages, cachingPkgId, cacheMsg, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg, retentionPolicy, savingRetention, enforcingRetention, retentionSaveMsg, eventResults, eventLoading, selectedEvent, eventCopySuccess, correlationIncidents, correlationRules, correlationStatus, selectedIncident, selectedIncidentDetail, editingRule, ruleConfigModalOpen, correlationTab, corrCopySuccess, simulatingRule, breakingCves, cveFilterOnly, threatNews]);
+  }, [currentScreen, selectedAlert, syntheticStatus, testRuleSyntaxResult, huntResult, huntInput, syncingFeeds, syncingTalos, showThreatConfigModal, showAddIocModal, enrollModalOpen, enrollMode, enrollOS, agentPackages, cachingPkgId, cacheMsg, addHostModalOpen, hostsFleet, hostsLoading, proxyConfig, proxyTesting, proxyTestResult, proxySaveMsg, retentionPolicy, savingRetention, enforcingRetention, retentionSaveMsg, eventResults, eventLoading, selectedEvent, eventCopySuccess, correlationIncidents, correlationRules, correlationStatus, selectedIncident, selectedIncidentDetail, editingRule, ruleConfigModalOpen, correlationTab, corrCopySuccess, simulatingRule, breakingCves, cveFilterOnly, threatNews, sidebarCollapsed]);
 
 
+
+  useEffect(() => {
+    const handleSidebarShortcut = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setSidebarCollapsed(prev => {
+          const next = !prev;
+          try { localStorage.setItem("opensoc_sidebar_collapsed", String(next)); } catch(err) {}
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleSidebarShortcut);
+    return () => window.removeEventListener("keydown", handleSidebarShortcut);
+  }, []);
 
   useEffect(() => {
 
@@ -6586,131 +6616,153 @@ function App() {
 
   }, /*#__PURE__*/React.createElement("aside", {
 
-    className: "w-64 bg-[#0e1422] border-r border-[#1f293d] flex flex-col justify-between shrink-0"
+    className: `${sidebarCollapsed ? "w-16" : "w-64"} bg-[#0e1422] border-r border-[#1f293d] flex flex-col justify-between shrink-0 transition-all duration-200 select-none`
 
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
 
-    className: "p-4 border-b border-[#1f293d] flex items-center justify-between"
+    className: `p-3 border-b border-[#1f293d] flex items-center ${sidebarCollapsed ? "justify-center flex-col space-y-2" : "justify-between"}`
 
-  }, /*#__PURE__*/React.createElement("div", {
+  }, [
+    /* Brand logo & title */
+    /*#__PURE__*/React.createElement("div", {
+      className: `flex items-center space-x-2.5 overflow-hidden ${sidebarCollapsed ? "cursor-pointer" : ""}`,
+      onClick: sidebarCollapsed ? () => {
+        setSidebarCollapsed(false);
+        try { localStorage.setItem("opensoc_sidebar_collapsed", "false"); } catch(e) {}
+      } : undefined,
+      title: sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : undefined
+    }, [
+      /*#__PURE__*/React.createElement("div", {
+        className: "w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold font-mono shrink-0 shadow-sm"
+      }, "OS"),
+      !sidebarCollapsed && /*#__PURE__*/React.createElement("div", { className: "truncate" }, [
+        /*#__PURE__*/React.createElement("h1", {
+          className: "font-bold text-sm tracking-wider text-slate-100 font-mono"
+        }, "OpenSOC Forge"),
+        /*#__PURE__*/React.createElement("span", {
+          className: "text-[10px] text-emerald-400 font-mono"
+        }, "v1.0.0-lab [STABLE]")
+      ])
+    ]),
+    /* Collapse Toggle Button */
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const next = !sidebarCollapsed;
+        setSidebarCollapsed(next);
+        try { localStorage.setItem("opensoc_sidebar_collapsed", String(next)); } catch(e) {}
+      },
+      title: sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : "Close / Collapse Sidebar (Ctrl+B)",
+      className: `p-1.5 rounded-lg hover:bg-[#1a253e] text-slate-400 hover:text-white transition flex items-center justify-center shrink-0 cursor-pointer`
+    }, [
+      /*#__PURE__*/React.createElement("i", {
+        "data-lucide": sidebarCollapsed ? "panel-left-open" : "panel-left-close",
+        className: "w-4 h-4 text-slate-400 hover:text-cyan-400 transition"
+      })
+    ])
+  ]), /*#__PURE__*/React.createElement("div", {
 
-    className: "flex items-center space-x-2"
+    className: `py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-[10px] font-mono flex items-center ${sidebarCollapsed ? "justify-center px-1" : "justify-between px-4"}`
 
-  }, /*#__PURE__*/React.createElement("div", {
+  }, [
+    !sidebarCollapsed && /*#__PURE__*/React.createElement("span", null, "DEV / LAB ENVIRONMENT"),
+    /*#__PURE__*/React.createElement("span", {
+      className: "w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0",
+      title: "DEV / LAB ENVIRONMENT"
+    })
+  ]), /*#__PURE__*/React.createElement("nav", {
 
-    className: "w-8 h-8 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold font-mono"
-
-  }, "OS"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
-
-    className: "font-bold text-sm tracking-wider text-slate-100"
-
-  }, "OpenSOC Forge"), /*#__PURE__*/React.createElement("span", {
-
-    className: "text-[10px] text-emerald-400 font-mono"
-
-  }, "v1.0.0-lab [STABLE]")))), /*#__PURE__*/React.createElement("div", {
-
-    className: "px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-[10px] font-mono flex items-center justify-between"
-
-  }, /*#__PURE__*/React.createElement("span", null, "DEV / LAB ENVIRONMENT"), /*#__PURE__*/React.createElement("span", {
-
-    className: "w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"
-
-  })), /*#__PURE__*/React.createElement("nav", {
-
-    className: "p-3 space-y-5 overflow-y-auto max-h-[calc(100vh-140px)]"
+    className: `p-2 space-y-4 overflow-y-auto max-h-[calc(100vh-140px)] ${sidebarCollapsed ? "space-y-3" : ""}`
 
   }, navSections.map((sec, idx) => /*#__PURE__*/React.createElement("div", {
 
     key: idx
 
-  }, /*#__PURE__*/React.createElement("p", {
+  }, [
+    sidebarCollapsed
+      ? /*#__PURE__*/React.createElement("div", {
+          key: "divider",
+          className: "my-2 border-t border-[#1f293d]/80 mx-1",
+          title: sec.title
+        })
+      : /*#__PURE__*/React.createElement("p", {
+          key: "title",
+          className: "px-3 text-[10px] font-bold text-slate-400 tracking-wider mb-1.5 uppercase font-mono flex items-center justify-between"
+        }, [
+          /*#__PURE__*/React.createElement("span", null, sec.title),
+          idx === 0 && /*#__PURE__*/React.createElement("button", {
+            key: "collapse-arrow",
+            onClick: () => {
+              setSidebarCollapsed(true);
+              try { localStorage.setItem("opensoc_sidebar_collapsed", "true"); } catch(e) {}
+            },
+            title: "Collapse Menu (Ctrl+B)",
+            className: "p-0.5 rounded hover:bg-[#1a253e] text-slate-500 hover:text-cyan-400 transition cursor-pointer"
+          }, [
+            /*#__PURE__*/React.createElement("i", { "data-lucide": "chevrons-left", className: "w-3.5 h-3.5" })
+          ])
+        ]),
+    /*#__PURE__*/React.createElement("div", {
+      className: "space-y-0.5"
+    }, sec.items.map(item => {
+      const active = currentScreen === item.id;
+      const tooltip = `${item.label}${item.badge !== undefined ? ` (${item.badge})` : ""}`;
+      return /*#__PURE__*/React.createElement("button", {
+        key: item.id,
+        onClick: () => {
+          setCurrentScreen(item.id);
+          setSelectedAlert(null);
+        },
+        title: sidebarCollapsed ? tooltip : undefined,
+        className: `w-full flex items-center ${sidebarCollapsed ? "justify-center px-1 py-2.5 relative" : "justify-between px-3 py-2"} rounded-lg text-xs transition ${active ? "bg-emerald-500/15 text-emerald-400 font-medium " + (sidebarCollapsed ? "border-r-2 border-emerald-400" : "border-l-2 border-emerald-400") : "text-slate-400 hover:text-slate-200 hover:bg-[#131b2e]"}`
+      }, [
+        /*#__PURE__*/React.createElement("span", {
+          className: `flex items-center ${sidebarCollapsed ? "" : "space-x-2.5"}`
+        }, [
+          /*#__PURE__*/React.createElement("i", {
+            "data-lucide": item.icon,
+            className: "w-4 h-4 shrink-0"
+          }),
+          !sidebarCollapsed && /*#__PURE__*/React.createElement("span", null, item.label)
+        ]),
+        !sidebarCollapsed && item.badge !== undefined && /*#__PURE__*/React.createElement("span", {
+          className: "px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-[#1e293b] text-slate-300"
+        }, item.badge),
+        sidebarCollapsed && item.badge !== undefined && /*#__PURE__*/React.createElement("span", {
+          className: "absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400"
+        })
+      ]);
+    }))
+  ])))), /*#__PURE__*/React.createElement("div", {
 
-    className: "px-3 text-[10px] font-bold text-slate-400 tracking-wider mb-1.5 uppercase font-mono"
+    className: `border-t border-[#1f293d] bg-[#0b101c] ${sidebarCollapsed ? "p-2.5 flex items-center justify-center" : "p-3"}`
 
-  }, sec.title), /*#__PURE__*/React.createElement("div", {
-
-    className: "space-y-0.5"
-
-  }, sec.items.map(item => {
-
-    const active = currentScreen === item.id;
-
-    return /*#__PURE__*/React.createElement("button", {
-
-      key: item.id,
-
-      onClick: () => {
-
-        setCurrentScreen(item.id);
-
-        setSelectedAlert(null);
-
-      },
-
-      className: `w-full flex items-center justify-between px-3 py-2 rounded text-xs transition-all ${active ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-2 border-emerald-400" : "text-slate-400 hover:text-slate-200 hover:bg-[#131b2e]"}`
-
-    }, /*#__PURE__*/React.createElement("span", {
-
-      className: "flex items-center space-x-2.5"
-
-    }, /*#__PURE__*/React.createElement("i", {
-
-      "data-lucide": item.icon,
-
-      className: "w-4 h-4"
-
-    }), /*#__PURE__*/React.createElement("span", null, item.label)), item.badge !== undefined && /*#__PURE__*/React.createElement("span", {
-
-      className: "px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-[#1e293b] text-slate-300"
-
-    }, item.badge));
-
-  })))))), /*#__PURE__*/React.createElement("div", {
-
-    className: "p-3 border-t border-[#1f293d] bg-[#0b101c]"
-
-  }, /*#__PURE__*/React.createElement("div", {
-
-    className: "flex items-center justify-between mb-1.5"
-
-  }, /*#__PURE__*/React.createElement("span", {
-
-    className: "text-[10px] text-slate-400 uppercase font-mono"
-
-  }, "Simulated Role:"), /*#__PURE__*/React.createElement("span", {
-
-    className: "text-[10px] text-emerald-400 font-mono font-bold"
-
-  }, userRole)), /*#__PURE__*/React.createElement("select", {
-
-    value: userRole,
-
-    onChange: e => setUserRole(e.target.value),
-
-    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded text-xs px-2 py-1 text-slate-200 focus:outline-none focus:border-emerald-500"
-
-  }, /*#__PURE__*/React.createElement("option", {
-
-    value: "Platform Admin"
-
-  }, "Platform Admin (Full)"), /*#__PURE__*/React.createElement("option", {
-
-    value: "Incident Responder"
-
-  }, "Incident Responder"), /*#__PURE__*/React.createElement("option", {
-
-    value: "Detection Engineer"
-
-  }, "Detection Engineer"), /*#__PURE__*/React.createElement("option", {
-
-    value: "Recovery Operator"
-
-  }, "Recovery Operator"), /*#__PURE__*/React.createElement("option", {
-
-    value: "SecOps Viewer"
-
-  }, "SecOps Viewer (Read Only)")))), /*#__PURE__*/React.createElement("main", {
+  }, sidebarCollapsed ? /*#__PURE__*/React.createElement("div", {
+    className: "w-8 h-8 rounded-lg bg-[#131b2e] border border-[#1f293d] flex items-center justify-center text-emerald-400 cursor-pointer",
+    onClick: () => setSidebarCollapsed(false),
+    title: `Simulated Role: ${userRole} (Click to expand)`
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "shield-check", className: "w-4 h-4 text-emerald-400" })) : [
+    /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-between mb-1.5"
+    }, [
+      /*#__PURE__*/React.createElement("span", {
+        className: "text-[10px] text-slate-400 uppercase font-mono"
+      }, "Simulated Role:"),
+      /*#__PURE__*/React.createElement("span", {
+        className: "text-[10px] text-emerald-400 font-mono font-bold"
+      }, userRole)
+    ]),
+    /*#__PURE__*/React.createElement("select", {
+      value: userRole,
+      onChange: e => setUserRole(e.target.value),
+      className: "w-full bg-[#131b2e] border border-[#1f293d] rounded text-xs px-2 py-1 text-slate-200 focus:outline-none focus:border-emerald-500"
+    }, [
+      /*#__PURE__*/React.createElement("option", { value: "Platform Admin" }, "Platform Admin (Full)"),
+      /*#__PURE__*/React.createElement("option", { value: "Incident Responder" }, "Incident Responder"),
+      /*#__PURE__*/React.createElement("option", { value: "Detection Engineer" }, "Detection Engineer"),
+      /*#__PURE__*/React.createElement("option", { value: "Recovery Operator" }, "Recovery Operator"),
+      /*#__PURE__*/React.createElement("option", { value: "SecOps Viewer" }, "SecOps Viewer (Read Only)")
+    ])
+  ])), /*#__PURE__*/React.createElement("main", {
 
     className: "flex-1 flex flex-col h-screen overflow-hidden"
 
@@ -6718,9 +6770,26 @@ function App() {
     className: "h-16 bg-[#0b101d] border-b border-[#182338] px-6 flex items-center justify-between shrink-0 z-30"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center flex-1 max-w-xl mr-4"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "relative w-full flex items-center"
-  }, /*#__PURE__*/React.createElement("i", {
+  }, [
+    /*#__PURE__*/React.createElement("button", {
+      key: "sidebar-toggle-btn",
+      onClick: () => {
+        const next = !sidebarCollapsed;
+        setSidebarCollapsed(next);
+        try { localStorage.setItem("opensoc_sidebar_collapsed", String(next)); } catch(e) {}
+      },
+      title: sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : "Close / Collapse Sidebar (Ctrl+B)",
+      className: "mr-3 p-1.5 rounded-lg border border-[#1f293d] bg-[#131b2e] hover:bg-[#1c2842] text-slate-400 hover:text-white transition flex items-center justify-center shrink-0 cursor-pointer"
+    }, [
+      /*#__PURE__*/React.createElement("i", {
+        "data-lucide": sidebarCollapsed ? "panel-left-open" : "panel-left-close",
+        className: "w-4 h-4 text-slate-300 hover:text-cyan-400 transition"
+      })
+    ]),
+    /*#__PURE__*/React.createElement("div", {
+      key: "search-box",
+      className: "relative w-full flex items-center"
+    }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "search",
     className: "w-4 h-4 text-slate-400 absolute left-3 pointer-events-none"
   }), /*#__PURE__*/React.createElement("input", {
@@ -6740,7 +6809,7 @@ function App() {
     className: "w-full bg-[#0e1526] border border-[#1d2942] focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/30 rounded-lg pl-9 pr-16 py-2 text-xs text-slate-200 placeholder-slate-400 focus:outline-none transition-all shadow-inner"
   }), /*#__PURE__*/React.createElement("span", {
     className: "absolute right-2.5 px-1.5 py-0.5 rounded bg-[#162035] border border-[#23314d] text-[10px] font-mono text-slate-400 pointer-events-none shadow-xs"
-  }, "Ctrl + K"))), /*#__PURE__*/React.createElement("div", {
+  }, "Ctrl + K"))]), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 shrink-0"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: triggerGitUpdate,
@@ -8185,7 +8254,7 @@ function App() {
         React.createElement("div", { className: "relative flex items-center" }, [
           React.createElement("i", {
             "data-lucide": "search",
-            className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
           }),
           React.createElement("input", {
             type: "text",
@@ -8797,7 +8866,7 @@ function App() {
 
     "data-lucide": "search",
 
-    className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-4 h-4 text-slate-400 search-icon-fixed"
 
   }), /*#__PURE__*/React.createElement("input", {
 
@@ -9323,7 +9392,7 @@ function App() {
             },
               /*#__PURE__*/React.createElement("i", {
                 "data-lucide": "search",
-                className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                className: "w-4 h-4 text-slate-400 search-icon-fixed"
               }),
               /*#__PURE__*/React.createElement("input", {
                 type: "text",
@@ -10137,7 +10206,7 @@ function App() {
               React.createElement("div", { className: "relative min-w-[220px] flex items-center" },
                 React.createElement("i", {
                   "data-lucide": "search",
-                  className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
                 }),
                 React.createElement("input", {
                   type: "text",
@@ -10451,7 +10520,7 @@ function App() {
             React.createElement("div", { className: "relative flex-1 flex items-center" }, [
               React.createElement("i", {
                 "data-lucide": "search",
-                className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                className: "w-4 h-4 text-slate-400 search-icon-fixed"
               }),
               React.createElement("input", {
                 type: "text",
@@ -10786,7 +10855,7 @@ function App() {
 
           "data-lucide": "search",
 
-          className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          className: "w-4 h-4 text-slate-400 search-icon-fixed"
 
         })
 
@@ -11544,7 +11613,7 @@ function App() {
 
     "data-lucide": "search",
 
-    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
 
   }), /*#__PURE__*/React.createElement("input", {
 
@@ -13102,7 +13171,7 @@ function App() {
 
     className: "relative w-full sm:w-72 flex items-center"
 
-  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" }), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed" }), /*#__PURE__*/React.createElement("input", {
 
     type: "text",
 
@@ -13805,7 +13874,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     "data-lucide": "search",
 
-    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
 
   }), /*#__PURE__*/React.createElement("input", {
 
@@ -15128,7 +15197,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     "data-lucide": "search",
 
-    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
 
   }), /*#__PURE__*/React.createElement("input", {
 
@@ -16619,7 +16688,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "relative flex items-center"
   }, [/*#__PURE__*/React.createElement("i", {
     "data-lucide": "search",
-    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
   }), /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: cybleSearch,
@@ -20809,7 +20878,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     "data-lucide": "search",
 
-    className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-4 h-4 text-slate-400 search-icon-fixed"
 
   }), huntInput && /*#__PURE__*/React.createElement("button", {
 
@@ -21059,7 +21128,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     "data-lucide": "search",
 
-    className: "w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+    className: "w-3.5 h-3.5 text-slate-400 search-icon-fixed"
 
   }), /*#__PURE__*/React.createElement("input", {
 
