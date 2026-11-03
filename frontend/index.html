@@ -558,7 +558,6 @@ function App() {
   const [globalThreatMap, setGlobalThreatMap] = useState(null);
   const [threatMapMode, setThreatMapMode] = useState("global");
   const [activeAttackIdx, setActiveAttackIdx] = useState(0);
-  const [activeWarfareTicker, setActiveWarfareTicker] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -2716,7 +2715,7 @@ function App() {
       fetchThreatNews();
     }
 
-    if (currentScreen === "threat_matrix" || currentScreen === "overview") {
+    if (currentScreen === "threat_matrix") {
       const fetchThreatMapData = () => {
         fetch("/api/v1/threat-intel/global-threat-map")
           .then(r => r.json())
@@ -2728,7 +2727,7 @@ function App() {
           .catch(() => {});
       };
       fetchThreatMapData();
-      const mapPollInterval = setInterval(fetchThreatMapData, 15000);
+      const mapPollInterval = setInterval(fetchThreatMapData, 45000);
       return () => clearInterval(mapPollInterval);
     }
 
@@ -5025,32 +5024,7 @@ function App() {
 
 
 
-  useEffect(() => {
-    if (globalThreatMap?.terminal_ticker && globalThreatMap.terminal_ticker.length > 0) {
-      setActiveWarfareTicker(globalThreatMap.terminal_ticker);
-    }
-  }, [globalThreatMap]);
 
-  useEffect(() => {
-    if (currentScreen !== "threat_matrix" && currentScreen !== "overview") return;
-    const tickerLiveTimer = setInterval(() => {
-      setActiveWarfareTicker(prev => {
-        if (!prev || prev.length === 0) return prev;
-        const pool = globalThreatMap?.terminal_ticker || prev;
-        const randomItem = pool[Math.floor(Math.random() * pool.length)];
-        if (!randomItem) return prev;
-        const nowStr = new Date().toTimeString().split(' ')[0];
-        const newItem = {
-          ...randomItem,
-          id: `tick-live-${Date.now()}`,
-          time: nowStr,
-          is_live_burst: true
-        };
-        return [newItem, ...prev.slice(0, 19)];
-      });
-    }, 2800);
-    return () => clearInterval(tickerLiveTimer);
-  }, [currentScreen, globalThreatMap]);
 
   const fetchThreatNews = async (force = false) => {
     try {
@@ -7373,10 +7347,10 @@ function App() {
           ]),
           /*#__PURE__*/React.createElement("div", {
             key: "ticker-card",
-            className: "bg-[#060c18] border border-[#16253e] rounded-lg p-2.5 flex flex-col justify-between"
+            className: "bg-[#060c18] border border-[#16253e] rounded-lg p-2.5 flex flex-col justify-between h-[126px] max-h-[126px] overflow-hidden select-none"
           }, [
             /*#__PURE__*/React.createElement("div", {
-              className: "flex items-center justify-between pb-1.5 border-b border-[#131f33] text-[10px] font-mono text-slate-400"
+              className: "flex items-center justify-between pb-1.5 border-b border-[#131f33] text-[10px] font-mono text-slate-400 shrink-0"
             }, [
               /*#__PURE__*/React.createElement("span", { className: "text-cyan-400 font-bold flex items-center space-x-1" }, [
                 /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" }),
@@ -7385,15 +7359,12 @@ function App() {
               /*#__PURE__*/React.createElement("span", { className: "text-[9px] text-slate-400 font-mono" }, "SANS • OTX • ABUSE.CH")
             ]),
             /*#__PURE__*/React.createElement("div", {
-              className: "space-y-1 pt-1.5 text-[10px] font-mono"
-            }, ((list) => {
-              const start = activeAttackIdx % Math.max(1, list.length - 3);
-              return list.slice(start, start + 3);
-            })(globalThreatMap?.terminal_ticker || [
-              { id: "t1", time: "18:22:10", src_flag: "🇺🇸", src_cc: "US", tgt_flag: "🇩🇪", tgt_cc: "DE", signature: "Log4j RCE", severity: "critical" },
-              { id: "t2", time: "18:22:09", src_flag: "🇷🇺", src_cc: "RU", tgt_flag: "🇺🇸", tgt_cc: "US", signature: "LockBit C2", severity: "critical" },
-              { id: "t3", time: "18:22:08", src_flag: "🇨🇳", src_cc: "CN", tgt_flag: "🇯🇵", tgt_cc: "JP", signature: "SSH Brute", severity: "high" }
-            ]).map((tick, kIdx) => {
+              className: "h-[86px] max-h-[86px] overflow-hidden flex flex-col justify-between space-y-1 pt-1 text-[10px] font-mono"
+            }, (globalThreatMap?.terminal_ticker || [
+              { id: "t1", time: "18:22:10", src_flag: "🇺🇸", src_cc: "US", tgt_flag: "🇩🇪", tgt_cc: "DE", signature: "CVE-2026-118527 Ivanti", severity: "critical" },
+              { id: "t2", time: "18:22:09", src_flag: "🇷🇺", src_cc: "RU", tgt_flag: "🇺🇸", tgt_cc: "US", signature: "LockBit 3.0 C2", severity: "critical" },
+              { id: "t3", time: "18:22:08", src_flag: "🇨🇳", src_cc: "CN", tgt_flag: "🇯🇵", tgt_cc: "JP", signature: "SSH Brute Force", severity: "high" }
+            ]).slice(0, 3).map((tick, kIdx) => {
               const sevColors = {
                 critical: "text-rose-400 bg-rose-500/10 border-rose-500/20",
                 high: "text-orange-400 bg-orange-500/10 border-orange-500/20",
@@ -7403,19 +7374,19 @@ function App() {
               const badgeStyle = sevColors[tick.severity] || sevColors.critical;
               return /*#__PURE__*/React.createElement("div", {
                 key: tick.id || kIdx,
-                className: `px-1.5 py-1 rounded bg-[#0b1325]/70 border border-[#182744] flex items-center justify-between gap-1 transition-all ${kIdx === 0 ? "border-cyan-500/40 bg-[#0d1830]" : ""}`
+                className: `h-[25px] min-h-[25px] max-h-[25px] px-1.5 rounded bg-[#0b1325]/70 border border-[#182744] flex items-center justify-between gap-1 overflow-hidden shrink-0 ${kIdx === 0 ? "border-cyan-500/40 bg-[#0d1830]" : ""}`
               }, [
-                /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1 truncate max-w-[170px]" }, [
-                  /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[9px]" }, tick.time ? tick.time.split(":").slice(0, 2).join(":") : "18:22"),
-                  /*#__PURE__*/React.createElement("span", null, tick.src_flag || "🌐"),
-                  /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-semibold" }, tick.src_cc || "US"),
-                  /*#__PURE__*/React.createElement("span", { className: "text-cyan-400" }, "➔"),
-                  /*#__PURE__*/React.createElement("span", null, tick.tgt_flag || "🌐"),
-                  /*#__PURE__*/React.createElement("span", { className: "text-slate-300" }, tick.tgt_cc || "DE"),
+                /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-1 truncate max-w-[170px] shrink-0" }, [
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[9px] w-8 shrink-0" }, tick.time ? tick.time.split(":").slice(0, 2).join(":") : "18:22"),
+                  /*#__PURE__*/React.createElement("span", { className: "shrink-0" }, tick.src_flag || "🌐"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-semibold shrink-0" }, tick.src_cc || "US"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-cyan-400 shrink-0" }, "➔"),
+                  /*#__PURE__*/React.createElement("span", { className: "shrink-0" }, tick.tgt_flag || "🌐"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-300 shrink-0" }, tick.tgt_cc || "DE"),
                   /*#__PURE__*/React.createElement("span", { className: "text-slate-400 truncate text-[9px]" }, tick.signature)
                 ]),
                 /*#__PURE__*/React.createElement("span", {
-                  className: `px-1 py-0.5 rounded text-[8px] uppercase font-bold border ${badgeStyle}`
+                  className: `px-1 py-0.2 rounded text-[8px] uppercase font-bold border shrink-0 ${badgeStyle}`
                 }, tick.severity)
               ]);
             }))
@@ -20440,12 +20411,12 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
             ])
           ]),
           /*#__PURE__*/React.createElement("tbody", { className: "divide-y divide-[#101b30]" },
-            ((activeWarfareTicker && activeWarfareTicker.length > 0) ? activeWarfareTicker : (globalThreatMap?.terminal_ticker || [
+            (globalThreatMap?.terminal_ticker || [
               { time: "18:30:12", src_flag: "🇺🇸", src_cc: "US", src_ip: "198.51.100.42", tgt_flag: "🇩🇪", tgt_cc: "DE", tgt_city: "Frankfurt", signature: "CVE-2026-118527 Ivanti Auth Bypass RCE", port: "TCP/443", severity: "critical" },
               { time: "18:30:10", src_flag: "🇷🇺", src_cc: "RU", src_ip: "185.94.111.4", tgt_flag: "🇺🇸", tgt_cc: "US", tgt_city: "Washington DC", signature: "LockBit 3.0 Ransomware C2", port: "TCP/443", severity: "critical" },
               { time: "18:30:08", src_flag: "🇨🇳", src_cc: "CN", src_ip: "222.77.181.28", tgt_flag: "🇯🇵", tgt_cc: "JP", tgt_city: "Tokyo", signature: "SSH Distributed Brute Force", port: "TCP/22", severity: "high" },
               { time: "18:30:06", src_flag: "🇳🇱", src_cc: "NL", src_ip: "80.82.77.33", tgt_flag: "🇧🇩", tgt_cc: "BD", tgt_city: "Dhaka Core SOC", signature: "Mirai Botnet C2 Beacon", port: "TCP/23", severity: "high" }
-            ])).slice(0, 15).map((ev, eIdx) => {
+            ]).slice(0, 15).map((ev, eIdx) => {
               const sevColors = {
                 critical: "text-rose-400 bg-rose-500/10 border-rose-500/20",
                 high: "text-orange-400 bg-orange-500/10 border-orange-500/20",
@@ -20455,7 +20426,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
               const badgeStyle = sevColors[ev.severity] || sevColors.critical;
               return /*#__PURE__*/React.createElement("tr", {
                 key: ev.id || eIdx,
-                className: `hover:bg-[#0c162c] transition-all duration-300 ${ev.is_live_burst ? "bg-cyan-950/20 border-l-2 border-l-cyan-400" : ""}`
+                className: "hover:bg-[#0c162c]"
               }, [
                 /*#__PURE__*/React.createElement("td", { className: "py-2 px-3 text-slate-400 text-[11px]" }, ev.time || "18:30"),
                 /*#__PURE__*/React.createElement("td", { className: "py-2 px-3 text-slate-200" }, [
