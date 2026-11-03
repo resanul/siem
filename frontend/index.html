@@ -8149,14 +8149,17 @@ function App() {
       ]),
       /* Search & Refresh */
       React.createElement("div", { className: "flex items-center space-x-2" }, [
-        React.createElement("div", { className: "relative" }, [
-          React.createElement("i", { "data-lucide": "search", className: "w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" }),
+        React.createElement("div", { className: "relative flex items-center" }, [
+          React.createElement("i", {
+            "data-lucide": "search",
+            className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          }),
           React.createElement("input", {
             type: "text",
             placeholder: "Filter threat news...",
             value: threatNewsSearch,
             onChange: (e) => setThreatNewsSearch(e.target.value),
-            className: "pl-8 pr-3 py-1.5 rounded-lg bg-[#131b2e] border border-[#1f293d] text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 w-44 md:w-56"
+            className: "pl-9 pr-3 py-1.5 rounded-lg bg-[#131b2e] border border-[#1f293d] text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 w-48 md:w-60 transition"
           })
         ]),
         React.createElement("button", {
@@ -8652,7 +8655,17 @@ function App() {
 
     className: "p-3 border-b border-[#1f293d]"
 
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "relative flex items-center"
+
+  }, [/*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "search",
+
+    className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+
+  }), /*#__PURE__*/React.createElement("input", {
 
     type: "text",
 
@@ -8662,9 +8675,9 @@ function App() {
 
     onChange: e => setSearchQuery(e.target.value),
 
-    className: "w-full bg-[#131b2e] border border-[#1f293d] text-xs px-3 py-2 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+    className: "w-full bg-[#131b2e] border border-[#1f293d] text-xs pl-9 pr-3 py-2 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
 
-  })), /*#__PURE__*/React.createElement("table", {
+  })])), /*#__PURE__*/React.createElement("table", {
 
     className: "w-full text-left text-xs"
 
@@ -9172,11 +9185,11 @@ function App() {
           },
             /* Search input */
             /*#__PURE__*/React.createElement("div", {
-              className: "relative flex-1"
+              className: "relative flex-1 flex items-center"
             },
               /*#__PURE__*/React.createElement("i", {
                 "data-lucide": "search",
-                className: "absolute left-3 top-2.5 w-4 h-4 text-slate-400"
+                className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
               }),
               /*#__PURE__*/React.createElement("input", {
                 type: "text",
@@ -9987,17 +10000,17 @@ function App() {
             ),
             /* Search and Filters */
             React.createElement("div", { className: "flex items-center space-x-2 flex-wrap gap-2" },
-              React.createElement("div", { className: "relative min-w-[220px]" },
+              React.createElement("div", { className: "relative min-w-[220px] flex items-center" },
+                React.createElement("i", {
+                  "data-lucide": "search",
+                  className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                }),
                 React.createElement("input", {
                   type: "text",
                   placeholder: "Search device, IP, summary...",
                   value: nwSearchQuery,
                   onChange: (e) => setNwSearchQuery(e.target.value),
-                  className: "w-full pl-8 pr-3 py-1.5 bg-[#131b2e] border border-[#1f293d] rounded-lg text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
-                }),
-                React.createElement("i", {
-                  "data-lucide": "search",
-                  className: "w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"
+                  className: "w-full pl-9 pr-3 py-1.5 bg-[#131b2e] border border-[#1f293d] rounded-lg text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
                 })
               ),
               React.createElement("select", {
@@ -10301,8 +10314,11 @@ function App() {
         React.createElement("div", { className: "bg-[#0e1422] p-4 rounded-xl border border-[#1f293d] space-y-3" }, [
           React.createElement("div", { className: "flex flex-col md:flex-row md:items-center justify-between gap-3" }, [
             /* Search */
-            React.createElement("div", { className: "relative flex-1" }, [
-              React.createElement("i", { "data-lucide": "search", className: "w-4 h-4 text-slate-400 absolute left-3 top-2.5" }),
+            React.createElement("div", { className: "relative flex-1 flex items-center" }, [
+              React.createElement("i", {
+                "data-lucide": "search",
+                className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              }),
               React.createElement("input", {
                 type: "text",
                 placeholder: "Search headlines, zero-days, CVEs, ransomware, threat actors...",
@@ -10527,7 +10543,7 @@ function App() {
 
       /*#__PURE__*/React.createElement("div", {
 
-        className: "relative flex-1"
+        className: "relative flex-1 flex items-center"
 
       },
 
@@ -10547,7 +10563,7 @@ function App() {
 
           placeholder: "Enter KQL/Lucene query (e.g. host:web-app-dmz-01, severity:CRITICAL, suricata-*, *)...",
 
-          className: "w-full bg-[#0e1422] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500 pl-8"
+          className: "w-full bg-[#0e1422] border border-[#1f293d] rounded pl-9 pr-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
 
         }),
 
@@ -10555,7 +10571,7 @@ function App() {
 
           "data-lucide": "search",
 
-          className: "w-4 h-4 text-slate-500 absolute left-2.5 top-2.5"
+          className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
 
         })
 
@@ -11309,7 +11325,13 @@ function App() {
 
     className: "relative flex-1 max-w-md"
 
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "search",
+
+    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+
+  }), /*#__PURE__*/React.createElement("input", {
 
     type: "text",
 
@@ -11319,13 +11341,13 @@ function App() {
 
     placeholder: "Search by hostname, IP address, OS, or ID...",
 
-    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-emerald-500"
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-emerald-500"
 
   }), hostsSearch && /*#__PURE__*/React.createElement("button", {
 
     onClick: () => setHostsSearch(""),
 
-    className: "absolute right-2.5 top-2 text-slate-400 hover:text-slate-200 text-xs"
+    className: "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs"
 
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
 
@@ -12863,9 +12885,9 @@ function App() {
 
   }, v))), /*#__PURE__*/React.createElement("div", {
 
-    className: "relative w-full sm:w-72"
+    className: "relative w-full sm:w-72 flex items-center"
 
-  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" }), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" }), /*#__PURE__*/React.createElement("input", {
 
     type: "text",
 
@@ -12875,7 +12897,7 @@ function App() {
 
     placeholder: "Filter IP, domain, action, vendor...",
 
-    className: "w-full pl-8 pr-3 py-1.5 bg-[#080c14] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+    className: "w-full pl-9 pr-3 py-1.5 bg-[#080c14] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
 
   }))), /*#__PURE__*/React.createElement("div", {
 
@@ -13562,13 +13584,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("div", {
 
-    className: "relative"
+    className: "relative flex items-center"
 
   }, /*#__PURE__*/React.createElement("i", {
 
     "data-lucide": "search",
 
-    className: "w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"
+    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
 
   }), /*#__PURE__*/React.createElement("input", {
 
@@ -13580,7 +13602,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     placeholder: "Filter user, SAM, SID, rule...",
 
-    className: "bg-[#131b2e] border border-[#1f293d] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 w-52 font-mono"
+    className: "bg-[#131b2e] border border-[#1f293d] rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 w-52 font-mono"
 
   })), identityTab === "events" && /*#__PURE__*/React.createElement("select", {
 
@@ -14883,7 +14905,17 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "flex items-center space-x-2"
 
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "relative flex items-center"
+
+  }, [/*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "search",
+
+    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+
+  }), /*#__PURE__*/React.createElement("input", {
 
     type: "text",
 
@@ -14893,9 +14925,9 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     placeholder: "Search threat rule, host, IP, hash...",
 
-    className: "px-3 py-1.5 bg-[#0e1422] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 w-64"
+    className: "pl-9 pr-3 py-1.5 bg-[#0e1422] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 w-64"
 
-  }))), sophosTab === "notables" ? /*#__PURE__*/React.createElement("div", {
+  })]))), sophosTab === "notables" ? /*#__PURE__*/React.createElement("div", {
 
     className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
 
@@ -16368,13 +16400,18 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "w-3.5 h-3.5 text-emerald-400"
   }), /*#__PURE__*/React.createElement("span", null, `Live IOC Stream (${filteredCybleIocs.length})`))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative flex items-center"
+  }, [/*#__PURE__*/React.createElement("i", {
+    "data-lucide": "search",
+    className: "w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+  }), /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: cybleSearch,
     onChange: e => setCybleSearch(e.target.value),
     placeholder: "Search title, actor, domain, IP...",
-    className: "px-3 py-1.5 bg-[#0e1422] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500 w-64"
-  }))), cybleTab === "darkweb" && /*#__PURE__*/React.createElement("div", {
+    className: "pl-9 pr-3 py-1.5 bg-[#0e1422] border border-[#1f293d] rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500 w-64"
+  })]))), cybleTab === "darkweb" && /*#__PURE__*/React.createElement("div", {
     className: "bg-[#0e1422] rounded-lg border border-[#1f293d] overflow-hidden"
   }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs"
@@ -20551,7 +20588,13 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     placeholder: "Search IP, domain, or SHA-256 hash across all cluster telemetry...",
 
-    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 pr-8"
+    className: "w-full bg-[#131b2e] border border-[#1f293d] rounded pl-9 pr-8 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+
+  }), /*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "search",
+
+    className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
 
   }), huntInput && /*#__PURE__*/React.createElement("button", {
 
@@ -20793,7 +20836,17 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "relative flex items-center space-x-2"
 
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("div", {
+
+    className: "relative flex items-center"
+
+  }, [/*#__PURE__*/React.createElement("i", {
+
+    "data-lucide": "search",
+
+    className: "w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+
+  }), /*#__PURE__*/React.createElement("input", {
 
     type: "text",
 
@@ -20813,9 +20866,9 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     placeholder: "Search IP, domain, hash, or CVE across all indexed IOCs (press Enter)...",
 
-    className: "bg-[#080c14] border border-[#1f293d] rounded px-2.5 py-1 text-[11px] font-mono text-slate-200 w-72 focus:outline-none focus:border-emerald-500"
+    className: "bg-[#080c14] border border-[#1f293d] rounded pl-8 pr-2.5 py-1 text-[11px] font-mono text-slate-200 w-72 focus:outline-none focus:border-emerald-500"
 
-  }), /*#__PURE__*/React.createElement("button", {
+  })]), /*#__PURE__*/React.createElement("button", {
 
     onClick: () => fetchThreatFeeds(false, threatFilter, threatSearchQuery),
 
