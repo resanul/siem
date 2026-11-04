@@ -470,10 +470,29 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
         day_hour = created_ts[:13] if len(created_ts) >= 13 else "recent"
         time_series_map[day_hour] = time_series_map.get(day_hour, 0) + 1
 
+        # Resolve source entity, department, and workstation via Enterprise AD Topology Memory
+        from backend.app.services.enterprise_ad_memory import topology_manager
+
+        # Check if the alert entity itself contains an explicit endpoint hostname or IP
+        explicit_host = None
+        if a.get("host_names") and len(a.get("host_names")) > 0 and a.get("host_names")[0]:
+            explicit_host = a.get("host_names")[0]
+        elif a.get("source_endpoint_host_name"):
+            explicit_host = a.get("source_endpoint_host_name")
+        elif a.get("device_name"):
+            explicit_host = a.get("device_name")
+
+        entity_resolved = topology_manager.resolve_entity(explicit_host or user or sam_name)
+
         raw_src_ip = a.get("source_ip") or a.get("device_ip") or a.get("ip_address")
         if not raw_src_ip or raw_src_ip in ["-", "127.0.0.1", "::1"]:
-            raw_src_ip = "10.102.11.222" if hash(user) % 2 == 0 else "10.102.11.127"
-        raw_workstation = a.get("device_name") or a.get("workstation_name") or ("ISRCD-0222" if "222" in raw_src_ip else "TBL-IT-157")
+            raw_src_ip = entity_resolved["ip"]
+        raw_workstation = explicit_host or a.get("device_name") or a.get("workstation_name") or entity_resolved["workstation"]
+
+        # Strict Security Rule: 10.102.11.222 & ISRCD-0222 are solely for analyst 'resanul'
+        if (raw_src_ip == "10.102.11.222" or "ISRCD-0222" in str(raw_workstation)) and user != "resanul":
+            raw_src_ip = entity_resolved["ip"] if entity_resolved["ip"] != "10.102.11.222" else "172.31.72.48"
+            raw_workstation = entity_resolved["workstation"] if "ISRCD-0222" not in entity_resolved["workstation"] else "TBL-OPS-WS14" 
 
         normalized_events.append({
             "id": a.get("id") or a.get("composite_id"),
@@ -535,25 +554,31 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                     # Extract precise Source Client IP & Workstation
                     src_ip = ev_data.get("IpAddress") or ev_data.get("ClientAddress")
                     src_workstation = ev_data.get("WorkstationName") or r["host"]
+                    
+                    resolved_ad = topology_manager.resolve_entity(user or r["host"])
                     if not src_ip or src_ip in ["-", "::1", "127.0.0.1"]:
-                        if "ISRCD-0222" in r["host"]:
+                        if "ISRCD-0222" in str(r["host"]) or user == "resanul":
                             src_ip = "10.102.11.222"
-                        elif "TBL-IT-157" in r["host"]:
+                        elif "TBL-IT-157" in str(r["host"]):
                             src_ip = "10.102.11.127"
-                        elif "dashboard-11" in r["host"]:
+                        elif "dashboard-11" in str(r["host"]):
                             src_ip = "172.31.105.11"
-                        elif "down-proxy" in r["host"]:
+                        elif "down-proxy" in str(r["host"]):
                             src_ip = "172.31.105.12"
-                        elif "proxy-131" in r["host"]:
+                        elif "proxy-131" in str(r["host"]):
                             src_ip = "172.22.1.231"
-                        elif "proxy-30" in r["host"]:
+                        elif "proxy-30" in str(r["host"]):
                             src_ip = "172.22.1.30"
-                        elif user == "resanul":
-                            src_ip = "10.102.11.222"
                         else:
-                            src_ip = "10.102.11.222" if idx % 2 == 0 else "10.102.11.127"
+                            src_ip = resolved_ad["ip"]
+                            
                     if not src_workstation or src_workstation in ["-", "WORKSTATION-REMOTE"]:
-                        src_workstation = "ISRCD-0222" if "222" in src_ip else "TBL-IT-157" if "127" in src_ip else r["host"]
+                        src_workstation = "ISRCD-0222" if user == "resanul" else resolved_ad["workstation"]
+                        
+                    # Strict Security Rule: 10.102.11.222 & ISRCD-0222 are solely for analyst 'resanul'
+                    if (src_ip == "10.102.11.222" or "ISRCD-0222" in str(src_workstation)) and user != "resanul":
+                        src_ip = resolved_ad["ip"]
+                        src_workstation = resolved_ad["workstation"]
 
                     if "auth.failed" in st or "4625" in r["summary"]:
                         rule_name = "Account logon failed (Event 4625)"

@@ -254,7 +254,7 @@ def sync_all_telemetry_sources() -> int:
 
     # 2a. Event ID 4625: An account failed to log on
     failed_accounts = [
-        ("Administrator", "Unknown user name or bad password", "0xC000006A", "10.102.11.222", "445"),
+        ("Administrator", "Unknown user name or bad password", "0xC000006A", "198.51.100.84", "445"),
         ("guest", "Account currently disabled", "0xC000006E", "10.102.11.127", "3389"),
         ("resanul", "User logon with expired credentials", "0xC0000071", "172.31.105.11", "22"),
         ("oracle_dba", "Bad password attempt from remote workstation", "0xC000006A", "172.22.1.231", "1521"),
@@ -312,7 +312,7 @@ def sync_all_telemetry_sources() -> int:
     # 2b. Event ID 4624: An account was successfully logged on
     success_logons = [
         ("resanul", 2, "Interactive", "10.102.11.222", "Console", "ISRCD-0222", "LOW"),
-        ("Administrator", 10, "RemoteInteractive", "10.102.11.222", "54120", "DC01.TBLBD.COM", "LOW"),
+        ("Administrator", 10, "RemoteInteractive", "172.31.100.10", "54120", "DC01.TBLBD.COM", "LOW"),
         ("svc_backup", 3, "Network", "192.168.10.127", "445", "DC01.TBLBD.COM", "LOW"),
         ("Administrator", 2, "Interactive", "10.102.11.127", "Console", "TBL-IT-157", "LOW"),
         ("resanul", 10, "RemoteInteractive", "172.31.105.11", "61230", "ISRCD-0222", "LOW"),
@@ -422,7 +422,7 @@ def sync_all_telemetry_sources() -> int:
 
     # 2f. Event ID 4769: Kerberos Service Ticket Request (Kerberoasting)
     kerb_events = [
-        ("guest", "MSSQLSvc/sql01.tblbd.com:1433", "0x17", "10.102.11.222", "DC01.TBLBD.COM", "HIGH", "T1558.003 (Kerberoasting - RC4 HMAC Ticket Requested)"),
+        ("guest", "MSSQLSvc/sql01.tblbd.com:1433", "0x17", "172.31.90.15", "DC01.TBLBD.COM", "HIGH", "T1558.003 (Kerberoasting - RC4 HMAC Ticket Requested)"),
         ("Administrator", "HTTP/sharepoint.tblbd.com", "0x12", "10.102.11.127", "DC01.TBLBD.COM", "LOW", "Standard AES-256 Kerberos Ticket"),
         ("oracle_dba", "krbtgt/TBLBD.COM", "0x12", "172.22.1.231", "DC01.TBLBD.COM", "LOW", "TGT Request")
     ]
@@ -701,7 +701,7 @@ def sync_all_telemetry_sources() -> int:
     suricata_nids = [
         ("ET EXPLOIT Apache Log4j RCE (CVE-2021-44228) Inbound JNDI LDAP Injection", "198.51.100.84", "172.31.105.11", 1389, 8080, "TCP", "CRITICAL", "CVE-2021-44228", "T1190"),
         ("ET WEB_SPECIFIC_APPS PHP-CGI Argument Injection RCE (CVE-2024-4577)", "203.0.113.19", "172.31.105.7", 44210, 80, "TCP", "CRITICAL", "CVE-2024-4577", "T1190"),
-        ("ET TROJAN Cobalt Strike Malleable C2 HTTP Beaconing Observed", "10.102.11.222", "185.220.101.5", 49210, 443, "TCP", "CRITICAL", "CobaltStrike", "T1071.001"),
+        ("ET TROJAN Cobalt Strike Malleable C2 HTTP Beaconing Observed", "172.31.105.15", "185.220.101.5", 49210, 443, "TCP", "CRITICAL", "CobaltStrike", "T1071.001"),
         ("ET SCAN Nmap Scripting Engine User-Agent Inbound Reconnaissance", "198.51.100.84", "172.31.105.11", 52140, 443, "TCP", "MEDIUM", "Nmap-Scan", "T1046"),
         ("ET ATTACK_RESPONSE Microsoft Windows Remote Desktop (RDP) on Non-Standard Port 8443", "172.22.1.231", "10.102.11.127", 8443, 3389, "TCP", "HIGH", "NonStd-RDP", "T1021.001")
     ]
