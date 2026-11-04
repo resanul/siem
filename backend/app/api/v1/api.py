@@ -1798,6 +1798,21 @@ def get_endpoint_hosts(
     }
 
 
+@api_router.get("/hosts/{host_id}/events")
+def get_host_events_endpoint(
+    host_id: str,
+    limit: int = Query(150, ge=1, le=500),
+    category: str = Query("all"),
+    search: Optional[str] = Query(None),
+):
+    """
+    Returns unified real-time and historical telemetry events for a specific host
+    across Wazuh HIDS, NetWitness SIEM, Sophos XDR, and system audit logs.
+    """
+    from backend.app.services.host_events_service import get_events_for_host
+    return get_events_for_host(host_identifier=host_id, limit=limit, category=category, search=search)
+
+
 @api_router.post("/hosts/sync")
 def sync_endpoint_hosts():
     """Forces synchronization of registered agents from Wazuh Manager."""
