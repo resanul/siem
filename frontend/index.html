@@ -1332,19 +1332,35 @@ function App() {
 
     const s = `${sourceType || ""} ${index || ""}`.toLowerCase();
 
+    if (s.includes("auth.failed") || s.includes("4625")) return "bg-rose-500/20 text-rose-300 border-rose-500/40 font-semibold";
+
+    if (s.includes("auth.success") || s.includes("4624")) return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold";
+
+    if (s.includes("process.created") || s.includes("4688")) return "bg-violet-500/15 text-violet-300 border-violet-500/40 font-semibold";
+
+    if (s.includes("user.created") || s.includes("4720")) return "bg-amber-500/15 text-amber-300 border-amber-500/40 font-semibold";
+
+    if (s.includes("group.modified") || s.includes("4728") || s.includes("4732")) return "bg-red-500/25 text-red-300 border-red-500/50 font-bold";
+
+    if (s.includes("kerberos") || s.includes("4769") || s.includes("4771")) return "bg-yellow-500/15 text-yellow-300 border-yellow-500/40 font-semibold";
+
+    if (s.includes("service.installed") || s.includes("7045")) return "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40 font-bold";
+
+    if (s.includes("audit.cleared") || s.includes("1102")) return "bg-rose-600/30 text-rose-200 border-rose-500/60 font-bold";
+
     if (s.includes("suricata")) return "bg-purple-500/10 text-purple-400 border-purple-500/30";
 
     if (s.includes("wazuh")) return "bg-blue-500/10 text-blue-400 border-blue-500/30";
 
     if (s.includes("sophos")) return "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
 
-    if (s.includes("netwitness")) return "bg-teal-500/10 text-teal-400 border-teal-500/30";
+    if (s.includes("netwitness") || s.includes("drop")) return "bg-teal-500/10 text-teal-400 border-teal-500/30";
 
-    if (s.includes("active-directory") || s.includes("ad.") || s.includes("4625")) return "bg-sky-500/10 text-sky-400 border-sky-500/30";
+    if (s.includes("active-directory") || s.includes("ad.")) return "bg-sky-500/10 text-sky-400 border-sky-500/30";
 
     if (s.includes("correlation")) return "bg-purple-500/20 text-purple-300 border-purple-500/50 font-bold";
 
-    if (s.includes("syslog") || s.includes("auth")) return "bg-slate-500/10 text-slate-400 border-slate-500/30";
+    if (s.includes("sudo") || s.includes("sshd") || s.includes("syslog") || s.includes("auth")) return "bg-slate-500/10 text-slate-400 border-slate-500/30";
 
     if (s.includes("sim") || s.includes("atomic")) return "bg-amber-500/10 text-amber-400 border-amber-500/30";
 
@@ -10908,23 +10924,39 @@ function App() {
 
         { label: "All Telemetry (*)", query: "*" },
 
-        { label: "Event 4625 (Failed Logon)", query: "4625" },
+        { label: "4625 (Failed Logon)", query: "4625" },
 
-        { label: "Wazuh HIDS", query: "wazuh-alerts-*" },
+        { label: "4624 (Logon Success)", query: "4624" },
+
+        { label: "4688 (Process Created)", query: "4688" },
+
+        { label: "4720 (User Created)", query: "4720" },
+
+        { label: "4728 (Domain Admin)", query: "4728" },
+
+        { label: "4769 (Kerberoast)", query: "4769" },
+
+        { label: "7045 (Service Installed)", query: "7045" },
+
+        { label: "1102 (Log Cleared)", query: "1102" },
+
+        { label: "Linux Sudo/Auth", query: "sudo" },
+
+        { label: "Firewall Drops", query: "DROP" },
+
+        { label: "Suricata CVE Exploits", query: "CVE" },
 
         { label: "Sophos XDR", query: "sophos-*" },
 
+        { label: "Wazuh HIDS", query: "wazuh-alerts-*" },
+
         { label: "NetWitness SIEM", query: "netwitness-*" },
-
-        { label: "Active Directory", query: "active-directory" },
-
-        { label: "Critical Severity", query: "severity:CRITICAL" },
 
         { label: "Host: ISRCD-0222", query: "host:ISRCD-0222" },
 
         { label: "Host: rhel-client-01", query: "host:rhel-client-01" },
 
-        { label: "Suricata NIDS", query: "suricata-*" }
+        { label: "Critical Severity", query: "severity:CRITICAL" }
 
       ].map((preset) => {
 
