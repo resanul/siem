@@ -219,12 +219,6 @@ def _get_wazuh_alerts_stats() -> Dict[str, Any]:
             data = src.get("data", {})
             src_ip = data.get("srcip") or agent.get("ip") or "172.31.105.11"
             dest_ip = data.get("dstip")
-            u = data.get("srcuser") or data.get("dstuser") or data.get("user")
-            if u and str(u).strip():
-                unique_users.add(str(u).strip().lower())
-            if mitre_id:
-                unique_mitre.add(str(mitre_id).strip())
-
             # Extract MITRE attack details if available in rule
             mitre_id = "T1082"
             mitre_tac = "Discovery"
@@ -238,6 +232,12 @@ def _get_wazuh_alerts_stats() -> Dict[str, Any]:
             elif "squid" in rule.get("groups", []):
                 mitre_id = "T1071.001"
                 mitre_tac = "Command and Control"
+
+            u = data.get("srcuser") or data.get("dstuser") or data.get("user")
+            if u and str(u).strip():
+                unique_users.add(str(u).strip().lower())
+            if mitre_id:
+                unique_mitre.add(str(mitre_id).strip())
 
             if level >= 10:
                 crit += 1
@@ -269,9 +269,9 @@ def _get_wazuh_alerts_stats() -> Dict[str, Any]:
                 is_demo=False
             )
 
-            if (sev in [AlertSeverity.CRITICAL, AlertSeverity.HIGH]) and len(top_critical_high) < 20:
+            if (sev in [AlertSeverity.CRITICAL, AlertSeverity.HIGH]) and len(top_critical_high) < 50:
                 top_critical_high.append(item)
-            elif len(recent_general) < 15:
+            elif len(recent_general) < 35:
                 recent_general.append(item)
 
         unique_users.update(["root", "resanul", "administrator", "admin", "oracle_admin", "nobody"])
@@ -404,12 +404,163 @@ def fetch_suricata_events(limit: int = 15) -> List[AlertItem]:
         pass
     return alerts
 
+_SOPHOS_CACHE: Dict[str, Any] = {"ts": 0.0, "alerts": []}
+
+def fetch_sophos_alerts(limit: int = 35) -> List[AlertItem]:
+    """Extracts real live endpoint threat and security alerts from Sophos Central XDR telemetry."""
+    global _SOPHOS_CACHE
+    now = time.time()
+    if now - _SOPHOS_CACHE["ts"] < 10.0 and _SOPHOS_CACHE["alerts"]:
+        return _SOPHOS_CACHE["alerts"][:limit]
+
+    configs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../configs"))
+    sophos_path = os.path.join(configs_dir, "sophos_persisted_telemetry.json")
+    if not os.path.exists(sophos_path):
+        return []
+
+    alerts: List[AlertItem] = []
+    try:
+        with open(sophos_path, "r", encoding="utf-8", errors="replace") as f:
+            data = json.load(f)
+
+        notables = data.get("top_notable_events") or data.get("all_real_logs") or []
+        for ev in notables:
+            urgency_str = (ev.get("urgency") or ev.get("severity") or "high").lower()
+            if urgency_str == "critical":
+                sev = AlertSeverity.CRITICAL
+            elif urgency_str == "high":
+                sev = AlertSeverity.HIGH
+            elif urgency_str == "medium":
+                sev = AlertSeverity.MEDIUM
+            else:
+                sev = AlertSeverity.LOW
+
+            ev_id = str(ev.get("id") or time.time())
+            title = ev.get("clean_title") or ev.get("rule_name") or "Sophos Endpoint Threat"
+            host = ev.get("host") or "endpoint-xdr"
+            user = ev.get("user") or ""
+            action = ev.get("action") or "Detected"
+            mitre_raw = ev.get("mitre_technique") or "T1204"
+            mitre_id = mitre_raw.split()[0] if mitre_raw else "T1204"
+            mitre_tac = ev.get("mitre_tactic") or "Execution"
+            desc = f"Threat: {ev.get('threat_type', 'Malware')} on {host} ({user}). Status: {action}"
+
+            item = AlertItem(
+                id=f"ALT-SPH-{ev_id[:12]}",
+                timestamp=ev.get("timestamp") or datetime.utcnow().isoformat() + "Z",
+                severity=sev,
+                source=AlertSource.ENDPOINT,
+                title=f"Sophos [{host}]: {title}",
+                description=desc,
+                host=host,
+                src_ip=ev.get("src_ip") or "172.22.56.125",
+                dest_ip=None,
+                mitre_attack_id=mitre_id,
+                mitre_tactic=mitre_tac,
+                status=AlertStatus.NEW,
+                raw_payload=ev,
+                is_demo=False
+            )
+            alerts.append(item)
+
+        _SOPHOS_CACHE = {"ts": now, "alerts": alerts}
+    except Exception:
+        pass
+
+    return alerts[:limit]
+
+
+_NW_CACHE: Dict[str, Any] = {"ts": 0.0, "alerts": []}
+
+def fetch_netwitness_alerts(limit: int = 35) -> List[AlertItem]:
+    """Extracts real security session events and firewall blocks from RSA NetWitness SIEM."""
+    global _NW_CACHE
+    now = time.time()
+    if now - _NW_CACHE["ts"] < 10.0 and _NW_CACHE["alerts"]:
+        return _NW_CACHE["alerts"][:limit]
+
+    configs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../configs"))
+    nw_path = os.path.join(configs_dir, "netwitness_synced_events.json")
+    if not os.path.exists(nw_path):
+        return []
+
+    alerts: List[AlertItem] = []
+    try:
+        with open(nw_path, "r", encoding="utf-8", errors="replace") as f:
+            events = json.load(f)
+
+        for ev in events:
+            action = str(ev.get("action") or "").upper()
+            desc = ev.get("description") or "NetWitness Traffic Anomaly"
+            ioc = (ev.get("raw_metas") or {}).get("ioc") or ""
+
+            if action in ["DROP", "BLOCKED", "DENY", "DETECTED"] or ioc:
+                if action in ["DROP", "DENY", "BLOCKED"]:
+                    sev = AlertSeverity.HIGH
+                elif ioc or "compromise" in str(ev):
+                    sev = AlertSeverity.CRITICAL
+                else:
+                    sev = AlertSeverity.MEDIUM
+
+                sess_id = str(ev.get("session_id") or time.time())
+                dev_host = ev.get("device_host") or ev.get("device_type") or "log-decoder"
+                src_ip = ev.get("source_ip") or "-"
+                dst_ip = ev.get("destination_ip") or "-"
+                dst_port = ev.get("destination_port") or ""
+
+                title = f"NetWitness [{dev_host}]: {desc} ({action})"
+                if ioc:
+                    title += f" [IOC: {ioc}]"
+
+                alerts.append(AlertItem(
+                    id=f"ALT-NW-{sess_id[-10:]}",
+                    timestamp=ev.get("timestamp") or datetime.utcnow().isoformat() + "Z",
+                    severity=sev,
+                    source=AlertSource.NETWITNESS,
+                    title=title,
+                    description=f"Action: {action}. Flow: {src_ip} -> {dst_ip}:{dst_port}. Device: {ev.get('device_type')}",
+                    host=dev_host,
+                    src_ip=src_ip,
+                    dest_ip=dst_ip if dst_ip else None,
+                    mitre_attack_id="T1046" if "scan" in desc.lower() or "high-ports" in desc.lower() else "T1071",
+                    mitre_tactic="Initial Access" if action in ["DROP", "DENY"] else "Command and Control",
+                    status=AlertStatus.NEW,
+                    raw_payload=ev,
+                    is_demo=False
+                ))
+
+        _NW_CACHE = {"ts": now, "alerts": alerts}
+    except Exception:
+        pass
+
+    return alerts[:limit]
+
 def get_live_alerts_pool() -> List[AlertItem]:
-    """Combines live data from Elasticsearch, Suricata, and active simulation sessions."""
+    """Combines live data from Wazuh HIDS, Correlation Engine, NetWitness, Sophos XDR, and Suricata."""
     pool: List[AlertItem] = []
     
     # 1. Any live simulation or synthetic event alerts
     pool.extend(LIVE_SIMULATION_ALERTS)
+
+    # 2. Correlated Incidents from Correlation Engine (always prioritized at top)
+    try:
+        from backend.app.services.correlation_engine import get_correlation_engine
+        from backend.app.services.correlation_engine.service import bridge_incident_to_alerts
+        corr_engine = get_correlation_engine()
+        existing_ids = {a.id for a in pool}
+        for inc in corr_engine.get_incidents(limit=50):
+            alt_id = inc.id if inc.id.startswith("ALT-") else f"ALT-{inc.id}"
+            if alt_id not in existing_ids and inc.id not in existing_ids:
+                try:
+                    bridged = bridge_incident_to_alerts(inc)
+                    pool.append(bridged)
+                    existing_ids.add(alt_id)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # 3. Persisted alerts from configs/persisted_alerts.json
     try:
         from backend.app.services.retention_policy import load_persisted_alerts
         existing_ids = {a.id for a in pool}
@@ -423,32 +574,36 @@ def get_live_alerts_pool() -> List[AlertItem]:
     except Exception:
         pass
 
-    # 2. Real Syslog alerts from Elasticsearch
-    pool.extend(fetch_syslog_alerts(limit=15))
+    # 4. Real Wazuh HIDS alerts from all endpoints
+    existing_ids = {a.id for a in pool}
+    for w_alert in fetch_wazuh_alerts(limit=50):
+        if w_alert.id not in existing_ids:
+            pool.append(w_alert)
+            existing_ids.add(w_alert.id)
 
-    # 3. Real Wazuh alerts from Elasticsearch
-    pool.extend(fetch_wazuh_alerts(limit=15))
+    # 5. Real Sophos Central XDR alerts from managed endpoints
+    for s_alert in fetch_sophos_alerts(limit=35):
+        if s_alert.id not in existing_ids:
+            pool.append(s_alert)
+            existing_ids.add(s_alert.id)
 
-    # 4. Real Suricata alerts from EVE log
-    pool.extend(fetch_suricata_events(limit=15))
+    # 6. Real RSA NetWitness SIEM network security events
+    for nw_alert in fetch_netwitness_alerts(limit=35):
+        if nw_alert.id not in existing_ids:
+            pool.append(nw_alert)
+            existing_ids.add(nw_alert.id)
 
-    # 5. Live Incidents & Cross-Source Detections from Correlation Engine
-    try:
-        from backend.app.services.correlation_engine import get_correlation_engine
-        from backend.app.services.correlation_engine.service import bridge_incident_to_alerts
-        corr_engine = get_correlation_engine()
-        existing_ids = {a.id for a in pool}
-        for inc in corr_engine.get_incidents(limit=50):
-            alt_id = inc.id if inc.id.startswith("ALT-") else f"ALT-{inc.id}"
-            if alt_id not in existing_ids and inc.id not in existing_ids:
-                try:
-                    bridged = bridge_incident_to_alerts(inc)
-                    pool.insert(0, bridged)
-                    existing_ids.add(alt_id)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+    # 7. Real Suricata alerts from EVE log
+    for suri_alert in fetch_suricata_events(limit=15):
+        if suri_alert.id not in existing_ids:
+            pool.append(suri_alert)
+            existing_ids.add(suri_alert.id)
+
+    # 8. Real Syslog alerts
+    for sys_alert in fetch_syslog_alerts(limit=15):
+        if sys_alert.id not in existing_ids:
+            pool.append(sys_alert)
+            existing_ids.add(sys_alert.id)
 
     def _parse_ts(ts_val: Any) -> float:
         if not ts_val:

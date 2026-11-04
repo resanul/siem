@@ -3742,11 +3742,26 @@ function App() {
 
   const filteredAlerts = alerts.filter(a => {
 
-    if (filterSeverity !== "ALL" && a.severity !== filterSeverity) return false;
+    if (filterSeverity !== "ALL" && (a.severity || "").toUpperCase() !== filterSeverity.toUpperCase()) return false;
 
-    if (filterSource !== "ALL" && String(a.source || "").toLowerCase() !== filterSource.toLowerCase()) return false;
+    if (filterSource !== "ALL") {
+      const src = String(a.source || "").toLowerCase();
+      if (filterSource === "endpoint" || filterSource === "sophos") {
+        if (src !== "endpoint" && src !== "sophos") return false;
+      } else if (src !== filterSource.toLowerCase()) {
+        return false;
+      }
+    }
 
-    if (searchQuery && !a.title.toLowerCase().includes(searchQuery.toLowerCase()) && !a.host.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = (a.title || "").toLowerCase().includes(q);
+      const matchHost = (a.host || "").toLowerCase().includes(q);
+      const matchSrcIp = (a.src_ip || "").toLowerCase().includes(q);
+      const matchDestIp = (a.dest_ip || "").toLowerCase().includes(q);
+      const matchMitre = (a.mitre || a.mitre_attack_id || "").toLowerCase().includes(q);
+      if (!matchTitle && !matchHost && !matchSrcIp && !matchDestIp && !matchMitre) return false;
+    }
 
     return true;
 
@@ -8773,11 +8788,19 @@ function App() {
 
     value: "correlation"
 
-  }, "🧠 Correlation Engine (Multi-Source)"), /*#__PURE__*/React.createElement("option", {
+  }, "🧠 Correlated Incidents (Multi-Source)"), /*#__PURE__*/React.createElement("option", {
 
     value: "wazuh"
 
-  }, "Wazuh HIDS"), /*#__PURE__*/React.createElement("option", {
+  }, "Wazuh HIDS (Endpoints)"), /*#__PURE__*/React.createElement("option", {
+
+    value: "endpoint"
+
+  }, "Sophos Central XDR"), /*#__PURE__*/React.createElement("option", {
+
+    value: "netwitness"
+
+  }, "RSA NetWitness SIEM"), /*#__PURE__*/React.createElement("option", {
 
     value: "suricata"
 
@@ -8992,6 +9015,14 @@ function App() {
       return /*#__PURE__*/React.createElement("span", {
         className: "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-300 border border-rose-500/30"
       }, "CHECK POINT");
+    } else if (s === "endpoint" || s === "sophos") {
+      return /*#__PURE__*/React.createElement("span", {
+        className: "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30"
+      }, "SOPHOS XDR");
+    } else if (s === "netwitness") {
+      return /*#__PURE__*/React.createElement("span", {
+        className: "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30"
+      }, "NETWITNESS SIEM");
     }
     return /*#__PURE__*/React.createElement("span", {
       className: "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300"
