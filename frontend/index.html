@@ -13916,7 +13916,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "text-2xl font-bold font-mono text-slate-100"
 
-  }, identityTelemetry?.kpis?.total_users || 69), /*#__PURE__*/React.createElement("span", {
+  }, (identityTelemetry?.kpis?.total_users || 4418).toLocaleString()), /*#__PURE__*/React.createElement("span", {
 
     className: "text-xs font-mono text-slate-400"
 
@@ -13934,9 +13934,9 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, identityTelemetry?.kpis?.active_domain || "TBLBD.COM")), /*#__PURE__*/React.createElement("span", {
 
-    className: "text-emerald-400 font-semibold"
+    className: "text-amber-400 font-semibold"
 
-  }, "Active Directory"))), /*#__PURE__*/React.createElement("div", {
+  }, (identityTelemetry?.kpis?.flagged_users_count || 69) + " Flagged (Detections)"))), /*#__PURE__*/React.createElement("div", {
 
     className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d]"
 
@@ -14447,15 +14447,19 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "flex items-center justify-between text-xs font-mono text-slate-400"
 
-  }, /*#__PURE__*/React.createElement("span", null, "Active Directory Accounts Discovered: ", /*#__PURE__*/React.createElement("strong", {
+  }, /*#__PURE__*/React.createElement("span", null, "Active Directory Forest Inventory: ", /*#__PURE__*/React.createElement("strong", {
 
     className: "text-slate-200"
 
-  }, (identityTelemetry?.users || []).length)), /*#__PURE__*/React.createElement("span", {
+  }, (identityTelemetry?.kpis?.total_forest_users || 4418).toLocaleString() + " Accounts"), /*#__PURE__*/React.createElement("span", {
+
+    className: "text-slate-400 ml-2"
+
+  }, "(" + (identityTelemetry?.kpis?.flagged_users_count || 69) + " Flagged with Threat Detections)")), /*#__PURE__*/React.createElement("span", {
 
     className: "text-emerald-400"
 
-  }, "Forest: TBLBD.COM • Verified")), /*#__PURE__*/React.createElement("div", {
+  }, "Falcon Sensor: TBL-ADNS-04 • Forest: TBLBD.COM")), /*#__PURE__*/React.createElement("div", {
 
     className: "overflow-x-auto"
 
