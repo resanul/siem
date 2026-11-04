@@ -14407,9 +14407,15 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, ev.domain || "TBLBD.COM"), /*#__PURE__*/React.createElement("td", {
 
-    className: "p-2.5 text-slate-300 font-mono text-[11px]"
+    className: "p-2.5 font-mono text-xs whitespace-nowrap"
 
-  }, ev.target_host), /*#__PURE__*/React.createElement("td", {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-200 font-bold text-xs"
+  }, ev.target_host || "TBL-ADNS-04"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-sky-400 font-mono"
+  }, "Src IP: " + (ev.source_ip || "10.102.11.222")))), /*#__PURE__*/React.createElement("td", {
 
     className: "p-2.5"
 
@@ -14668,13 +14674,15 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "p-2.5"
   }, "Account / User"), /*#__PURE__*/React.createElement("th", {
     className: "p-2.5"
+  }, "Source IP / Client"), /*#__PURE__*/React.createElement("th", {
+    className: "p-2.5"
   }, "Authentication Event"), /*#__PURE__*/React.createElement("th", {
     className: "p-2.5"
   }, "Auth Protocol / Type"), /*#__PURE__*/React.createElement("th", {
     className: "p-2.5"
   }, "Status"), /*#__PURE__*/React.createElement("th", {
     className: "p-2.5"
-  }, "Target DC"))), /*#__PURE__*/React.createElement("tbody", {
+  }, "Target DC (IP)"))), /*#__PURE__*/React.createElement("tbody", {
     className: "divide-y divide-[#1f293d] text-slate-300"
   }, (identityTelemetry?.events || []).filter(ev => ev.rule_name?.toLowerCase().includes("logon") || ev.rule_name?.toLowerCase().includes("auth") || ev.rule_name?.toLowerCase().includes("kerberos") || ev.rule_name?.toLowerCase().includes("ticket")).slice(0, 40).map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
     key: idx,
@@ -14687,6 +14695,14 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     "data-lucide": "user",
     className: "w-3.5 h-3.5 text-slate-400"
   }), /*#__PURE__*/React.createElement("span", null, ev.user_name || "Unknown")), /*#__PURE__*/React.createElement("td", {
+    className: "p-2.5 font-mono text-xs whitespace-nowrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 font-bold border border-sky-500/30 text-[11px] font-mono tracking-wide w-fit"
+  }, ev.source_ip || "10.102.11.222"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 mt-0.5 font-sans"
+  }, ev.source_workstation || ev.source_host || "Workstation"))), /*#__PURE__*/React.createElement("td", {
     className: "p-2.5 text-slate-200"
   }, ev.rule_name), /*#__PURE__*/React.createElement("td", {
     className: "p-2.5 text-sky-400 font-mono text-[11px]"
@@ -14697,8 +14713,14 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
   }, "FAILED") : /*#__PURE__*/React.createElement("span", {
     className: "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
   }, "SUCCESS")), /*#__PURE__*/React.createElement("td", {
-    className: "p-2.5 text-slate-400 font-mono"
-  }, ev.target_host || "TBL-ADNS-04")))))))),
+    className: "p-2.5 text-slate-400 font-mono text-xs whitespace-nowrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-200 font-bold text-xs"
+  }, ev.target_host || "TBL-ADNS-04"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-emerald-400 font-mono"
+  }, ev.target_ip || "172.31.152.14")))))))))),
 
   identityTab === "anomalies" && /*#__PURE__*/React.createElement("div", {
 
@@ -14923,6 +14945,22 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     className: "text-slate-300 text-[11px] truncate block"
 
   }, identitySelectedEvent.sid || "-"))), /*#__PURE__*/React.createElement("div", {
+    className: "col-span-2 p-3 rounded bg-[#131b2e] border border-[#1f293d] flex items-center justify-between font-mono text-xs"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 block uppercase"
+  }, "Source Client IP & Workstation"), /*#__PURE__*/React.createElement("span", {
+    className: "text-sky-300 font-bold text-sm"
+  }, identitySelectedEvent.source_ip || "10.102.11.222"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 text-xs ml-2 font-sans"
+  }, "(" + (identitySelectedEvent.source_workstation || "ISRCD-0222") + ")")), /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] text-slate-400 block uppercase"
+  }, "Target Domain Controller (IP)"), /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-400 font-bold text-sm"
+  }, identitySelectedEvent.target_ip || "172.31.152.14"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400 text-xs ml-2 font-sans"
+  }, "(" + (identitySelectedEvent.target_host || "TBL-ADNS-04") + ")"))), /*#__PURE__*/React.createElement("div", {
 
     className: "flex justify-end space-x-2 pt-3 border-t border-[#1f293d]"
 
