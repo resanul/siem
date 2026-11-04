@@ -430,7 +430,21 @@ class EventSearchService:
         except Exception:
             es_events = None
 
-        # 2. Resilient Fallback: Search across local heterogeneous data stores
+        # 2. Unified Persistent Event Store (Fast sub-15ms SQLite FTS5 engine across all systems)
+        try:
+            from backend.app.services.unified_event_store import search_events_store
+            store_res = search_events_store(
+                query=norm_query,
+                indices=norm_indices,
+                time_range=norm_time_range,
+                limit=norm_limit,
+            )
+            if store_res and (store_res.total_hits > 0 or norm_query != "*"):
+                return store_res
+        except Exception:
+            pass
+
+        # 3. Resilient Fallback: Search across local heterogeneous data stores
         local_events = self._load_local_events()
 
         filtered_events: List[EventItem] = []

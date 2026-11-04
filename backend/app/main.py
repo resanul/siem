@@ -106,6 +106,12 @@ def on_startup():
     except Exception as e:
         print(f"Failed to init NetWitness 30-day telemetry storage: {e}")
 
+    try:
+        from backend.app.services.unified_event_store import sync_all_telemetry_sources
+        sync_all_telemetry_sources()
+    except Exception as e:
+        print(f"Failed to init unified event store: {e}")
+
 
 @app.on_event("shutdown")
 def on_shutdown():
