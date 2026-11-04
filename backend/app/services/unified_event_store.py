@@ -210,6 +210,7 @@ def sync_all_telemetry_sources() -> int:
     for wpath in wazuh_candidates:
         if os.path.exists(wpath) and os.path.getsize(wpath) > 0:
             lines = _tail_lines(wpath, max_lines=1500, chunk_size=4194304)
+            squid_noise_count = 0
             for line in lines:
                 l = line.strip()
                 if not l:
@@ -218,6 +219,10 @@ def sync_all_telemetry_sources() -> int:
                     ev = json.loads(l)
                     rule = ev.get("rule", {})
                     rid = str(rule.get("id", "0"))
+                    if rid == "100350":
+                        squid_noise_count += 1
+                        if squid_noise_count > 15:
+                            continue
                     desc = rule.get("description", "Wazuh Event")
                     level = int(rule.get("level", 3))
                     agent = ev.get("agent", {})
@@ -533,45 +538,113 @@ def sync_all_telemetry_sources() -> int:
         except Exception:
             pass
 
-    # 4. RSA NETWITNESS SIEM TELEMETRY
-    nw_path = os.path.join(CONFIGS_DIR, "netwitness_synced_events.json")
-    if os.path.exists(nw_path):
-        try:
-            with open(nw_path, "r", encoding="utf-8") as f:
-                nw_events = json.load(f)
-            for ev in nw_events:
-                action = str(ev.get("action") or "LOGGED").upper()
-                sess_id = str(ev.get("session_id") or hashlib.md5(json.dumps(ev).encode()).hexdigest()[:10])
-                dev_host = ev.get("device_host") or ev.get("device_type") or "log-decoder01"
-                desc = ev.get("description") or "NetWitness Traffic Event"
-                ts = ev.get("timestamp") or now_dt.isoformat()
-                ioc = (ev.get("raw_metas") or {}).get("ioc") or ""
+    # 4. RSA NETWITNESS SIEM TELEMETRY (Live from netwitness_telemetry.db & synced flows)
+    nw_db_candidates = [
+        os.path.join(DATA_DIR, "netwitness_telemetry.db"),
+        "/opt/opensoc-forge/data/netwitness_telemetry.db"
+    ]
+    nw_ingested = False
+    for nw_db_path in nw_db_candidates:
+        if os.path.exists(nw_db_path) and os.path.getsize(nw_db_path) > 0:
+            try:
+                nw_conn = sqlite3.connect(nw_db_path)
+                nw_conn.row_factory = sqlite3.Row
+                nw_cur = nw_conn.cursor()
 
-                if action in ["DROP", "DENY", "BLOCKED"]:
-                    sev = "HIGH"
-                elif ioc or "compromise" in str(ev):
-                    sev = "CRITICAL"
-                elif action == "DETECTED":
-                    sev = "MEDIUM"
-                else:
-                    sev = "INFORMATIONAL"
+                # 4a. Ingest high-urgency alerts, drops, and security anomalies from RSA NetWitness
+                nw_cur.execute('''
+                    SELECT session_id, endpoint_type, timestamp, device_type, device_host,
+                           source_ip, destination_ip, destination_port, action, user, description,
+                           severity, is_alert, raw_metas
+                    FROM netwitness_events
+                    WHERE is_alert = 1 OR action IN ('Drop', 'Block', 'DROP', 'BLOCKED') OR severity IN ('HIGH', 'CRITICAL')
+                    ORDER BY timestamp DESC
+                    LIMIT 400;
+                ''')
+                for r in nw_cur.fetchall():
+                    sid = str(r["session_id"])
+                    act = str(r["action"] or "ALERT").upper()
+                    host = r["device_host"] or r["device_type"] or "log-decoder01"
+                    desc = r["description"] or "RSA NetWitness Threat Alert"
+                    ts = r["timestamp"] or now_dt.isoformat()
+                    src_ip = r["source_ip"] or ""
+                    dst_ip = r["destination_ip"] or ""
+                    dst_port = str(r["destination_port"] or "")
+                    flow_info = f" ({src_ip} -> {dst_ip}:{dst_port})" if src_ip and dst_ip else ""
 
-                summary = f"NetWitness [{dev_host}]: {desc} (Action: {action})"
-                if ioc:
-                    summary += f" [IOC: {ioc}]"
+                    batch.append({
+                        "id": f"nw-alert-{sid}",
+                        "timestamp": ts,
+                        "index_name": "netwitness-flows",
+                        "source_type": f"netwitness.alert.{act.lower()}",
+                        "host": host,
+                        "severity": "CRITICAL" if r["is_alert"] else ("HIGH" if act in ["DROP", "BLOCK"] else "MEDIUM"),
+                        "summary": f"RSA NetWitness [{host}]: {desc} (Action: {act}){flow_info}",
+                        "raw": dict(r)
+                    })
 
-                batch.append({
-                    "id": f"nw-{sess_id}",
-                    "timestamp": ts,
-                    "index_name": "netwitness-flows",
-                    "source_type": f"netwitness.session.{action.lower()}",
-                    "host": dev_host,
-                    "severity": sev,
-                    "summary": summary,
-                    "raw": ev
-                })
-        except Exception:
-            pass
+                # 4b. Ingest live network session flows from RSA NetWitness decoders
+                nw_cur.execute('''
+                    SELECT session_id, endpoint_type, timestamp, device_type, device_host,
+                           source_ip, destination_ip, destination_port, action, user, description,
+                           severity, is_alert, raw_metas
+                    FROM netwitness_events
+                    ORDER BY timestamp DESC
+                    LIMIT 300;
+                ''')
+                for r in nw_cur.fetchall():
+                    sid = str(r["session_id"])
+                    act = str(r["action"] or "DETECTED").upper()
+                    host = r["device_host"] or r["device_type"] or "network-decoder01"
+                    desc = r["description"] or "RSA NetWitness Network Flow"
+                    ts = r["timestamp"] or now_dt.isoformat()
+                    src_ip = r["source_ip"] or ""
+                    dst_ip = r["destination_ip"] or ""
+                    dst_port = str(r["destination_port"] or "")
+                    flow_info = f" ({src_ip} -> {dst_ip}:{dst_port})" if src_ip and dst_ip else ""
+
+                    batch.append({
+                        "id": f"nw-flow-{sid}",
+                        "timestamp": ts,
+                        "index_name": "netwitness-flows",
+                        "source_type": f"netwitness.session.{act.lower()}",
+                        "host": host,
+                        "severity": "HIGH" if act in ["DROP", "BLOCK"] else ("MEDIUM" if act == "DETECTED" else "LOW"),
+                        "summary": f"RSA NetWitness [{host}]: {desc} (Action: {act}){flow_info}",
+                        "raw": dict(r)
+                    })
+
+                nw_conn.close()
+                nw_ingested = True
+                break
+            except Exception as e:
+                print(f"Error querying netwitness_telemetry.db: {e}")
+
+    # Fallback to static synced events if db file not reachable
+    if not nw_ingested:
+        nw_path = os.path.join(CONFIGS_DIR, "netwitness_synced_events.json")
+        if os.path.exists(nw_path):
+            try:
+                with open(nw_path, "r", encoding="utf-8") as f:
+                    nw_events = json.load(f)
+                for ev in nw_events:
+                    action = str(ev.get("action") or "LOGGED").upper()
+                    sess_id = str(ev.get("session_id") or hashlib.md5(json.dumps(ev).encode()).hexdigest()[:10])
+                    dev_host = ev.get("device_host") or ev.get("device_type") or "log-decoder01"
+                    desc = ev.get("description") or "NetWitness Traffic Event"
+                    ts = ev.get("timestamp") or now_dt.isoformat()
+                    batch.append({
+                        "id": f"nw-{sess_id}",
+                        "timestamp": ts,
+                        "index_name": "netwitness-flows",
+                        "source_type": f"netwitness.session.{action.lower()}",
+                        "host": dev_host,
+                        "severity": "HIGH" if action in ["DROP", "DENY", "BLOCKED"] else "INFORMATIONAL",
+                        "summary": f"RSA NetWitness [{dev_host}]: {desc} (Action: {action})",
+                        "raw": ev
+                    })
+            except Exception:
+                pass
 
     # 5. CORRELATED INCIDENTS
     try:
@@ -723,7 +796,10 @@ def search_events_store(
             else:
                 free_text_parts.append(t)
         else:
-            if t != "*":
+            if t.endswith("-*") or (t.endswith("*") and t != "*"):
+                clean_idx = t.rstrip("*").rstrip("-")
+                field_filters["index_name"] = f"%{clean_idx}%"
+            elif t != "*":
                 free_text_parts.append(t)
 
     free_text_query = " ".join(free_text_parts).strip()
