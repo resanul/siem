@@ -608,6 +608,27 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                         "target_host": "TBL-ADNS-04",
                         "target_ip": "172.31.152.14"
                     })
+
+                    # Ensure live stream users (like resanul, Administrator) are in user_map
+                    if user and user not in user_map:
+                        user_map[user] = {
+                            "username": user,
+                            "sam_name": user,
+                            "domain": "TBLBD.COM",
+                            "sid": f"S-1-5-21-38291048-{abs(hash(user)) % 9000 + 1000}",
+                            "guid": f"ad-guid-{abs(hash(user)) % 900000}",
+                            "ou": "Domain Admins" if user in ["Administrator", "resanul"] else "Domain Users",
+                            "email": f"{user.lower()}@tblbd.com",
+                            "alert_count": 1,
+                            "max_severity": sev,
+                            "last_activity": event_time_str,
+                            "risk_score": 75 if sev in ["Critical", "High"] else 30,
+                            "anomalies": [rule_name]
+                        }
+                    elif user in user_map:
+                        user_map[user]["last_activity"] = event_time_str
+                        if rule_name not in user_map[user]["anomalies"]:
+                            user_map[user]["anomalies"].append(rule_name)
                 conn.close()
                 break
             except Exception as e:
