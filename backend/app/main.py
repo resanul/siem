@@ -107,8 +107,9 @@ def on_startup():
         print(f"Failed to init NetWitness 30-day telemetry storage: {e}")
 
     try:
+        import threading
         from backend.app.services.unified_event_store import sync_all_telemetry_sources
-        sync_all_telemetry_sources()
+        threading.Thread(target=sync_all_telemetry_sources, daemon=True, name="UnifiedEventStoreSync").start()
     except Exception as e:
         print(f"Failed to init unified event store: {e}")
 

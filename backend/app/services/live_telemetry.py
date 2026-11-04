@@ -535,8 +535,15 @@ def fetch_netwitness_alerts(limit: int = 35) -> List[AlertItem]:
 
     return alerts[:limit]
 
+_LIVE_POOL_CACHE: Dict[str, Any] = {"ts": 0.0, "pool": []}
+
 def get_live_alerts_pool() -> List[AlertItem]:
     """Combines live data from Wazuh HIDS, Correlation Engine, NetWitness, Sophos XDR, and Suricata."""
+    global _LIVE_POOL_CACHE
+    now = time.time()
+    if _LIVE_POOL_CACHE.get("pool") and (now - _LIVE_POOL_CACHE.get("ts", 0) < 6.0):
+        return list(_LIVE_POOL_CACHE["pool"])
+
     pool: List[AlertItem] = []
     
     # 1. Any live simulation or synthetic event alerts
@@ -616,6 +623,7 @@ def get_live_alerts_pool() -> List[AlertItem]:
             return 0.0
 
     pool.sort(key=lambda a: _parse_ts(a.timestamp), reverse=True)
+    _LIVE_POOL_CACHE = {"ts": now, "pool": pool}
     return pool
 
 _ENDPOINTS_CACHE: Dict[str, Any] = {"ts": 0.0, "active": 7, "total": 8}
