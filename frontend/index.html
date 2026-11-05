@@ -900,6 +900,104 @@ function getNormalizedEventDetails(ev) {
     flatten(ev, "");
   }
 
+  // 8. Access & Connection Flow Analysis
+  let direction = "Internal Telemetry";
+  if (destIp && (destIp.includes(".com") || destIp.includes(".org") || destIp.includes(".net") || destIp.includes(".cloud"))) {
+    direction = "Outbound Internet Traffic";
+  } else if (srcIp !== "--" && destIp !== "--" && srcIp !== destIp) {
+    direction = "Internal Network Lateral Session";
+  } else if (sys.eventID === "4688" || procName !== "--") {
+    direction = "Local Workstation Execution Flow";
+  } else if (sys.eventID === "4624" || sys.eventID === "4625" || (rule.id && String(rule.id).startsWith("35"))) {
+    direction = "Client-to-Gateway Inbound Access";
+  }
+
+  let protocol = "TCP/IP Telemetry Stream";
+  if (sys.eventID === "4624") {
+    protocol = `Kerberos Logon (Logon Type ${ed.logonType || "Interactive"})`;
+  } else if (sys.eventID === "4625") {
+    protocol = `Authentication Failure (Type ${ed.logonType || "Logon Request"})`;
+  } else if (sys.eventID === "4688") {
+    protocol = `Process Creation / Fork (Token: ${elevation})`;
+  } else if (destPort === "443" || destPort === "80" || (rule.id && String(rule.id).startsWith("35"))) {
+    protocol = `HTTPS Web Proxy Forward (Port ${destPort || "443"})`;
+  } else if (channel && channel.includes("netwitness")) {
+    protocol = "NetWitness Session Pipe (Active Directory)";
+  } else if (destPort !== "--") {
+    protocol = `Port ${destPort} Handshake`;
+  }
+
+  const initiatorLabel = (user !== "--" && user !== "n/a")
+    ? user
+    : (srcIp !== "--" ? srcIp : (hostName !== "unknown-host" ? hostName : "Client Initiator"));
+  const initiatorSub = (domain && domain !== "--" && user !== "--" && user !== "n/a")
+    ? `${domain}\\${user}`
+    : (srcIp !== "--" ? `Origin IP: ${srcIp}` : "Local Workstation Subject");
+  const initiatorType = (user !== "--" && user !== "n/a") ? "User / Principal" : "Client Host";
+
+  const gatewayName = hostName !== "unknown-host" ? hostName : (provider || "OpenSOC Sensor Pipeline");
+  const gatewaySub = `Sensor: ${provider} (${channel})`;
+  const gatewayType = (channel && channel.includes("squid")) ? "Forward Web Proxy" :
+                      (sys.computer || (channel && channel.includes("windows")) || (channel && channel.includes("netwitness"))) ? "Active Directory DC" :
+                      "OpenSOC Sensor Agent";
+
+  const targetLabel = (destIp !== "--")
+    ? destIp
+    : (procName !== "--" ? (procName.split("\\").pop() || procName) : (hostName !== "unknown-host" ? hostName : "Security Target"));
+  const targetSub = (destPort !== "--" && destPort !== "443" && destPort !== "80")
+    ? `Target Port: ${destPort}`
+    : (ed.targetDomainName ? `Domain: ${ed.targetDomainName}` : "Destination Resource");
+  const targetType = (destIp && (destIp.includes(".com") || destIp.includes(".org"))) ? "External Service / Cloud" :
+                     (procName !== "--") ? "Target Process / Binary" :
+                     "Destination Asset";
+
+  const isBlocked = action.includes("DENIED") || action.includes("BLOCK") || sys.eventID === "4625" || ev.severity === "CRITICAL";
+  const isAllowed = action.includes("LOGGED") || action.includes("ALLOW") || sys.eventID === "4624" || action === "TCP_TUNNEL";
+  const verdictLabel = isBlocked ? "ACCESS DENIED / BLOCKED" : (isAllowed ? "ACCESS GRANTED / LOGGED" : action);
+  const verdictBadge = isBlocked ? "bg-rose-500/20 text-rose-400 border-rose-500/40" :
+                       (isAllowed ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" : "bg-sky-500/20 text-sky-400 border-sky-500/40");
+
+  const flowSteps = [
+    {
+      step: 1,
+      title: "Initiation / Origin Handshake",
+      desc: `Subject "${initiatorLabel}" (${initiatorSub}) initiated connection request via ${protocol}.`,
+      badge: "ORIGIN",
+      color: "border-sky-500 text-sky-400 bg-sky-500/10"
+    },
+    {
+      step: 2,
+      title: "Gateway & Telemetry Interception",
+      desc: `Connection crossed ${gatewayType} "${gatewayName}" on channel ${channel}.`,
+      badge: "GATEWAY / DC",
+      color: "border-indigo-500 text-indigo-400 bg-indigo-500/10"
+    },
+    {
+      step: 3,
+      title: "Target Routing & Resource Handshake",
+      desc: `Traffic dispatched to ${targetType} "${targetLabel}" (${targetSub}).`,
+      badge: "TARGET",
+      color: "border-purple-500 text-purple-400 bg-purple-500/10"
+    },
+    {
+      step: 4,
+      title: "Policy Enforcement & Final Verdict",
+      desc: `Enforcement rule applied: ${verdictLabel} (Status: ${status}).`,
+      badge: isBlocked ? "BLOCKED" : "VERIFIED",
+      color: isBlocked ? "border-rose-500 text-rose-400 bg-rose-500/10" : "border-emerald-500 text-emerald-400 bg-emerald-500/10"
+    }
+  ];
+
+  const flow = {
+    direction,
+    protocol,
+    initiator: { label: initiatorLabel, sub: initiatorSub, type: initiatorType, ip: srcIp },
+    gateway: { name: gatewayName, sub: gatewaySub, type: gatewayType, ip: hostIp },
+    target: { label: targetLabel, sub: targetSub, type: targetType, port: destPort },
+    verdict: { label: verdictLabel, badge: verdictBadge, isBlocked, isAllowed },
+    steps: flowSteps
+  };
+
   return {
     story,
     eventId,
@@ -910,7 +1008,8 @@ function getNormalizedEventDetails(ev) {
     host: { name: hostName, ip: hostIp, channel, provider },
     process: { name: procName, cmd: procCmd, parent: parentProc, pid, hash: hashVal },
     network: { srcIp, srcPort, destIp, destPort, action, status },
-    flatFields
+    flatFields,
+    flow
   };
 }
 
@@ -12192,6 +12291,7 @@ function App() {
         },
           [
             { id: "overview", label: "Normalized Overview", icon: "layout-dashboard" },
+            { id: "flow", label: "Access & Connection Flow", icon: "share-2" },
             { id: "threat", label: "Threat & MITRE ATT&CK", icon: "shield-alert" },
             { id: "fields", label: `Field Explorer (${norm ? norm.flatFields.length : 0})`, icon: "table-properties" },
             { id: "json", label: "Raw JSON Payload", icon: "code" }
@@ -12432,6 +12532,235 @@ function App() {
               /*#__PURE__*/React.createElement("pre", {
                 className: "p-2 rounded bg-[#04060a] text-emerald-400 overflow-x-auto text-[11px] whitespace-pre-wrap break-all border border-[#131b2e]"
               }, norm.process.cmd)
+            )
+          ),
+
+          /* TAB: ACCESS & CONNECTION FLOW */
+          inspectorTab === "flow" && norm && norm.flow && /*#__PURE__*/React.createElement("div", {
+            className: "space-y-4 animate-in fade-in duration-150 font-sans"
+          },
+            /* Top Banner: Connection Direction & Protocol Vector */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-4 rounded-xl bg-gradient-to-r from-sky-950/40 via-[#0e1628] to-slate-900 border border-sky-500/30 flex items-center justify-between flex-wrap gap-2 shadow-lg"
+            },
+              /* Left Details */
+              /*#__PURE__*/React.createElement("div", { className: "space-y-1" },
+                /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2 text-[10px] font-mono font-bold text-sky-400 uppercase tracking-wider" },
+                  /*#__PURE__*/React.createElement("span", { className: "w-2 h-2 rounded-full bg-sky-400 animate-pulse" }),
+                  /*#__PURE__*/React.createElement("span", null, "ACCESS & CONNECTION FLOW TOPOLOGY")
+                ),
+                /*#__PURE__*/React.createElement("h4", { className: "text-sm font-bold text-slate-100 flex items-center space-x-2 font-mono" },
+                  /*#__PURE__*/React.createElement("span", null, norm.flow.direction),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "•"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-sky-300 font-normal text-xs" }, norm.flow.protocol)
+                )
+              ),
+              /* Right Verdict Badge */
+              /*#__PURE__*/React.createElement("div", {
+                className: `px-3 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center space-x-1.5 shadow ${norm.flow.verdict.badge}`
+              },
+                /*#__PURE__*/React.createElement("span", null, norm.flow.verdict.label)
+              )
+            ),
+
+            /* Visual 4-Hop Interactive Entity Flowchart */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-5 rounded-xl bg-[#070b14] border border-[#1f293d] space-y-3"
+            },
+              /* Header */
+              /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between text-xs font-mono text-slate-400 border-b border-[#1f293d] pb-2" },
+                /*#__PURE__*/React.createElement("span", { className: "uppercase font-bold tracking-wider text-slate-300" }, "End-to-End Connection Graph (Who Connected to What)"),
+                /*#__PURE__*/React.createElement("span", { className: "text-[11px] text-slate-500" }, "4-Stage Telemetry Chain")
+              ),
+
+              /* 4-Node Sequence Grid */
+              /*#__PURE__*/React.createElement("div", {
+                className: "grid grid-cols-1 lg:grid-cols-4 gap-3 text-xs font-mono relative items-stretch"
+              },
+                /* Hop 1: Origin / Initiator */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "p-3.5 rounded-xl bg-[#0e1628] border border-sky-500/40 flex flex-col justify-between space-y-2 relative shadow-md"
+                },
+                  /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 text-[9px] font-bold uppercase tracking-wider border border-sky-500/30" }, "1. Origin / Initiator"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500 text-[10px]" }, norm.flow.initiator.type)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "space-y-0.5 my-1" },
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "text-sm font-bold text-sky-300 truncate",
+                      title: norm.flow.initiator.label
+                    }, norm.flow.initiator.label),
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "text-[11px] text-slate-400 truncate",
+                      title: norm.flow.initiator.sub
+                    }, norm.flow.initiator.sub)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "pt-1.5 border-t border-[#1f293d] flex justify-between items-center text-[10px]" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Source IP:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300 font-bold" }, norm.flow.initiator.ip)
+                  )
+                ),
+
+                /* Hop 2: Gatekeeper / Sensor Pipeline */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "p-3.5 rounded-xl bg-[#0e1628] border border-indigo-500/40 flex flex-col justify-between space-y-2 relative shadow-md"
+                },
+                  /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 text-[9px] font-bold uppercase tracking-wider border border-indigo-500/30" }, "2. Gatekeeper / DC"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500 text-[10px]" }, norm.flow.gateway.type)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "space-y-0.5 my-1" },
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "text-sm font-bold text-indigo-300 truncate",
+                      title: norm.flow.gateway.name
+                    }, norm.flow.gateway.name),
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "text-[11px] text-slate-400 truncate",
+                      title: norm.flow.gateway.sub
+                    }, norm.flow.gateway.sub)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "pt-1.5 border-t border-[#1f293d] flex justify-between items-center text-[10px]" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Sensor Host:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300 font-bold" }, norm.flow.gateway.ip)
+                  )
+                ),
+
+                /* Hop 3: Target Resource / Endpoint */
+                /*#__PURE__*/React.createElement("div", {
+                  className: "p-3.5 rounded-xl bg-[#0e1628] border border-purple-500/40 flex flex-col justify-between space-y-2 relative shadow-md"
+                },
+                  /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 text-[9px] font-bold uppercase tracking-wider border border-purple-500/30" }, "3. Target Resource"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500 text-[10px]" }, norm.flow.target.type)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "space-y-0.5 my-1" },
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "text-sm font-bold text-purple-300 truncate",
+                      title: norm.flow.target.label
+                    }, norm.flow.target.label),
+                    /*#__PURE__*/React.createElement("div", {
+                      className: "text-[11px] text-slate-400 truncate",
+                      title: norm.flow.target.sub
+                    }, norm.flow.target.sub)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "pt-1.5 border-t border-[#1f293d] flex justify-between items-center text-[10px]" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Target Port:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300 font-bold" }, norm.flow.target.port)
+                  )
+                ),
+
+                /* Hop 4: Final Enforcement & Verdict */
+                /*#__PURE__*/React.createElement("div", {
+                  className: `p-3.5 rounded-xl bg-[#0e1628] border flex flex-col justify-between space-y-2 relative shadow-md ${
+                    norm.flow.verdict.isBlocked ? "border-rose-500/50" : "border-emerald-500/50"
+                  }`
+                },
+                  /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between" },
+                    /*#__PURE__*/React.createElement("span", {
+                      className: `px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                        norm.flow.verdict.isBlocked ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                      }`
+                    }, "4. Final Disposition"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500 text-[10px]" }, norm.network.status)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "space-y-0.5 my-1" },
+                    /*#__PURE__*/React.createElement("div", {
+                      className: `text-sm font-bold truncate ${norm.flow.verdict.isBlocked ? "text-rose-400" : "text-emerald-400"}`
+                    }, norm.flow.verdict.label),
+                    /*#__PURE__*/React.createElement("div", { className: "text-[11px] text-slate-400 truncate" }, `Action: ${norm.network.action}`)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "pt-1.5 border-t border-[#1f293d] flex justify-between items-center text-[10px]" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Event ID:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300 font-bold" }, norm.eventId)
+                  )
+                )
+              )
+            ),
+
+            /* Step-by-Step Chronological Access Sequence */
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-4 rounded-xl bg-[#0e1628] border border-[#1f293d] space-y-3"
+            },
+              /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2 text-xs font-mono font-bold text-slate-300 uppercase border-b border-[#1f293d] pb-2" },
+                /*#__PURE__*/React.createElement("span", null, "Chronological Access Sequence (How Connection Occurred)")
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "space-y-2.5 font-mono text-xs" },
+                norm.flow.steps.map((st) => /*#__PURE__*/React.createElement("div", {
+                  key: st.step,
+                  className: "flex items-start space-x-3 p-2.5 rounded-lg bg-[#070b14] border border-[#1f293d]/70 hover:border-slate-700 transition"
+                },
+                  /* Step badge */
+                  /*#__PURE__*/React.createElement("div", {
+                    className: `px-2 py-1 rounded text-[10px] font-bold shrink-0 border ${st.color}`
+                  }, `STEP 0${st.step}`),
+                  /* Step text */
+                  /*#__PURE__*/React.createElement("div", { className: "space-y-0.5 flex-1" },
+                    /*#__PURE__*/React.createElement("div", { className: "font-bold text-slate-200 text-xs" }, st.title),
+                    /*#__PURE__*/React.createElement("div", { className: "text-slate-400 text-[11px] leading-relaxed font-sans" }, st.desc)
+                  )
+                ))
+              )
+            ),
+
+            /* Entity Relationship Comparison (Origin vs Target) */
+            /*#__PURE__*/React.createElement("div", {
+              className: "grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono"
+            },
+              /* Left: Origin Entity */
+              /*#__PURE__*/React.createElement("div", {
+                className: "p-4 rounded-xl bg-[#070b14] border border-[#1f293d] space-y-2"
+              },
+                /*#__PURE__*/React.createElement("div", { className: "text-sky-400 font-bold uppercase text-[11px] border-b border-[#1f293d] pb-1.5 flex justify-between" },
+                  /*#__PURE__*/React.createElement("span", null, "Origin / Source Entity"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-500 font-normal" }, norm.flow.initiator.type)
+                ),
+                /*#__PURE__*/React.createElement("div", { className: "space-y-1.5 text-[11px]" },
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Account / Principal:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-sky-300 font-bold" }, norm.identity.user)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Domain / Forest:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300" }, norm.identity.domain)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Source IP / Client:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300 font-bold" }, norm.network.srcIp)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Privilege Token:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-400 truncate max-w-[200px]" }, norm.identity.elevation)
+                  )
+                )
+              ),
+
+              /* Right: Target Entity */
+              /*#__PURE__*/React.createElement("div", {
+                className: "p-4 rounded-xl bg-[#070b14] border border-[#1f293d] space-y-2"
+              },
+                /*#__PURE__*/React.createElement("div", { className: "text-purple-400 font-bold uppercase text-[11px] border-b border-[#1f293d] pb-1.5 flex justify-between" },
+                  /*#__PURE__*/React.createElement("span", null, "Target / Destination Entity"),
+                  /*#__PURE__*/React.createElement("span", { className: "text-slate-500 font-normal" }, norm.flow.target.type)
+                ),
+                /*#__PURE__*/React.createElement("div", { className: "space-y-1.5 text-[11px]" },
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Destination Asset:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-purple-300 font-bold truncate max-w-[220px]" }, norm.flow.target.label)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Destination Port:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300" }, norm.network.destPort)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Target Process / Service:"),
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-300 truncate max-w-[200px]" }, norm.process.name.split("\\").pop() || norm.process.name)
+                  ),
+                  /*#__PURE__*/React.createElement("div", { className: "flex justify-between" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-slate-500" }, "Access Disposition:"),
+                    /*#__PURE__*/React.createElement("span", { className: `px-1.5 py-0.5 rounded text-[10px] font-bold ${norm.flow.verdict.isBlocked ? "bg-rose-500/20 text-rose-400" : "bg-emerald-500/20 text-emerald-400"}` }, norm.network.action)
+                  )
+                )
+              )
             )
           ),
 
