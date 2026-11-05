@@ -561,6 +561,8 @@ def search_events_post(
         indices=request.indices,
         time_range=request.time_range,
         limit=request.limit,
+        offset=request.offset,
+        page=request.page,
     )
 
 
@@ -569,7 +571,9 @@ def search_events_get(
     query: Optional[str] = Query(default="*"),
     indices: Optional[List[str]] = Query(default=None),
     time_range: Optional[str] = Query(default="24h"),
-    limit: Optional[int] = Query(default=50, ge=1, le=200),
+    limit: Optional[int] = Query(default=100, ge=1, le=5000),
+    page: Optional[int] = Query(default=1, ge=1),
+    offset: Optional[int] = Query(default=0, ge=0),
     current_user: Dict[str, Any] = Depends(require_permission("alerts:read")),
 ):
     """GET query endpoint with parameter normalization (handles comma-separated and repeated indices)."""
@@ -587,7 +591,9 @@ def search_events_get(
         query=query or "*",
         indices=norm_indices,
         time_range=time_range or "24h",
-        limit=limit or 50,
+        limit=limit or 100,
+        offset=offset or 0,
+        page=page or 1,
     )
 
 

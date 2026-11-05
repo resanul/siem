@@ -741,7 +741,9 @@ def search_events_store(
     query: str = "*",
     indices: Optional[List[str]] = None,
     time_range: str = "24h",
-    limit: int = 50
+    limit: int = 100,
+    offset: int = 0,
+    page: int = 1
 ) -> EventSearchResponse:
     """
     Sub-millisecond query execution against SQLite + FTS5 full-text index.
@@ -763,7 +765,10 @@ def search_events_store(
 
     q = (query or "").strip()
     norm_indices = indices if indices and "*" not in indices else []
-    limit = max(1, min(int(limit or 50), 200))
+    limit = max(1, min(int(limit or 100), 5000))
+    if page > 1 and offset == 0:
+        offset = (page - 1) * limit
+    offset = max(0, int(offset or 0))
 
     # Parse time range
     time_filter_dt: Optional[datetime] = None
@@ -834,6 +839,7 @@ def search_events_store(
 
         where_clause = " AND ".join(sql_parts) if sql_parts else "1=1"
 
+        total_hits = 0
         if free_text_query:
             # Safe FTS5 token formatting (handles hyphens, dots, colons, etc. without syntax errors)
             tokens_raw = free_text_query.split()
@@ -852,40 +858,68 @@ def search_events_store(
 
             rows = []
             try:
+                count_sql = f"""
+                SELECT COUNT(*) as cnt
+                FROM events e
+                JOIN events_fts f ON e.rowid = f.rowid
+                WHERE events_fts MATCH ? AND {where_clause};
+                """
+                cur.execute(count_sql, [fts_match_arg] + params)
+                c_row = cur.fetchone()
+                total_hits = c_row["cnt"] if c_row else 0
+
                 query_sql = f"""
                 SELECT e.id, e.timestamp, e.index_name, e.source_type, e.host, e.severity, e.summary, e.raw_json
                 FROM events e
                 JOIN events_fts f ON e.rowid = f.rowid
                 WHERE events_fts MATCH ? AND {where_clause}
                 ORDER BY e.timestamp DESC
-                LIMIT ?;
+                LIMIT ? OFFSET ?;
                 """
-                cur.execute(query_sql, [fts_match_arg] + params + [limit])
+                cur.execute(query_sql, [fts_match_arg] + params + [limit, offset])
                 rows = cur.fetchall()
             except sqlite3.OperationalError:
                 rows = []
 
             # If FTS matched 0 or had a syntax issue, fallback to indexed LIKE on summary/raw_json/host
-            if not rows:
+            if not rows and total_hits == 0:
+                like_arg = f"%{free_text_query}%"
+                like_count_sql = f"""
+                SELECT COUNT(*) as cnt
+                FROM events
+                WHERE (summary LIKE ? OR raw_json LIKE ? OR host LIKE ?) AND {where_clause};
+                """
+                cur.execute(like_count_sql, [like_arg, like_arg, like_arg] + params)
+                c_row = cur.fetchone()
+                total_hits = c_row["cnt"] if c_row else 0
+
                 like_sql = f"""
                 SELECT id, timestamp, index_name, source_type, host, severity, summary, raw_json
                 FROM events
                 WHERE (summary LIKE ? OR raw_json LIKE ? OR host LIKE ?) AND {where_clause}
                 ORDER BY timestamp DESC
-                LIMIT ?;
+                LIMIT ? OFFSET ?;
                 """
-                like_arg = f"%{free_text_query}%"
-                cur.execute(like_sql, [like_arg, like_arg, like_arg] + params + [limit])
+                cur.execute(like_sql, [like_arg, like_arg, like_arg] + params + [limit, offset])
                 rows = cur.fetchall()
         else:
+            count_sql = f"""
+            SELECT COUNT(*) as cnt
+            FROM events
+            WHERE {where_clause};
+            """
+            cur.execute(count_sql, params)
+            c_row = cur.fetchone()
+            total_hits = c_row["cnt"] if c_row else 0
+
             query_sql = f"""
             SELECT id, timestamp, index_name, source_type, host, severity, summary, raw_json
             FROM events
             WHERE {where_clause}
             ORDER BY timestamp DESC
-            LIMIT ?;
+            LIMIT ? OFFSET ?;
             """
-            cur.execute(query_sql, params + [limit])
+            cur.execute(query_sql, params + [limit, offset])
             rows = cur.fetchall()
 
         events_out: List[EventItem] = []
@@ -909,11 +943,16 @@ def search_events_store(
         took_ms = max(1, int((time.time() - start_time) * 1000))
         indices_searched = norm_indices if norm_indices else ["*"]
 
+        curr_page = max(1, (offset // limit) + 1)
+        tot_pages = max(1, (total_hits + limit - 1) // limit) if total_hits > 0 else 1
         return EventSearchResponse(
-            total_hits=len(events_out),
+            total_hits=total_hits if total_hits > 0 else len(events_out),
             took_ms=took_ms,
             indices_searched=indices_searched,
-            events=events_out
+            events=events_out,
+            page=curr_page,
+            limit=limit,
+            total_pages=tot_pages
         )
     finally:
         conn.close()

@@ -389,7 +389,9 @@ class EventSearchService:
         query: Optional[Union[str, EventSearchRequest]] = "*",
         indices: Optional[List[str]] = None,
         time_range: Optional[str] = "24h",
-        limit: Optional[int] = 50,
+        limit: Optional[int] = 100,
+        offset: Optional[int] = 0,
+        page: Optional[int] = 1,
     ) -> EventSearchResponse:
         """
         Executes event search with automatic Elasticsearch integration and resilient local fallback.
@@ -401,12 +403,18 @@ class EventSearchService:
             indices = query.indices
             time_range = query.time_range
             limit = query.limit
+            offset = query.offset
+            page = query.page
             query_str = query.query or "*"
         else:
             query_str = query or "*"
 
         norm_query = query_str.strip() or "*"
-        norm_limit = max(1, min(int(limit or 50), 200))
+        norm_limit = max(1, min(int(limit or 100), 5000))
+        norm_page = max(1, int(page or 1))
+        norm_offset = int(offset or 0)
+        if norm_page > 1 and norm_offset == 0:
+            norm_offset = (norm_page - 1) * norm_limit
         norm_time_range = (time_range or "24h").strip()
         norm_indices = indices if (indices and len(indices) > 0) else ["*"]
 
@@ -438,6 +446,8 @@ class EventSearchService:
                 indices=norm_indices,
                 time_range=norm_time_range,
                 limit=norm_limit,
+                offset=norm_offset,
+                page=norm_page,
             )
             if store_res and (store_res.total_hits > 0 or norm_query != "*"):
                 return store_res

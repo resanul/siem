@@ -921,6 +921,9 @@ function App() {
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   const [eventCopySuccess, setEventCopySuccess] = useState(false);
+  const [eventLimit, setEventLimit] = useState(100);
+  const [eventPage, setEventPage] = useState(1);
+  const [eventTotalPages, setEventTotalPages] = useState(1);
 
   // --- Correlation Engine State (M4) ---
   const [correlationIncidents, setCorrelationIncidents] = useState(() => {
@@ -974,74 +977,52 @@ function App() {
 
 
 
-  const executeEventSearch = async (overrideQuery, overrideTimeRange) => {
-
+  const executeEventSearch = async (overrideQuery, overrideTimeRange, overrideLimit, overridePage) => {
     const q = overrideQuery !== undefined ? overrideQuery : eventQuery;
-
     const tr = overrideTimeRange !== undefined ? overrideTimeRange : eventTimeRange;
+    const lim = overrideLimit !== undefined ? overrideLimit : eventLimit;
+    const isNewSearch = (overrideQuery !== undefined || overrideTimeRange !== undefined) && overridePage === undefined;
+    const pg = isNewSearch ? 1 : (overridePage !== undefined ? overridePage : eventPage);
 
-
+    if (overrideLimit !== undefined) setEventLimit(overrideLimit);
+    setEventPage(pg);
 
     setEventLoading(true);
-
     setEventError(null);
-
     const startMs = Date.now();
 
-
-
     try {
-
       const token = localStorage.getItem("token") || "";
-
       const headers = {
-
         "Content-Type": "application/json",
-
         ...(token ? { "Authorization": `Bearer ${token}` } : {})
-
       };
-
-
 
       const payload = {
-
         query: (q && q.trim()) ? q.trim() : "*",
-
         time_range: tr || "24h",
-
-        limit: 50
-
+        limit: lim,
+        page: pg,
+        offset: (pg - 1) * lim
       };
 
-
-
       const res = await fetch("/api/v1/events/search", {
-
         method: "POST",
-
         headers: headers,
-
         body: JSON.stringify(payload)
-
       });
 
-
-
       if (res.ok) {
-
         const data = await res.json();
-
         const incomingEvents = Array.isArray(data.events) ? data.events : [];
-
         setEventResults(incomingEvents);
-
-        setEventTotalHits(typeof data.total_hits === "number" ? data.total_hits : incomingEvents.length);
-
+        const totalHits = typeof data.total_hits === "number" ? data.total_hits : incomingEvents.length;
+        setEventTotalHits(totalHits);
         setEventTookMs(typeof data.took_ms === "number" ? data.took_ms : (Date.now() - startMs));
-
         setEventIndicesSearched(Array.isArray(data.indices_searched) ? data.indices_searched : []);
-
+        const totPgs = data.total_pages || Math.max(1, Math.ceil(totalHits / lim));
+        setEventTotalPages(totPgs);
+      } else {
       } else {
 
         const errJson = await res.json().catch(() => ({}));
@@ -11056,64 +11037,80 @@ function App() {
 
               )
 
-            : /*#__PURE__*/React.createElement("div", {
-
-                className: "flex items-center space-x-2 flex-wrap gap-y-1 font-mono"
-
+: /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center space-x-3 flex-wrap gap-y-1 font-mono text-xs"
               },
-
                 /*#__PURE__*/React.createElement("span", {
-
-                  className: "font-bold text-slate-200"
-
-                }, "Query Results: " + eventTotalHits + " hits in " + eventTookMs + "ms"),
-
+                  className: "font-bold text-slate-100"
+                }, "Query Results: " + eventTotalHits.toLocaleString() + " hits"),
+                /*#__PURE__*/React.createElement("span", {
+                  className: "text-[11px] text-slate-400"
+                }, "(" + eventTookMs + "ms)"),
+                eventTotalHits > 0 && /*#__PURE__*/React.createElement("span", {
+                  className: "px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 text-[11px] font-mono border border-sky-500/20"
+                }, "Showing " + (((eventPage - 1) * eventLimit) + 1) + " - " + Math.min(eventPage * eventLimit, eventTotalHits)),
                 eventIndicesSearched && eventIndicesSearched.length > 0 && /*#__PURE__*/React.createElement("div", {
-
                   className: "hidden md:inline-flex items-center space-x-1"
-
                 },
-
                   eventIndicesSearched.map((idx) => /*#__PURE__*/React.createElement("span", {
-
                     key: idx,
-
                     className: "px-1.5 py-0.5 text-[9px] bg-slate-800 border border-slate-700 text-slate-400 rounded"
-
                   }, idx))
-
                 )
-
               )
-
         ),
-
         /*#__PURE__*/React.createElement("div", {
-
-          className: "flex items-center space-x-2 font-mono text-[11px]"
-
+          className: "flex items-center space-x-2 font-mono text-xs flex-wrap gap-y-1"
         },
-
-          /*#__PURE__*/React.createElement("span", null, "Time range: " + (eventTimeRange === "all" ? "All Telemetry" : eventTimeRange)),
-
+          /* Page Size Dropdown */
+          /*#__PURE__*/React.createElement("div", {
+            className: "flex items-center space-x-1 text-slate-400"
+          },
+            /*#__PURE__*/React.createElement("span", { className: "text-[10px] uppercase font-bold" }, "Show:"),
+            /*#__PURE__*/React.createElement("select", {
+              value: eventLimit,
+              onChange: e => {
+                const nl = Number(e.target.value);
+                setEventLimit(nl);
+                executeEventSearch(undefined, undefined, nl, 1);
+              },
+              className: "bg-[#131b2e] border border-[#1f293d] rounded px-2 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500 cursor-pointer"
+            },
+              /*#__PURE__*/React.createElement("option", { value: 50 }, "50 logs"),
+              /*#__PURE__*/React.createElement("option", { value: 100 }, "100 logs"),
+              /*#__PURE__*/React.createElement("option", { value: 200 }, "200 logs"),
+              /*#__PURE__*/React.createElement("option", { value: 500 }, "500 logs"),
+              /*#__PURE__*/React.createElement("option", { value: 1000 }, "1000 logs")
+            )
+          ),
+          /* Pagination Controls: Prev */
           /*#__PURE__*/React.createElement("button", {
-
+            onClick: () => executeEventSearch(undefined, undefined, eventLimit, eventPage - 1),
+            disabled: eventPage <= 1 || eventLoading,
+            title: "Previous Page",
+            className: `px-2 py-1 rounded border text-xs font-bold transition ${eventPage <= 1 || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
+          }, "◀ Prev"),
+          /* Page Indicator */
+          /*#__PURE__*/React.createElement("span", {
+            className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-emerald-400 font-bold text-xs"
+          }, "Page " + eventPage + " of " + Math.max(1, eventTotalPages)),
+          /* Next Button */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => executeEventSearch(undefined, undefined, eventLimit, eventPage + 1),
+            disabled: eventPage >= eventTotalPages || eventLoading,
+            title: "Next Page",
+            className: `px-2 py-1 rounded border text-xs font-bold transition ${eventPage >= eventTotalPages || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
+          }, "Next ▶"),
+          /* Refresh Button */
+          /*#__PURE__*/React.createElement("button", {
             onClick: () => executeEventSearch(),
-
             disabled: eventLoading,
-
             title: "Refresh Query Results",
-
             className: "p-1 rounded bg-[#131b2e] hover:bg-[#1f293d] border border-[#1f293d] text-slate-300 hover:text-white transition-colors"
-
           }, /*#__PURE__*/React.createElement("i", {
-
             "data-lucide": "refresh-cw",
-
             className: `w-3 h-3 ${eventLoading ? "animate-spin" : ""}`
-
           }))
-
         )
 
       ),
@@ -11330,6 +11327,65 @@ function App() {
 
             ))
 
+          )
+,
+
+          /* Bottom Pagination Bar */
+          eventResults && eventResults.length > 0 && /*#__PURE__*/React.createElement("div", {
+            className: "p-3 rounded-lg bg-[#0e1422] border border-[#1f293d] flex flex-wrap items-center justify-between gap-3 text-xs font-mono mt-3"
+          },
+            /* Left: Summary */
+            /*#__PURE__*/React.createElement("div", {
+              className: "text-slate-400"
+            },
+              /*#__PURE__*/React.createElement("span", null, "Showing "),
+              /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-bold" }, (((eventPage - 1) * eventLimit) + 1) + " - " + Math.min(eventPage * eventLimit, eventTotalHits)),
+              /*#__PURE__*/React.createElement("span", null, " of "),
+              /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-bold" }, eventTotalHits.toLocaleString() + " total events")
+            ),
+            /* Right: Selector & Paging */
+            /*#__PURE__*/React.createElement("div", {
+              className: "flex items-center space-x-2"
+            },
+              /* Page Size */
+              /*#__PURE__*/React.createElement("select", {
+                value: eventLimit,
+                onChange: e => {
+                  const nl = Number(e.target.value);
+                  setEventLimit(nl);
+                  executeEventSearch(undefined, undefined, nl, 1);
+                },
+                className: "bg-[#131b2e] border border-[#1f293d] rounded px-2.5 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500 cursor-pointer"
+              },
+                /*#__PURE__*/React.createElement("option", { value: 50 }, "50 per page"),
+                /*#__PURE__*/React.createElement("option", { value: 100 }, "100 per page"),
+                /*#__PURE__*/React.createElement("option", { value: 200 }, "200 per page"),
+                /*#__PURE__*/React.createElement("option", { value: 500 }, "500 per page"),
+                /*#__PURE__*/React.createElement("option", { value: 1000 }, "1000 per page")
+              ),
+              /* Prev */
+              /*#__PURE__*/React.createElement("button", {
+                onClick: () => {
+                  window.scrollTo({ top: 300, behavior: "smooth" });
+                  executeEventSearch(undefined, undefined, eventLimit, eventPage - 1);
+                },
+                disabled: eventPage <= 1 || eventLoading,
+                className: `px-2.5 py-1 rounded border text-xs font-bold transition ${eventPage <= 1 || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
+              }, "◀ Previous"),
+              /* Page Indicator */
+              /*#__PURE__*/React.createElement("span", {
+                className: "px-2.5 py-1 rounded bg-[#080c14] border border-[#1f293d] text-emerald-400 font-bold"
+              }, "Page " + eventPage + " of " + Math.max(1, eventTotalPages)),
+              /* Next */
+              /*#__PURE__*/React.createElement("button", {
+                onClick: () => {
+                  window.scrollTo({ top: 300, behavior: "smooth" });
+                  executeEventSearch(undefined, undefined, eventLimit, eventPage + 1);
+                },
+                disabled: eventPage >= eventTotalPages || eventLoading,
+                className: `px-2.5 py-1 rounded border text-xs font-bold transition ${eventPage >= eventTotalPages || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
+              }, "Next ▶")
+            )
           )
 
     ),

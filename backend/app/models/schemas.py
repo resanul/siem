@@ -179,23 +179,25 @@ class EventSearchRequest(BaseModel):
     query: Optional[str] = "*"
     indices: Optional[List[str]] = None
     time_range: Optional[str] = "24h"
-    limit: Optional[int] = Field(default=50, ge=1, le=200)
+    limit: Optional[int] = Field(default=100, ge=1, le=5000)
+    page: Optional[int] = Field(default=1, ge=1)
+    offset: Optional[int] = Field(default=0, ge=0)
 
     @field_validator("limit", mode="before")
     @classmethod
     def validate_limit(cls, v: Any) -> int:
         if v is None:
-            return 50
+            return 100
         if isinstance(v, (bool, list, dict, tuple, set, float)):
-            raise ValueError("limit must be an integer between 1 and 200")
+            raise ValueError("limit must be an integer between 1 and 5000")
         try:
             val = int(v)
         except (ValueError, TypeError):
-            raise ValueError("limit must be an integer between 1 and 200")
+            raise ValueError("limit must be an integer between 1 and 5000")
         if val < 1:
             raise ValueError("limit must be at least 1")
-        if val > 200:
-            raise ValueError("limit must not exceed 200")
+        if val > 5000:
+            raise ValueError("limit must not exceed 5000")
         return val
 
 
@@ -215,3 +217,6 @@ class EventSearchResponse(BaseModel):
     took_ms: int
     indices_searched: List[str] = Field(default_factory=list)
     events: List[EventItem] = Field(default_factory=list)
+    page: Optional[int] = 1
+    limit: Optional[int] = 100
+    total_pages: Optional[int] = 1
