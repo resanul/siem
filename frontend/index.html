@@ -575,6 +575,228 @@ function renderSIEMPaginationBar({ page, limit, total, onPageChange, onLimitChan
   );
 }
 
+
+// =============================================================================
+// ENTERPRISE SIEM EVENT INVESTIGATION FIELD REGISTRY & EXPORTERS
+// =============================================================================
+const ALL_EVENT_COLUMNS = [
+  { id: "timestamp", label: "Timestamp", minWidth: "160px", default: true },
+  { id: "eventId", label: "Event ID", minWidth: "90px", default: true },
+  { id: "severity", label: "Severity", minWidth: "90px", default: true },
+  { id: "description", label: "Description", minWidth: "260px", default: true },
+  { id: "srcIp", label: "Source IP", minWidth: "140px", default: true },
+  { id: "destIp", label: "Destination IP", minWidth: "160px", default: true },
+  { id: "user", label: "User / Account", minWidth: "120px", default: true },
+  { id: "host", label: "Host / Sensor", minWidth: "120px", default: true },
+  { id: "sourceType", label: "Source Type", minWidth: "130px", default: false },
+  { id: "index", label: "Index", minWidth: "110px", default: false },
+  { id: "action", label: "Action", minWidth: "110px", default: false },
+  { id: "process", label: "Process / Command", minWidth: "200px", default: false },
+  { id: "id", label: "Raw ID", minWidth: "160px", default: false }
+];
+
+function extractEventFields(ev) {
+  if (!ev) return {};
+  const raw = typeof ev.raw === "object" && ev.raw !== null ? ev.raw : {};
+  const data = typeof raw.data === "object" && raw.data !== null ? raw.data : {};
+  const win = typeof data.win === "object" && data.win !== null ? data.win : {};
+  const sys = typeof win.system === "object" && win.system !== null ? win.system : {};
+  const ed = typeof win.eventdata === "object" && win.eventdata !== null ? win.eventdata : {};
+  const agent = typeof raw.agent === "object" && raw.agent !== null ? raw.agent : {};
+  const rule = typeof raw.rule === "object" && raw.rule !== null ? raw.rule : {};
+
+  const eventId = String(
+    sys.eventID ||
+    rule.id ||
+    raw.session_id ||
+    data.id ||
+    (ev.id ? ev.id.replace(/^wazuh-/, "").slice(0, 10) : "--")
+  );
+
+  const user = String(
+    ed.targetUserName ||
+    ed.subjectUserName ||
+    data.dstuser ||
+    data.srcuser ||
+    raw.user ||
+    (ev.summary && ev.summary.includes("User ") ? (ev.summary.match(/User\s+([a-zA-Z0-9_\-\.]+)/) || [])[1] : null) ||
+    "--"
+  );
+
+  const srcIp = String(
+    ed.ipAddress ||
+    data.srcip ||
+    raw.source_ip ||
+    (agent.ip && agent.ip !== "127.0.0.1" ? agent.ip : null) ||
+    "--"
+  );
+
+  const destIp = String(
+    raw.destination_ip ||
+    data.dstip ||
+    data.url ||
+    sys.computer ||
+    ed.workstationName ||
+    "--"
+  );
+
+  const action = String(
+    raw.action ||
+    data.action ||
+    sys.severityValue ||
+    ed.disposition ||
+    "--"
+  );
+
+  const process = String(
+    ed.commandLine ||
+    ed.newProcessName ||
+    data.command ||
+    "--"
+  );
+
+  const desc = String(
+    ev.summary ||
+    rule.description ||
+    raw.description ||
+    ev.message ||
+    "Telemetry event observed"
+  );
+
+  return {
+    id: ev.id || "--",
+    timestamp: ev.timestamp ? ev.timestamp.replace("T", " ").replace(/\+.*$/, "") : "--",
+    rawTimestamp: ev.timestamp || "--",
+    eventId: eventId,
+    severity: (ev.severity || "INFO").toUpperCase(),
+    description: desc,
+    srcIp: srcIp,
+    destIp: destIp,
+    user: user,
+    host: ev.host || agent.name || "unknown-host",
+    sourceType: ev.source_type || ev.index || "telemetry",
+    index: ev.index || "wazuh-alerts",
+    action: action,
+    process: process
+  };
+}
+
+function exportEventsToCSV(events, activeColumnIds, query, timeRange) {
+  if (!events || events.length === 0) {
+    alert("No events available to export.");
+    return;
+  }
+  const colDefMap = {};
+  ALL_EVENT_COLUMNS.forEach((c) => { colDefMap[c.id] = c; });
+  const cols = (activeColumnIds || []).map((id) => colDefMap[id]).filter(Boolean);
+
+  const header = cols.map((c) => `"${c.label.replace(/"/g, '""')}"`).join(",");
+  const rows = events.map((ev) => {
+    const f = extractEventFields(ev);
+    return cols
+      .map((c) => {
+        const val = f[c.id] !== undefined && f[c.id] !== null ? String(f[c.id]) : "";
+        return `"${val.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+      })
+      .join(",");
+  });
+
+  const csvContent = "\uFEFF" + [header, ...rows].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `OpenSOC_Event_Investigation_${timestamp}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportEventsToPDF(events, activeColumnIds, query, timeRange, totalHits) {
+  if (!events || events.length === 0) {
+    alert("No events available to export.");
+    return;
+  }
+  const colDefMap = {};
+  ALL_EVENT_COLUMNS.forEach((c) => { colDefMap[c.id] = c; });
+  const cols = (activeColumnIds || []).map((id) => colDefMap[id]).filter(Boolean);
+
+  const printWin = window.open("", "_blank");
+  if (!printWin) {
+    alert("Please allow popups to generate the PDF report.");
+    return;
+  }
+
+  const rowsHtml = events
+    .slice(0, 500)
+    .map((ev, idx) => {
+      const f = extractEventFields(ev);
+      const cells = cols
+        .map((c) => {
+          let val = f[c.id] || "--";
+          if (c.id === "severity") {
+            const sev = String(val).toUpperCase();
+            const color =
+              sev === "CRITICAL" ? "#ef4444" :
+              sev === "HIGH" ? "#f97316" :
+              sev === "MEDIUM" ? "#eab308" :
+              "#38bdf8";
+            return `<td style="padding:6px 8px;border-bottom:1px solid #2d3748;color:${color};font-weight:bold;">${val}</td>`;
+          }
+          return `<td style="padding:6px 8px;border-bottom:1px solid #2d3748;word-break:break-all;">${val}</td>`;
+        })
+        .join("");
+      const bg = idx % 2 === 0 ? "#111827" : "#0f172a";
+      return `<tr style="background:${bg};">${cells}</tr>`;
+    })
+    .join("");
+
+  const headersHtml = cols
+    .map((c) => `<th style="padding:8px;text-align:left;background:#1e293b;color:#94a3b8;font-size:11px;text-transform:uppercase;border-bottom:2px solid #334155;">${c.label}</th>`)
+    .join("");
+
+  const now = new Date().toLocaleString();
+  const scriptTag = "<" + "script>setTimeout(function(){ window.print(); }, 400);<" + "/script>";
+  const html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>OpenSOC Forge - Event Investigation Report</title>" +
+    "<style>" +
+    "@page { size: landscape; margin: 12mm; }" +
+    "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; margin: 0; padding: 20px; background: #0b0f19; color: #e2e8f0; font-size: 11px; }" +
+    ".header { border-bottom: 2px solid #3b82f6; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }" +
+    ".title { font-size: 18px; font-weight: bold; color: #f8fafc; }" +
+    ".meta { font-size: 11px; color: #94a3b8; margin-top: 4px; }" +
+    ".badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; background: #1e3a8a; color: #60a5fa; border: 1px solid #2563eb; }" +
+    "table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px; }" +
+    "@media print {" +
+      "body { background: #fff !important; color: #000 !important; }" +
+      "table { border-collapse: collapse; }" +
+      "th { background: #f1f5f9 !important; color: #334155 !important; border-bottom: 2px solid #cbd5e1 !important; }" +
+      "td { border-bottom: 1px solid #e2e8f0 !important; color: #0f172a !important; }" +
+      "tr { background: transparent !important; }" +
+      ".header { border-bottom: 2px solid #2563eb !important; }" +
+      ".title { color: #0f172a !important; }" +
+      ".meta { color: #475569 !important; }" +
+      ".no-print { display: none !important; }" +
+    "}" +
+    "</style></head><body>" +
+    "<div class=\"header\"><div>" +
+    "<div class=\"title\">OpenSOC Forge Enterprise SIEM — Event Investigation Report</div>" +
+    "<div class=\"meta\"><strong>Query:</strong> <code>" + (query || "*").replace(/</g, "&lt;") + "</code> &nbsp;|&nbsp; <strong>Time Window:</strong> " + (timeRange || "24h") + " &nbsp;|&nbsp; <strong>Total Hits:</strong> " + Number(totalHits || events.length).toLocaleString() + " &nbsp;|&nbsp; <strong>Exported Rows:</strong> " + events.length + "</div>" +
+    "</div><div style=\"text-align:right;\"><span class=\"badge\">CONFIDENTIAL / SOC INVESTIGATION</span><div class=\"meta\" style=\"margin-top:6px;\">Generated: " + now + "</div></div></div>" +
+    "<div class=\"no-print\" style=\"margin-bottom:14px;\">" +
+    "<button onclick=\"window.print()\" style=\"padding:8px 16px;background:#10b981;color:#000;font-weight:bold;border:none;border-radius:4px;cursor:pointer;font-family:monospace;margin-right:8px;\">Print / Save as PDF</button>" +
+    "<button onclick=\"window.close()\" style=\"padding:8px 16px;background:#334155;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:monospace;\">Close Window</button></div>" +
+    "<table><thead><tr>" + headersHtml + "</tr></thead><tbody>" + rowsHtml + "</tbody></table>" +
+    scriptTag +
+    "</body></html>";
+
+  printWin.document.open();
+  printWin.document.write(html);
+  printWin.document.close();
+}
+
+
 function App() {
   // Uniform pagination state across SIEM screens
   const [alertLimit, setAlertLimit] = useState(100);
@@ -1003,6 +1225,87 @@ function App() {
   const [eventLimit, setEventLimit] = useState(100);
   const [eventPage, setEventPage] = useState(1);
   const [eventTotalPages, setEventTotalPages] = useState(1);
+
+  const [eventViewMode, setEventViewMode] = useState(() => {
+    try {
+      return localStorage.getItem("opensoc_event_view_mode") || "table";
+    } catch(e) {
+      return "table";
+    }
+  });
+
+  const [eventColumns, setEventColumns] = useState(() => {
+    try {
+      const cached = localStorage.getItem("opensoc_event_table_columns");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch(e) {}
+    return ["timestamp", "eventId", "severity", "description", "srcIp", "destIp", "user", "host"];
+  });
+
+  const [eventColPickerOpen, setEventColPickerOpen] = useState(false);
+  const [draggedColId, setDraggedColId] = useState(null);
+
+  const handleToggleColumn = (colId) => {
+    setEventColumns(prev => {
+      let next;
+      if (prev.includes(colId)) {
+        if (prev.length <= 1) return prev;
+        next = prev.filter(c => c !== colId);
+      } else {
+        next = [...prev, colId];
+      }
+      try { localStorage.setItem("opensoc_event_table_columns", JSON.stringify(next)); } catch(e) {}
+      return next;
+    });
+  };
+
+  const handleReorderColumns = (sourceId, targetId) => {
+    setEventColumns(prev => {
+      const list = [...prev];
+      const srcIdx = list.indexOf(sourceId);
+      const dstIdx = list.indexOf(targetId);
+      if (srcIdx === -1 || dstIdx === -1 || srcIdx === dstIdx) return prev;
+      list.splice(srcIdx, 1);
+      list.splice(dstIdx, 0, sourceId);
+      try { localStorage.setItem("opensoc_event_table_columns", JSON.stringify(list)); } catch(e) {}
+      return list;
+    });
+  };
+
+  const handleMoveColumn = (colId, direction) => {
+    setEventColumns(prev => {
+      const idx = prev.indexOf(colId);
+      if (idx === -1) return prev;
+      const targetIdx = direction === "up" || direction === "left" ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const list = [...prev];
+      const [item] = list.splice(idx, 1);
+      list.splice(targetIdx, 0, item);
+      try { localStorage.setItem("opensoc_event_table_columns", JSON.stringify(list)); } catch(e) {}
+      return list;
+    });
+  };
+
+  const handleApplyColumnPreset = (presetKey) => {
+    let cols;
+    if (presetKey === "network") {
+      cols = ["timestamp", "srcIp", "destIp", "action", "severity", "description", "host"];
+    } else if (presetKey === "identity") {
+      cols = ["timestamp", "eventId", "user", "srcIp", "destIp", "action", "severity", "description"];
+    } else if (presetKey === "endpoint") {
+      cols = ["timestamp", "eventId", "user", "host", "process", "action", "severity", "description"];
+    } else if (presetKey === "all") {
+      cols = ALL_EVENT_COLUMNS.map(c => c.id);
+    } else {
+      cols = ["timestamp", "eventId", "severity", "description", "srcIp", "destIp", "user", "host"];
+    }
+    setEventColumns(cols);
+    try { localStorage.setItem("opensoc_event_table_columns", JSON.stringify(cols)); } catch(e) {}
+  };
+
 
   // --- Correlation Engine State (M4) ---
   const [correlationIncidents, setCorrelationIncidents] = useState(() => {
@@ -11103,44 +11406,25 @@ function App() {
 
 
     /* Results Container */
-
     /*#__PURE__*/React.createElement("div", {
-
       className: "bg-[#0e1422] p-4 rounded-lg border border-[#1f293d] space-y-3"
-
     },
-
-      /* Results Timing & Metrics Header */
-
+      /* Results Timing & Metrics Header with Controls */
       /*#__PURE__*/React.createElement("div", {
-
-        className: "flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400 border-b border-[#1f293d] pb-2.5"
-
+        className: "flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs text-slate-400 border-b border-[#1f293d] pb-3"
       },
-
+        /* Left: Hits, Timing & Indices */
         /*#__PURE__*/React.createElement("div", {
-
-          className: "flex items-center space-x-2"
-
+          className: "flex items-center space-x-3 flex-wrap gap-y-1 font-mono text-xs"
         },
-
           eventLoading
-
             ? /*#__PURE__*/React.createElement("div", {
-
                 className: "flex items-center space-x-2 text-emerald-400 font-mono"
-
               },
-
                 /*#__PURE__*/React.createElement("i", { "data-lucide": "loader", className: "w-3.5 h-3.5 animate-spin" }),
-
                 /*#__PURE__*/React.createElement("span", null, "Executing query across datastores...")
-
               )
-
-: /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center space-x-3 flex-wrap gap-y-1 font-mono text-xs"
-              },
+            : /*#__PURE__*/React.createElement(React.Fragment, null,
                 /*#__PURE__*/React.createElement("span", {
                   className: "font-bold text-slate-100"
                 }, "Query Results: " + eventTotalHits.toLocaleString() + " hits"),
@@ -11151,7 +11435,7 @@ function App() {
                   className: "px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 text-[11px] font-mono border border-sky-500/20"
                 }, "Showing " + (((eventPage - 1) * eventLimit) + 1) + " - " + Math.min(eventPage * eventLimit, eventTotalHits)),
                 eventIndicesSearched && eventIndicesSearched.length > 0 && /*#__PURE__*/React.createElement("div", {
-                  className: "hidden md:inline-flex items-center space-x-1"
+                  className: "hidden xl:inline-flex items-center space-x-1"
                 },
                   eventIndicesSearched.map((idx) => /*#__PURE__*/React.createElement("span", {
                     key: idx,
@@ -11160,17 +11444,79 @@ function App() {
                 )
               )
         ),
+
+        /* Right: Enterprise Controls (View Switcher, Columns, CSV, PDF, Page Size, Prev/Next, Refresh) */
         /*#__PURE__*/React.createElement("div", {
-          className: "flex items-center space-x-2 font-mono text-xs flex-wrap gap-y-1"
+          className: "flex items-center space-x-2 font-mono text-xs flex-wrap gap-y-1.5"
         },
-          /* Page Size Dropdown */
+          /* View Mode Switcher */
+          /*#__PURE__*/React.createElement("div", {
+            className: "flex items-center bg-[#131b2e] p-0.5 rounded border border-[#1f293d]"
+          },
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => {
+                setEventViewMode("table");
+                try { localStorage.setItem("opensoc_event_view_mode", "table"); } catch(e) {}
+              },
+              title: "Enterprise Data Table View (Customizable Columns)",
+              className: `px-2 py-1 rounded text-xs font-bold transition flex items-center space-x-1 ${eventViewMode === "table" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "text-slate-400 hover:text-slate-200"}`
+            },
+              /*#__PURE__*/React.createElement("i", { "data-lucide": "table", className: "w-3 h-3" }),
+              /*#__PURE__*/React.createElement("span", { className: "hidden sm:inline text-[11px]" }, "Table")
+            ),
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => {
+                setEventViewMode("cards");
+                try { localStorage.setItem("opensoc_event_view_mode", "cards"); } catch(e) {}
+              },
+              title: "Log Summary Cards View",
+              className: `px-2 py-1 rounded text-xs font-bold transition flex items-center space-x-1 ${eventViewMode === "cards" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "text-slate-400 hover:text-slate-200"}`
+            },
+              /*#__PURE__*/React.createElement("i", { "data-lucide": "layout-list", className: "w-3 h-3" }),
+              /*#__PURE__*/React.createElement("span", { className: "hidden sm:inline text-[11px]" }, "Cards")
+            )
+          ),
+
+          /* Customize Columns Button */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setEventColPickerOpen(prev => !prev),
+            title: "Select & reorder columns (or drag table headers with mouse)",
+            className: `px-2.5 py-1 rounded border text-xs font-mono flex items-center space-x-1.5 transition cursor-pointer ${eventColPickerOpen ? "bg-sky-500/20 text-sky-400 border-sky-500/50" : "bg-[#131b2e] hover:bg-[#1a243b] text-slate-200 border-[#1f293d]"}`
+          },
+            /*#__PURE__*/React.createElement("i", { "data-lucide": "columns-3", className: "w-3.5 h-3.5 text-sky-400" }),
+            /*#__PURE__*/React.createElement("span", null, `Columns (${eventColumns.length}/${ALL_EVENT_COLUMNS.length})`)
+          ),
+
+          /* Export CSV Button */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => exportEventsToCSV(eventResults, eventColumns, eventQuery, eventTimeRange),
+            disabled: !eventResults || eventResults.length === 0,
+            title: "Instantly export currently queried events as CSV file",
+            className: "px-2.5 py-1 rounded bg-[#131b2e] hover:bg-emerald-500/20 text-slate-200 hover:text-emerald-400 border border-[#1f293d] hover:border-emerald-500/40 text-xs font-mono flex items-center space-x-1 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          },
+            /*#__PURE__*/React.createElement("i", { "data-lucide": "download", className: "w-3 h-3 text-emerald-400" }),
+            /*#__PURE__*/React.createElement("span", null, "CSV")
+          ),
+
+          /* Export PDF Button */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => exportEventsToPDF(eventResults, eventColumns, eventQuery, eventTimeRange, eventTotalHits),
+            disabled: !eventResults || eventResults.length === 0,
+            title: "Print or export formatted PDF investigation report",
+            className: "px-2.5 py-1 rounded bg-[#131b2e] hover:bg-sky-500/20 text-slate-200 hover:text-sky-400 border border-[#1f293d] hover:border-sky-500/40 text-xs font-mono flex items-center space-x-1 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          },
+            /*#__PURE__*/React.createElement("i", { "data-lucide": "printer", className: "w-3 h-3 text-sky-400" }),
+            /*#__PURE__*/React.createElement("span", null, "PDF")
+          ),
+
+          /* Page Size Select */
           /*#__PURE__*/React.createElement("div", {
             className: "flex items-center space-x-1 text-slate-400"
           },
-            /*#__PURE__*/React.createElement("span", { className: "text-[10px] uppercase font-bold" }, "Show:"),
+            /*#__PURE__*/React.createElement("span", { className: "text-[10px] uppercase font-bold hidden sm:inline" }, "Show:"),
             /*#__PURE__*/React.createElement("select", {
               value: eventLimit,
-              onChange: e => {
+              onChange: (e) => {
                 const nl = Number(e.target.value);
                 setEventLimit(nl);
                 executeEventSearch(undefined, undefined, nl, 1);
@@ -11184,314 +11530,491 @@ function App() {
               /*#__PURE__*/React.createElement("option", { value: 1000 }, "1000 logs")
             )
           ),
-          /* Pagination Controls: Prev */
+
+          /* Pagination Prev */
           /*#__PURE__*/React.createElement("button", {
             onClick: () => executeEventSearch(undefined, undefined, eventLimit, eventPage - 1),
             disabled: eventPage <= 1 || eventLoading,
-            title: "Previous Page",
             className: `px-2 py-1 rounded border text-xs font-bold transition ${eventPage <= 1 || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
           }, "◀ Prev"),
+
           /* Page Indicator */
           /*#__PURE__*/React.createElement("span", {
             className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-emerald-400 font-bold text-xs"
           }, "Page " + eventPage + " of " + Math.max(1, eventTotalPages)),
-          /* Next Button */
+
+          /* Pagination Next */
           /*#__PURE__*/React.createElement("button", {
             onClick: () => executeEventSearch(undefined, undefined, eventLimit, eventPage + 1),
             disabled: eventPage >= eventTotalPages || eventLoading,
-            title: "Next Page",
             className: `px-2 py-1 rounded border text-xs font-bold transition ${eventPage >= eventTotalPages || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
           }, "Next ▶"),
-          /* Refresh Button */
+
+          /* Refresh */
           /*#__PURE__*/React.createElement("button", {
             onClick: () => executeEventSearch(),
             disabled: eventLoading,
             title: "Refresh Query Results",
             className: "p-1 rounded bg-[#131b2e] hover:bg-[#1f293d] border border-[#1f293d] text-slate-300 hover:text-white transition-colors"
-          }, /*#__PURE__*/React.createElement("i", {
-            "data-lucide": "refresh-cw",
-            className: `w-3 h-3 ${eventLoading ? "animate-spin" : ""}`
-          }))
+          },
+            /*#__PURE__*/React.createElement("i", {
+              "data-lucide": "refresh-cw",
+              className: `w-3 h-3 ${eventLoading ? "animate-spin" : ""}`
+            })
+          )
         )
-
       ),
 
+      /* Column Customizer Panel (Drawer / Popover) */
+      eventColPickerOpen && /*#__PURE__*/React.createElement("div", {
+        className: "p-3.5 bg-[#11192c] border border-sky-500/40 rounded-lg shadow-2xl space-y-3"
+      },
+        /* Panel Header */
+        /*#__PURE__*/React.createElement("div", {
+          className: "flex items-center justify-between border-b border-[#1f293d] pb-2 text-xs font-mono"
+        },
+          /*#__PURE__*/React.createElement("div", { className: "flex items-center space-x-2" },
+            /*#__PURE__*/React.createElement("i", { "data-lucide": "sliders", className: "w-4 h-4 text-sky-400" }),
+            /*#__PURE__*/React.createElement("span", { className: "font-bold text-slate-200" }, "Customize Enterprise Table Columns"),
+            /*#__PURE__*/React.createElement("span", { className: "text-[10px] text-slate-400 hidden sm:inline" }, "(Drag column headers on table or use ◀ ▶ below to reorder)")
+          ),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setEventColPickerOpen(false),
+            className: "text-slate-400 hover:text-slate-100 px-2 py-0.5 rounded hover:bg-[#1f293d] font-bold"
+          }, "✕ Close")
+        ),
 
+        /* Presets Bar */
+        /*#__PURE__*/React.createElement("div", {
+          className: "flex items-center space-x-1.5 flex-wrap gap-y-1 text-[11px] font-mono"
+        },
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-400 uppercase text-[10px] font-bold mr-1" }, "Presets:"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => handleApplyColumnPreset("default"),
+            className: "px-2 py-0.5 rounded bg-[#1a253d] hover:bg-[#233152] text-slate-200 border border-[#2a3a5f]"
+          }, "Default SOC"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => handleApplyColumnPreset("network"),
+            className: "px-2 py-0.5 rounded bg-[#1a253d] hover:bg-[#233152] text-slate-200 border border-[#2a3a5f]"
+          }, "Network Focus"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => handleApplyColumnPreset("identity"),
+            className: "px-2 py-0.5 rounded bg-[#1a253d] hover:bg-[#233152] text-slate-200 border border-[#2a3a5f]"
+          }, "Identity & Auth Focus"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => handleApplyColumnPreset("endpoint"),
+            className: "px-2 py-0.5 rounded bg-[#1a253d] hover:bg-[#233152] text-slate-200 border border-[#2a3a5f]"
+          }, "Endpoint & Process Focus"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => handleApplyColumnPreset("all"),
+            className: "px-2 py-0.5 rounded bg-[#1a253d] hover:bg-[#233152] text-slate-200 border border-[#2a3a5f]"
+          }, "All 13 Fields")
+        ),
 
-      /* Dynamic Event List / Loading / Empty State */
-
-      (eventLoading)
-
-        ? /* Loading State */
-
-          /*#__PURE__*/React.createElement("div", {
-
-            className: "p-12 text-center bg-[#080c14]/60 border border-[#1f293d] rounded-lg space-y-3 font-mono"
-
-          }, [
-
-            /*#__PURE__*/React.createElement("div", {
-
-              key: "spinner",
-
-              className: "w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"
-
-            }),
-
-            /*#__PURE__*/React.createElement("p", {
-
-              key: "msg1",
-
-              className: "text-xs text-emerald-400 font-bold"
-
-            }, `Executing investigation query for: "${eventQuery || '*'}"`),
-
-            /*#__PURE__*/React.createElement("p", {
-
-              key: "msg2",
-
-              className: "text-[11px] text-slate-500"
-
-            }, "Querying Wazuh, NetWitness, Sophos XDR, Active Directory & Suricata")
-
-          ])
-
-        : (eventResults.length === 0)
-
-        ? /* Empty State */
-
-          /*#__PURE__*/React.createElement("div", {
-
-            className: "p-8 text-center bg-[#080c14]/40 border border-dashed border-[#1f293d] rounded-lg space-y-4"
-
-          },
-
-            /*#__PURE__*/React.createElement("div", {
-
-              className: "w-12 h-12 mx-auto rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400"
-
-            }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-6 h-6 text-slate-400" })),
-
-            /*#__PURE__*/React.createElement("div", { className: "space-y-1" },
-
-              /*#__PURE__*/React.createElement("h3", {
-
-                className: "text-sm font-bold text-slate-200"
-
-              }, "No Telemetry Events Found"),
-
-              /*#__PURE__*/React.createElement("p", {
-
-                className: "text-xs text-slate-400 max-w-md mx-auto"
-
-              }, "No events matched your query \"" + eventQuery + "\" within time range \"" + eventTimeRange + "\".")
-
-            ),
-
-            /*#__PURE__*/React.createElement("div", {
-
-              className: "p-3 bg-[#131b2e] border border-[#1f293d] rounded text-left max-w-md mx-auto text-xs text-slate-400 space-y-1 font-sans"
-
+        /* Columns Grid */
+        /*#__PURE__*/React.createElement("div", {
+          className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-1 font-mono text-xs"
+        },
+          ALL_EVENT_COLUMNS.map((col) => {
+            const isChecked = eventColumns.includes(col.id);
+            const colIdx = eventColumns.indexOf(col.id);
+            return /*#__PURE__*/React.createElement("div", {
+              key: col.id,
+              className: `p-2 rounded border flex items-center justify-between ${isChecked ? "bg-[#131b2e] border-sky-500/40 text-slate-200" : "bg-[#0b101d] border-[#1f293d] text-slate-500"}`
             },
-
-              /*#__PURE__*/React.createElement("span", {
-
-                className: "font-bold text-slate-300 block text-[11px]"
-
-              }, "Actionable Suggestions:"),
-
-              /*#__PURE__*/React.createElement("p", null, "• Broaden your search term or use wildcard ", /*#__PURE__*/React.createElement("code", { className: "text-emerald-400 font-mono" }, "*")),
-
-              /*#__PURE__*/React.createElement("p", null, "• Increase time range to 'Last 7 Days' or 'All Telemetry'"),
-
-              /*#__PURE__*/React.createElement("p", null, "• Click a preset chip above (e.g. suricata-*, wazuh-alerts-*, or severity:CRITICAL)")
-
-            ),
-
-            /*#__PURE__*/React.createElement("button", {
-
-              onClick: () => {
-
-                setEventQuery("*");
-
-                setEventTimeRange("24h");
-
-                executeEventSearch("*", "24h");
-
+              /*#__PURE__*/React.createElement("label", {
+                className: "flex items-center space-x-2 cursor-pointer flex-1 mr-2 select-none"
               },
-
-              className: "px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 font-mono text-xs rounded transition-colors cursor-pointer"
-
-            }, "Reset Search to All Events (*)")
-
-          )
-
-        : /* Dynamic Events List */
-
-          /*#__PURE__*/React.createElement("div", {
-
-            className: "space-y-2 font-mono text-xs max-h-[620px] overflow-y-auto pr-1"
-
-          },
-
-            eventResults.map((ev, idx) => /*#__PURE__*/React.createElement("div", {
-
-              key: ev.id || `${ev.timestamp}-${idx}`,
-
-              onClick: () => setSelectedEvent(ev),
-
-              className: "p-3 rounded bg-[#131b2e] border border-[#1f293d] hover:border-emerald-500/40 hover:bg-[#162038] cursor-pointer transition-all space-y-1.5 group"
-
-            },
-
-              /* Card Header: Timestamp, Source, Host, Severity, Index */
-
-              /*#__PURE__*/React.createElement("div", {
-
-                className: "flex flex-wrap items-center justify-between gap-2 text-[11px]"
-
-              },
-
-                /*#__PURE__*/React.createElement("div", {
-
-                  className: "flex items-center space-x-2 flex-wrap gap-y-1"
-
-                },
-
-                  /*#__PURE__*/React.createElement("span", {
-
-                    className: "text-slate-400 font-mono text-[11px]"
-
-                  }, ev.timestamp || "-"),
-
-                  /*#__PURE__*/React.createElement("span", {
-
-                    className: `px-2 py-0.5 rounded text-[10px] font-mono border ${getSourceBadgeClass(ev.source_type, ev.index)}`
-
-                  }, ev.source_type || ev.index || "telemetry"),
-
-                  /*#__PURE__*/React.createElement("span", {
-
-                    className: "px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700"
-
-                  }, ev.host || "unknown-host")
-
-                ),
-
-                /*#__PURE__*/React.createElement("div", {
-
-                  className: "flex items-center space-x-2"
-
-                },
-
-                  /*#__PURE__*/React.createElement("span", {
-
-                    className: `px-2 py-0.5 rounded text-[10px] font-bold border ${getSeverityBadgeClass(ev.severity)}`
-
-                  }, (ev.severity || "INFO").toUpperCase()),
-
-                  ev.index && /*#__PURE__*/React.createElement("span", {
-
-                    className: "text-[10px] text-slate-500 font-mono hidden sm:inline"
-
-                  }, ev.index)
-
-                )
-
-              ),
-
-              /* Card Body: Summary */
-
-              /*#__PURE__*/React.createElement("div", {
-
-                className: "text-slate-200 text-xs font-sans group-hover:text-emerald-300 transition-colors line-clamp-2"
-
-              }, ev.summary || ev.title || ev.message || "Telemetry event observed"),
-
-              /* Card Footer: Quick Pivot Hint */
-
-              /*#__PURE__*/React.createElement("div", {
-
-                className: "flex justify-between items-center text-[10px] text-slate-500 font-mono pt-1 border-t border-[#1f293d]/50"
-
-              },
-
-                /*#__PURE__*/React.createElement("span", null, "ID: " + (ev.id || "evt-raw")),
-
+                /*#__PURE__*/React.createElement("input", {
+                  type: "checkbox",
+                  checked: isChecked,
+                  onChange: () => handleToggleColumn(col.id),
+                  className: "rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer"
+                }),
                 /*#__PURE__*/React.createElement("span", {
-
-                  className: "text-emerald-400/80 group-hover:text-emerald-300 flex items-center space-x-1"
-
-                }, "Click to inspect raw JSON payload \u2192")
-
-              )
-
-            ))
-
-          )
-,
-
-          /* Bottom Pagination Bar */
-          eventResults && eventResults.length > 0 && /*#__PURE__*/React.createElement("div", {
-            className: "p-3 rounded-lg bg-[#0e1422] border border-[#1f293d] flex flex-wrap items-center justify-between gap-3 text-xs font-mono mt-3"
-          },
-            /* Left: Summary */
-            /*#__PURE__*/React.createElement("div", {
-              className: "text-slate-400"
-            },
-              /*#__PURE__*/React.createElement("span", null, "Showing "),
-              /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-bold" }, (((eventPage - 1) * eventLimit) + 1) + " - " + Math.min(eventPage * eventLimit, eventTotalHits)),
-              /*#__PURE__*/React.createElement("span", null, " of "),
-              /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-bold" }, eventTotalHits.toLocaleString() + " total events")
-            ),
-            /* Right: Selector & Paging */
-            /*#__PURE__*/React.createElement("div", {
-              className: "flex items-center space-x-2"
-            },
-              /* Page Size */
-              /*#__PURE__*/React.createElement("select", {
-                value: eventLimit,
-                onChange: e => {
-                  const nl = Number(e.target.value);
-                  setEventLimit(nl);
-                  executeEventSearch(undefined, undefined, nl, 1);
-                },
-                className: "bg-[#131b2e] border border-[#1f293d] rounded px-2.5 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500 cursor-pointer"
-              },
-                /*#__PURE__*/React.createElement("option", { value: 50 }, "50 per page"),
-                /*#__PURE__*/React.createElement("option", { value: 100 }, "100 per page"),
-                /*#__PURE__*/React.createElement("option", { value: 200 }, "200 per page"),
-                /*#__PURE__*/React.createElement("option", { value: 500 }, "500 per page"),
-                /*#__PURE__*/React.createElement("option", { value: 1000 }, "1000 per page")
+                  className: isChecked ? "font-semibold text-slate-200" : "text-slate-400"
+                }, col.label)
               ),
-              /* Prev */
-              /*#__PURE__*/React.createElement("button", {
-                onClick: () => {
-                  window.scrollTo({ top: 300, behavior: "smooth" });
-                  executeEventSearch(undefined, undefined, eventLimit, eventPage - 1);
-                },
-                disabled: eventPage <= 1 || eventLoading,
-                className: `px-2.5 py-1 rounded border text-xs font-bold transition ${eventPage <= 1 || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
-              }, "◀ Previous"),
-              /* Page Indicator */
+              isChecked && /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center space-x-1 shrink-0"
+              },
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => handleMoveColumn(col.id, "up"),
+                  disabled: colIdx <= 0,
+                  title: "Move column left (higher priority)",
+                  className: "px-1.5 py-0.5 rounded bg-[#1f293d] hover:bg-slate-700 disabled:opacity-20 text-[10px] text-slate-300"
+                }, "◀"),
+                /*#__PURE__*/React.createElement("button", {
+                  onClick: () => handleMoveColumn(col.id, "down"),
+                  disabled: colIdx >= eventColumns.length - 1,
+                  title: "Move column right",
+                  className: "px-1.5 py-0.5 rounded bg-[#1f293d] hover:bg-slate-700 disabled:opacity-20 text-[10px] text-slate-300"
+                }, "▶")
+              )
+            );
+          })
+        )
+      ),
+
+      /* Dynamic Event Content: Loading / Empty / Table / Cards */
+      eventLoading
+        ? /* Loading */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-12 text-center bg-[#080c14]/60 border border-[#1f293d] rounded-lg space-y-3 font-mono"
+          }, [
+            /*#__PURE__*/React.createElement("div", {
+              key: "spinner",
+              className: "w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"
+            }),
+            /*#__PURE__*/React.createElement("p", {
+              key: "msg1",
+              className: "text-xs text-emerald-400 font-bold"
+            }, `Executing investigation query for: "${eventQuery || '*'}"`),
+            /*#__PURE__*/React.createElement("p", {
+              key: "msg2",
+              className: "text-[11px] text-slate-500"
+            }, "Querying Wazuh, NetWitness, Sophos XDR, Active Directory & Suricata")
+          ])
+        : eventResults.length === 0
+        ? /* Empty State */
+          /*#__PURE__*/React.createElement("div", {
+            className: "p-8 text-center bg-[#080c14]/40 border border-dashed border-[#1f293d] rounded-lg space-y-4"
+          },
+            /*#__PURE__*/React.createElement("div", {
+              className: "w-12 h-12 mx-auto rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400"
+            }, /*#__PURE__*/React.createElement("i", { "data-lucide": "search", className: "w-6 h-6 text-slate-400" })),
+            /*#__PURE__*/React.createElement("div", { className: "space-y-1" },
+              /*#__PURE__*/React.createElement("h3", {
+                className: "text-sm font-bold text-slate-200"
+              }, "No Telemetry Events Found"),
+              /*#__PURE__*/React.createElement("p", {
+                className: "text-xs text-slate-400 max-w-md mx-auto"
+              }, "No events matched your query \"" + eventQuery + "\" within time range \"" + eventTimeRange + "\".")
+            ),
+            /*#__PURE__*/React.createElement("div", {
+              className: "p-3 bg-[#131b2e] border border-[#1f293d] rounded text-left max-w-md mx-auto text-xs text-slate-400 space-y-1 font-sans"
+            },
               /*#__PURE__*/React.createElement("span", {
-                className: "px-2.5 py-1 rounded bg-[#080c14] border border-[#1f293d] text-emerald-400 font-bold"
-              }, "Page " + eventPage + " of " + Math.max(1, eventTotalPages)),
-              /* Next */
-              /*#__PURE__*/React.createElement("button", {
-                onClick: () => {
-                  window.scrollTo({ top: 300, behavior: "smooth" });
-                  executeEventSearch(undefined, undefined, eventLimit, eventPage + 1);
+                className: "font-bold text-slate-300 block text-[11px]"
+              }, "Actionable Suggestions:"),
+              /*#__PURE__*/React.createElement("p", null, "• Broaden your search term or use wildcard ", /*#__PURE__*/React.createElement("code", { className: "text-emerald-400 font-mono" }, "*")),
+              /*#__PURE__*/React.createElement("p", null, "• Increase time range to 'Last 7 Days' or 'All Telemetry'"),
+              /*#__PURE__*/React.createElement("p", null, "• Click a preset chip above (e.g. suricata-*, wazuh-alerts-*, or severity:CRITICAL)")
+            ),
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => {
+                setEventQuery("*");
+                setEventTimeRange("24h");
+                executeEventSearch("*", "24h");
+              },
+              className: "px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 font-mono text-xs rounded transition-colors cursor-pointer"
+            }, "Reset Search to All Events (*)")
+          )
+        : eventViewMode === "table"
+        ? /* ENTERPRISE DATA TABLE VIEW */
+          /*#__PURE__*/React.createElement("div", {
+            className: "border border-[#1f293d] rounded-lg overflow-hidden bg-[#090d18]"
+          },
+            /*#__PURE__*/React.createElement("div", {
+              className: "overflow-x-auto max-h-[640px]"
+            },
+              /*#__PURE__*/React.createElement("table", {
+                className: "w-full text-left text-xs font-mono"
+              },
+                /*#__PURE__*/React.createElement("thead", {
+                  className: "sticky top-0 bg-[#131b2e] z-10 text-slate-400 text-[11px] uppercase border-b border-[#1f293d]"
                 },
-                disabled: eventPage >= eventTotalPages || eventLoading,
-                className: `px-2.5 py-1 rounded border text-xs font-bold transition ${eventPage >= eventTotalPages || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
-              }, "Next ▶")
+                  /*#__PURE__*/React.createElement("tr", null,
+                    eventColumns.map((colId) => {
+                      const colDef = ALL_EVENT_COLUMNS.find(c => c.id === colId) || { id: colId, label: colId };
+                      return /*#__PURE__*/React.createElement("th", {
+                        key: colId,
+                        draggable: true,
+                        onDragStart: (e) => {
+                          e.dataTransfer.setData("text/plain", colId);
+                          setDraggedColId(colId);
+                        },
+                        onDragOver: (e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        },
+                        onDrop: (e) => {
+                          e.preventDefault();
+                          const srcId = e.dataTransfer.getData("text/plain") || draggedColId;
+                          if (srcId && srcId !== colId) {
+                            handleReorderColumns(srcId, colId);
+                          }
+                          setDraggedColId(null);
+                        },
+                        title: "Click & drag header left or right to reorder column",
+                        className: "p-2.5 cursor-move select-none border-r border-[#1f293d]/60 hover:bg-slate-800 transition whitespace-nowrap"
+                      },
+                        /*#__PURE__*/React.createElement("div", {
+                          className: "flex items-center justify-between space-x-2"
+                        },
+                          /*#__PURE__*/React.createElement("span", {
+                            className: "font-semibold text-slate-300"
+                          }, colDef.label),
+                          /*#__PURE__*/React.createElement("span", {
+                            className: "text-[10px] text-slate-500 opacity-60"
+                          }, "⋮⋮")
+                        )
+                      );
+                    })
+                  )
+                ),
+                /*#__PURE__*/React.createElement("tbody", {
+                  className: "divide-y divide-[#1f293d] text-slate-300"
+                },
+                  eventResults.map((ev, rIdx) => {
+                    const f = extractEventFields(ev);
+                    return /*#__PURE__*/React.createElement("tr", {
+                      key: ev.id || `${f.timestamp}-${rIdx}`,
+                      onClick: () => setSelectedEvent(ev),
+                      title: "Click to inspect raw JSON payload",
+                      className: "hover:bg-[#162038] cursor-pointer transition border-b border-[#1f293d]/50 group"
+                    },
+                      eventColumns.map((colId) => {
+                        if (colId === "timestamp") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 text-slate-400 whitespace-nowrap text-[11px] font-mono border-r border-[#1f293d]/30"
+                          }, f.timestamp);
+                        }
+                        if (colId === "eventId") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap border-r border-[#1f293d]/30"
+                          },
+                            /*#__PURE__*/React.createElement("span", {
+                              className: "px-2 py-0.5 rounded bg-slate-800 text-emerald-400 font-bold border border-slate-700 text-[10px]"
+                            }, f.eventId)
+                          );
+                        }
+                        if (colId === "severity") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap border-r border-[#1f293d]/30"
+                          },
+                            /*#__PURE__*/React.createElement("span", {
+                              className: `px-2 py-0.5 rounded text-[10px] font-bold border ${getSeverityBadgeClass(f.severity)}`
+                            }, f.severity)
+                          );
+                        }
+                        if (colId === "description") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 text-slate-200 font-sans max-w-md truncate group-hover:text-emerald-300 transition-colors border-r border-[#1f293d]/30",
+                            title: f.description
+                          }, f.description);
+                        }
+                        if (colId === "srcIp") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono border-r border-[#1f293d]/30"
+                          },
+                            f.srcIp !== "--"
+                              ? /*#__PURE__*/React.createElement("span", {
+                                  className: "px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 font-bold border border-sky-500/30 text-[11px]"
+                                }, f.srcIp)
+                              : /*#__PURE__*/React.createElement("span", { className: "text-slate-600" }, "--")
+                          );
+                        }
+                        if (colId === "destIp") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono max-w-xs truncate border-r border-[#1f293d]/30",
+                            title: f.destIp
+                          },
+                            f.destIp !== "--"
+                              ? /*#__PURE__*/React.createElement("span", {
+                                  className: "px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-bold border border-indigo-500/30 text-[11px]"
+                                }, f.destIp)
+                              : /*#__PURE__*/React.createElement("span", { className: "text-slate-600" }, "--")
+                          );
+                        }
+                        if (colId === "user") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono border-r border-[#1f293d]/30"
+                          },
+                            f.user !== "--"
+                              ? /*#__PURE__*/React.createElement("span", {
+                                  className: "px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30 text-[10px] inline-flex items-center space-x-1"
+                                },
+                                  /*#__PURE__*/React.createElement("i", { "data-lucide": "user", className: "w-3 h-3" }),
+                                  /*#__PURE__*/React.createElement("span", null, f.user)
+                                )
+                              : /*#__PURE__*/React.createElement("span", { className: "text-slate-600" }, "--")
+                          );
+                        }
+                        if (colId === "host") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono border-r border-[#1f293d]/30"
+                          },
+                            /*#__PURE__*/React.createElement("span", {
+                              className: "px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px]"
+                            }, f.host)
+                          );
+                        }
+                        if (colId === "sourceType") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono text-[10px] text-slate-400 border-r border-[#1f293d]/30"
+                          }, f.sourceType);
+                        }
+                        if (colId === "index") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono text-[10px] text-slate-500 border-r border-[#1f293d]/30"
+                          }, f.index);
+                        }
+                        if (colId === "action") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 whitespace-nowrap font-mono border-r border-[#1f293d]/30"
+                          },
+                            f.action !== "--"
+                              ? /*#__PURE__*/React.createElement("span", {
+                                  className: "px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-emerald-500/30 text-[10px]"
+                                }, f.action)
+                              : /*#__PURE__*/React.createElement("span", { className: "text-slate-600" }, "--")
+                          );
+                        }
+                        if (colId === "process") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 text-slate-300 text-[10px] max-w-xs truncate font-mono border-r border-[#1f293d]/30",
+                            title: f.process
+                          }, f.process);
+                        }
+                        if (colId === "id") {
+                          return /*#__PURE__*/React.createElement("td", {
+                            key: colId,
+                            className: "p-2.5 text-slate-500 text-[9px] max-w-xs truncate font-mono border-r border-[#1f293d]/30",
+                            title: f.id
+                          }, f.id);
+                        }
+                        return /*#__PURE__*/React.createElement("td", { key: colId, className: "p-2.5 text-slate-400" }, "--");
+                      })
+                    );
+                  })
+                )
+              )
             )
           )
+        : /* DETAILED LOG CARDS VIEW */
+          /*#__PURE__*/React.createElement("div", {
+            className: "space-y-2 font-mono text-xs max-h-[640px] overflow-y-auto pr-1"
+          },
+            eventResults.map((ev, idx) => /*#__PURE__*/React.createElement("div", {
+              key: ev.id || `${ev.timestamp}-${idx}`,
+              onClick: () => setSelectedEvent(ev),
+              className: "p-3 rounded bg-[#131b2e] border border-[#1f293d] hover:border-emerald-500/40 hover:bg-[#162038] cursor-pointer transition-all space-y-1.5 group"
+            },
+              /* Card Header */
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex flex-wrap items-center justify-between gap-2 text-[11px]"
+              },
+                /*#__PURE__*/React.createElement("div", {
+                  className: "flex items-center space-x-2 flex-wrap gap-y-1"
+                },
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "text-slate-400 font-mono text-[11px]"
+                  }, ev.timestamp || "-"),
+                  /*#__PURE__*/React.createElement("span", {
+                    className: `px-2 py-0.5 rounded text-[10px] font-mono border ${getSourceBadgeClass(ev.source_type, ev.index)}`
+                  }, ev.source_type || ev.index || "telemetry"),
+                  /*#__PURE__*/React.createElement("span", {
+                    className: "px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700"
+                  }, ev.host || "unknown-host")
+                ),
+                /*#__PURE__*/React.createElement("div", {
+                  className: "flex items-center space-x-2"
+                },
+                  /*#__PURE__*/React.createElement("span", {
+                    className: `px-2 py-0.5 rounded text-[10px] font-bold border ${getSeverityBadgeClass(ev.severity)}`
+                  }, (ev.severity || "INFO").toUpperCase()),
+                  ev.index && /*#__PURE__*/React.createElement("span", {
+                    className: "text-[10px] text-slate-500 font-mono hidden sm:inline"
+                  }, ev.index)
+                )
+              ),
+              /* Card Body */
+              /*#__PURE__*/React.createElement("div", {
+                className: "text-slate-200 text-xs font-sans group-hover:text-emerald-300 transition-colors line-clamp-2"
+              }, ev.summary || ev.title || ev.message || "Telemetry event observed"),
+              /* Card Footer */
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex justify-between items-center text-[10px] text-slate-500 font-mono pt-1 border-t border-[#1f293d]/50"
+              },
+                /*#__PURE__*/React.createElement("span", null, "ID: " + (ev.id || "evt-raw")),
+                /*#__PURE__*/React.createElement("span", {
+                  className: "text-emerald-400/80 group-hover:text-emerald-300 flex items-center space-x-1"
+                }, "Click to inspect raw JSON payload →")
+              )
+            ))
+          ),
 
+      /* Bottom Pagination Bar */
+      eventResults && eventResults.length > 0 && /*#__PURE__*/React.createElement("div", {
+        className: "p-3 rounded-lg bg-[#0e1422] border border-[#1f293d] flex flex-wrap items-center justify-between gap-3 text-xs font-mono mt-3"
+      },
+        /* Left: Summary */
+        /*#__PURE__*/React.createElement("div", {
+          className: "text-slate-400"
+        },
+          /*#__PURE__*/React.createElement("span", null, "Showing "),
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-bold" }, (((eventPage - 1) * eventLimit) + 1) + " - " + Math.min(eventPage * eventLimit, eventTotalHits)),
+          /*#__PURE__*/React.createElement("span", null, " of "),
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-200 font-bold" }, eventTotalHits.toLocaleString() + " total events")
+        ),
+        /* Right: Selector & Paging */
+        /*#__PURE__*/React.createElement("div", {
+          className: "flex items-center space-x-2"
+        },
+          /* Page Size */
+          /*#__PURE__*/React.createElement("select", {
+            value: eventLimit,
+            onChange: (e) => {
+              const nl = Number(e.target.value);
+              setEventLimit(nl);
+              executeEventSearch(undefined, undefined, nl, 1);
+            },
+            className: "bg-[#131b2e] border border-[#1f293d] rounded px-2.5 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500 cursor-pointer"
+          },
+            /*#__PURE__*/React.createElement("option", { value: 50 }, "50 per page"),
+            /*#__PURE__*/React.createElement("option", { value: 100 }, "100 per page"),
+            /*#__PURE__*/React.createElement("option", { value: 200 }, "200 per page"),
+            /*#__PURE__*/React.createElement("option", { value: 500 }, "500 per page"),
+            /*#__PURE__*/React.createElement("option", { value: 1000 }, "1000 per page")
+          ),
+          /* Prev */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => {
+              window.scrollTo({ top: 300, behavior: "smooth" });
+              executeEventSearch(undefined, undefined, eventLimit, eventPage - 1);
+            },
+            disabled: eventPage <= 1 || eventLoading,
+            className: `px-2.5 py-1 rounded border text-xs font-bold transition ${eventPage <= 1 || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
+          }, "◀ Previous"),
+          /* Page Indicator */
+          /*#__PURE__*/React.createElement("span", {
+            className: "px-2 py-1 rounded bg-[#080c14] border border-[#1f293d] text-emerald-400 font-bold text-xs"
+          }, "Page " + eventPage + " of " + Math.max(1, eventTotalPages)),
+          /* Next */
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => {
+              window.scrollTo({ top: 300, behavior: "smooth" });
+              executeEventSearch(undefined, undefined, eventLimit, eventPage + 1);
+            },
+            disabled: eventPage >= eventTotalPages || eventLoading,
+            className: `px-2.5 py-1 rounded border text-xs font-bold transition ${eventPage >= eventTotalPages || eventLoading ? "bg-[#131b2e]/50 border-[#1f293d] text-slate-600 cursor-not-allowed" : "bg-[#131b2e] hover:bg-[#1f293d] border-[#1f293d] text-slate-200 hover:text-white"}`
+          }, "Next ▶")
+        )
+      )
     ),
-
-
 
     /* Event Detail Modal (Raw Formatted JSON with One-Click Copy) */
 
