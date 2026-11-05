@@ -1023,7 +1023,6 @@ function App() {
         const totPgs = data.total_pages || Math.max(1, Math.ceil(totalHits / lim));
         setEventTotalPages(totPgs);
       } else {
-      } else {
 
         const errJson = await res.json().catch(() => ({}));
 
