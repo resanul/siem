@@ -1423,6 +1423,8 @@ function App() {
   const [eventQuery, setEventQuery] = useState("*");
 
   const [eventTimeRange, setEventTimeRange] = useState("24h");
+  const [eventAutoRefresh, setEventAutoRefresh] = useState(5);
+  const [eventLastUpdated, setEventLastUpdated] = useState(null);
 
   const [eventResults, setEventResults] = useState([]);
 
@@ -1580,7 +1582,7 @@ function App() {
 
 
 
-  const executeEventSearch = async (overrideQuery, overrideTimeRange, overrideLimit, overridePage) => {
+  const executeEventSearch = async (overrideQuery, overrideTimeRange, overrideLimit, overridePage, isSilent = false) => {
     const q = overrideQuery !== undefined ? overrideQuery : eventQuery;
     const tr = overrideTimeRange !== undefined ? overrideTimeRange : eventTimeRange;
     const lim = overrideLimit !== undefined ? overrideLimit : eventLimit;
@@ -1590,8 +1592,10 @@ function App() {
     if (overrideLimit !== undefined) setEventLimit(overrideLimit);
     setEventPage(pg);
 
-    setEventLoading(true);
-    setEventError(null);
+    if (!isSilent) {
+      setEventLoading(true);
+      setEventError(null);
+    }
     const startMs = Date.now();
 
     try {
@@ -1625,24 +1629,23 @@ function App() {
         setEventIndicesSearched(Array.isArray(data.indices_searched) ? data.indices_searched : []);
         const totPgs = data.total_pages || Math.max(1, Math.ceil(totalHits / lim));
         setEventTotalPages(totPgs);
+        setEventLastUpdated(new Date());
       } else {
-
-        const errJson = await res.json().catch(() => ({}));
-
-        setEventError(errJson.detail || `Search returned HTTP ${res.status}`);
-
+        if (!isSilent) {
+          const errJson = await res.json().catch(() => ({}));
+          setEventError(errJson.detail || `Search returned HTTP ${res.status}`);
+        }
       }
 
     } catch (err) {
-
-      console.error("Event search request failed:", err);
-
-      setEventError("Network error: Unable to reach search backend.");
-
+      if (!isSilent) {
+        console.error("Event search request failed:", err);
+        setEventError("Network error: Unable to reach search backend.");
+      }
     } finally {
-
-      setEventLoading(false);
-
+      if (!isSilent) {
+        setEventLoading(false);
+      }
     }
 
   };
@@ -3338,9 +3341,7 @@ function App() {
     }
 
     if (currentScreen === "search") {
-
       executeEventSearch();
-
     }
     if (currentScreen === "correlation" || currentScreen === "correlation_incidents" || currentScreen === "correlation_rules" || currentScreen === "correlation_engine") {
       if (currentScreen === "correlation_incidents") setCorrelationTab("incidents");
@@ -3369,6 +3370,17 @@ function App() {
     }
 
   }, [currentScreen]);
+
+  useEffect(() => {
+    if (currentScreen !== "search") return;
+    if (!eventAutoRefresh || eventAutoRefresh <= 0) return;
+    const timer = setInterval(() => {
+      if (eventPage === 1 && !selectedEvent) {
+        executeEventSearch(undefined, undefined, undefined, 1, true);
+      }
+    }, eventAutoRefresh * 1000);
+    return () => clearInterval(timer);
+  }, [currentScreen, eventAutoRefresh, eventPage, eventQuery, eventTimeRange, eventLimit, selectedEvent]);
 
   useEffect(() => {
     if (currentScreen !== "correlation" && currentScreen !== "correlation_incidents" && currentScreen !== "correlation_rules" && currentScreen !== "correlation_engine") return;
@@ -11395,15 +11407,34 @@ function App() {
       ),
 
       /*#__PURE__*/React.createElement("div", {
-
-        className: "flex items-center space-x-2"
-
+        className: "flex items-center space-x-2 flex-wrap gap-y-1.5"
       },
+        /* Auto-Stream Controls */
+        /*#__PURE__*/React.createElement("div", {
+          className: "flex items-center space-x-1.5 bg-[#0e1422] border border-[#1f293d] rounded px-2 py-1 text-xs font-mono shadow-sm"
+        },
+          /*#__PURE__*/React.createElement("span", {
+            className: `w-2 h-2 rounded-full ${eventAutoRefresh > 0 ? "bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" : "bg-slate-600"}`
+          }),
+          /*#__PURE__*/React.createElement("span", { className: "text-slate-400 text-[11px] hidden sm:inline" }, "Live Stream:"),
+          [
+            { val: 5, label: "5s" },
+            { val: 10, label: "10s" },
+            { val: 30, label: "30s" },
+            { val: 0, label: "Off" }
+          ].map((opt) => /*#__PURE__*/React.createElement("button", {
+            key: opt.val,
+            onClick: () => setEventAutoRefresh(opt.val),
+            className: `px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${
+              eventAutoRefresh === opt.val
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                : "text-slate-400 hover:text-white"
+            }`
+          }, opt.label))
+        ),
 
         /*#__PURE__*/React.createElement("span", {
-
           className: "text-[11px] text-slate-400 font-mono hidden sm:inline"
-
         }, "Time Window:"),
 
         /*#__PURE__*/React.createElement("select", {
@@ -11486,26 +11517,31 @@ function App() {
 
       ),
 
+      /* Refresh Button */
       /*#__PURE__*/React.createElement("button", {
-
         onClick: () => executeEventSearch(),
-
         disabled: eventLoading,
-
-        className: "px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-bold text-xs rounded font-mono flex items-center justify-center space-x-1.5 transition-colors shadow-lg shadow-emerald-500/10 cursor-pointer"
-
+        title: "Refresh live event stream now",
+        className: "px-3 py-2 bg-[#131b2e] hover:bg-[#1f293d] border border-[#1f293d] text-emerald-400 rounded text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
       },
-
         /*#__PURE__*/React.createElement("i", {
-
-          "data-lucide": eventLoading ? "loader" : "zap",
-
+          "data-lucide": "refresh-cw",
           className: `w-3.5 h-3.5 ${eventLoading ? "animate-spin" : ""}`
-
         }),
+        /*#__PURE__*/React.createElement("span", { className: "hidden sm:inline" }, "Refresh")
+      ),
 
+      /* Execute Query Button */
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => executeEventSearch(),
+        disabled: eventLoading,
+        className: "px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-bold text-xs rounded font-mono flex items-center justify-center space-x-1.5 transition-colors shadow-lg shadow-emerald-500/10 cursor-pointer"
+      },
+        /*#__PURE__*/React.createElement("i", {
+          "data-lucide": eventLoading ? "loader" : "zap",
+          className: `w-3.5 h-3.5 ${eventLoading ? "animate-spin" : ""}`
+        }),
         /*#__PURE__*/React.createElement("span", null, eventLoading ? "Searching..." : "Execute Query")
-
       )
 
     ),
@@ -11655,6 +11691,15 @@ function App() {
                 eventTotalHits > 0 && /*#__PURE__*/React.createElement("span", {
                   className: "px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 text-[11px] font-mono border border-sky-500/20"
                 }, "Showing " + (((eventPage - 1) * eventLimit) + 1) + " - " + Math.min(eventPage * eventLimit, eventTotalHits)),
+                eventAutoRefresh > 0 && /*#__PURE__*/React.createElement("span", {
+                  className: "px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-mono border border-emerald-500/30 flex items-center space-x-1"
+                },
+                  /*#__PURE__*/React.createElement("span", { className: "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" }),
+                  /*#__PURE__*/React.createElement("span", null, "LIVE (" + eventAutoRefresh + "s)")
+                ),
+                eventLastUpdated && /*#__PURE__*/React.createElement("span", {
+                  className: "text-slate-500 text-[10px] font-mono hidden md:inline"
+                }, "• " + eventLastUpdated.toLocaleTimeString()),
                 eventIndicesSearched && eventIndicesSearched.length > 0 && /*#__PURE__*/React.createElement("div", {
                   className: "hidden xl:inline-flex items-center space-x-1"
                 },

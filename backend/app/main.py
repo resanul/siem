@@ -107,11 +107,10 @@ def on_startup():
         print(f"Failed to init NetWitness 30-day telemetry storage: {e}")
 
     try:
-        import threading
-        from backend.app.services.unified_event_store import sync_all_telemetry_sources
-        threading.Thread(target=sync_all_telemetry_sources, daemon=True, name="UnifiedEventStoreSync").start()
+        from backend.app.services.unified_event_store import start_continuous_telemetry_daemon
+        start_continuous_telemetry_daemon()
     except Exception as e:
-        print(f"Failed to init unified event store: {e}")
+        print(f"Failed to start continuous telemetry daemon: {e}")
 
 
 @app.on_event("shutdown")
@@ -127,6 +126,12 @@ def on_shutdown():
         stop_netwitness_daemon()
     except Exception as e:
         print(f"Failed to stop NetWitness daemon: {e}")
+
+    try:
+        from backend.app.services.unified_event_store import stop_continuous_telemetry_daemon
+        stop_continuous_telemetry_daemon()
+    except Exception as e:
+        print(f"Failed to stop continuous telemetry daemon: {e}")
 
 
 from fastapi.responses import RedirectResponse
