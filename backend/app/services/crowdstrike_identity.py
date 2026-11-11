@@ -350,16 +350,204 @@ def _falcon_request(endpoint: str, method: str = "GET", body: Optional[bytes] = 
             return {}
 
 
+def _query_live_ad_stream(user_map=None, severity_counter=None, scenario_counter=None) -> List[Dict[str, Any]]:
+    """Queries live Active Directory events from local SQLite events_store.db and formats for identity telemetry."""
+    import sqlite3
+    from backend.app.services.enterprise_ad_memory import topology_manager
+    live_ad_stream: List[Dict[str, Any]] = []
+
+    db_candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data", "events_store.db"),
+        "/opt/opensoc-forge/data/events_store.db"
+    ]
+    for db_p in db_candidates:
+        if os.path.exists(db_p):
+            try:
+                conn = sqlite3.connect(db_p)
+                conn.row_factory = sqlite3.Row
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT id, timestamp, source_type, host, severity, summary, raw_json
+                    FROM events
+                    WHERE index_name = 'active-directory'
+                    ORDER BY timestamp DESC
+                    LIMIT 60;
+                """)
+                for idx, r in enumerate(cur.fetchall()):
+                    try:
+                        raw_d = json.loads(r["raw_json"])
+                    except Exception:
+                        raw_d = {}
+
+                    ev_data = raw_d.get("Event", {}).get("EventData", {})
+                    user = ev_data.get("TargetUserName") or ev_data.get("SubjectUserName") or "Administrator"
+                    st = r["source_type"]
+
+                    # Strictly protect analyst 'resanul': never inject analyst workstation as compromised
+                    if user == "resanul" or "ISRCD-0222" in str(r["host"]):
+                        continue
+
+                    # Preserve the authentic database/sensor timestamp converted to local time
+                    event_time_str = format_to_local_time(r["timestamp"])
+
+                    # Extract precise Source Client IP & Workstation
+                    src_ip = ev_data.get("IpAddress") or ev_data.get("ClientAddress")
+                    src_workstation = ev_data.get("WorkstationName") or r["host"]
+                    
+                    resolved_ad = topology_manager.resolve_entity(user or r["host"])
+                    if not src_ip or src_ip in ["-", "::1", "127.0.0.1"]:
+                        if "TBL-IT-157" in str(r["host"]):
+                            src_ip = "10.102.11.127"
+                        elif "dashboard-11" in str(r["host"]):
+                            src_ip = "172.31.105.11"
+                        elif "down-proxy" in str(r["host"]):
+                            src_ip = "172.31.105.12"
+                        elif "proxy-131" in str(r["host"]):
+                            src_ip = "172.22.1.231"
+                        elif "proxy-30" in str(r["host"]):
+                            src_ip = "172.22.1.30"
+                        else:
+                            src_ip = resolved_ad["ip"]
+                            
+                    if not src_workstation or src_workstation in ["-", "WORKSTATION-REMOTE"]:
+                        src_workstation = resolved_ad["workstation"]
+                        
+                    # Strict Security Rule: 10.102.11.222 & ISRCD-0222 are solely for analyst 'resanul'
+                    if src_ip == "10.102.11.222" or "ISRCD-0222" in str(src_workstation):
+                        src_ip = resolved_ad["ip"]
+                        src_workstation = resolved_ad["workstation"]
+
+                    if "auth.failed" in st or "4625" in r["summary"]:
+                        rule_name = "Account logon failed (Event 4625)"
+                        desc = raw_d.get("description") or f"Logon failure for user {user} (Bad password or disabled account)"
+                        tactic = "Credential Access"
+                        technique = "Brute Force"
+                        tech_id = "T1110"
+                        sev = "High"
+                        if severity_counter: severity_counter["High"] += 1
+                        if scenario_counter: scenario_counter["Account logon failed (Event 4625)"] += 1
+                    elif "auth.success" in st or "4624" in r["summary"]:
+                        ltype = ev_data.get("LogonType", 2)
+                        rule_name = f"Successful user logon (Type {ltype})"
+                        desc = f"User {user} successfully authenticated via Active Directory on {r['host']}"
+                        tactic = "Initial Access"
+                        technique = "Valid Accounts"
+                        tech_id = "T1078"
+                        sev = "Low"
+                        if severity_counter: severity_counter["Low"] += 1
+                        if scenario_counter: scenario_counter[f"Successful user logon (Type {ltype})"] += 1
+                    elif "process.created" in st or "4688" in r["summary"]:
+                        pname = ev_data.get("NewProcessName", "powershell.exe").split("\\")[-1]
+                        rule_name = f"Process Execution: {pname}"
+                        desc = raw_d.get("description") or f"Process {pname} executed by {user}"
+                        tactic = "Execution"
+                        technique = "Command and Scripting Interpreter"
+                        tech_id = "T1059"
+                        sev = "High" if pname in ["powershell.exe", "certutil.exe", "vssadmin.exe"] else "Medium"
+                        if severity_counter: severity_counter[sev] += 1
+                        if scenario_counter: scenario_counter[f"Process Execution: {pname}"] += 1
+                    elif "user.created" in st or "4720" in r["summary"]:
+                        rule_name = "User account created (Event 4720)"
+                        desc = f"New domain user account '{user}' created in Active Directory"
+                        tactic = "Persistence"
+                        technique = "Account Creation"
+                        tech_id = "T1136"
+                        sev = "Critical"
+                        if severity_counter: severity_counter["Critical"] += 1
+                        if scenario_counter: scenario_counter["User account created (Event 4720)"] += 1
+                    elif "group.modified" in st or "4728" in r["summary"]:
+                        rule_name = "Privilege escalation (Domain Admins modification)"
+                        desc = f"User {user} added to high-privilege security group in Active Directory"
+                        tactic = "Privilege Escalation"
+                        technique = "Account Manipulation"
+                        tech_id = "T1098"
+                        sev = "Critical"
+                        if severity_counter: severity_counter["Critical"] += 1
+                        if scenario_counter: scenario_counter["Privilege escalation (Domain Admins modification)"] += 1
+                    elif "kerberos" in st or "4769" in r["summary"]:
+                        rule_name = "Kerberos Service Ticket (TGS) Request"
+                        desc = f"Service ticket requested for {user} (Potential Kerberoasting)"
+                        tactic = "Credential Access"
+                        technique = "Steal or Forge Kerberos Tickets"
+                        tech_id = "T1558.003"
+                        sev = "Medium"
+                        if severity_counter: severity_counter["Medium"] += 1
+                        if scenario_counter: scenario_counter["Kerberos Service Ticket (TGS) Request"] += 1
+                    else:
+                        rule_name = "Active Directory Activity"
+                        desc = r["summary"]
+                        tactic = "Initial Access"
+                        technique = "Valid Accounts"
+                        tech_id = "T1078"
+                        sev = "Informational"
+                        if severity_counter: severity_counter["Informational"] += 1
+
+                    live_ad_stream.append({
+                        "id": f"dc-event-{r['id']}-{idx}",
+                        "timestamp": event_time_str,
+                        "rule_name": rule_name,
+                        "description": desc,
+                        "user_name": user,
+                        "sam_name": user,
+                        "domain": "TBLBD.COM",
+                        "severity": sev,
+                        "status": "DC_SENSOR",
+                        "tactic": tactic,
+                        "technique": technique,
+                        "technique_id": tech_id,
+                        "sid": "S-1-5-21-38291048-TBLBD",
+                        "falcon_link": "",
+                        "source_ip": src_ip,
+                        "source_workstation": src_workstation,
+                        "target_host": "TBL-ADNS-04",
+                        "target_ip": "172.31.152.14"
+                    })
+
+                    if user_map is not None:
+                        if user and user not in user_map:
+                            user_map[user] = {
+                                "username": user,
+                                "sam_name": user,
+                                "domain": "TBLBD.COM",
+                                "sid": f"S-1-5-21-38291048-{abs(hash(user)) % 9000 + 1000}",
+                                "guid": f"ad-guid-{abs(hash(user)) % 900000}",
+                                "ou": "Domain Admins" if user == "Administrator" else "Domain Users",
+                                "email": f"{user.lower()}@tblbd.com",
+                                "alert_count": 1,
+                                "max_severity": sev,
+                                "last_activity": event_time_str,
+                                "risk_score": 75 if sev in ["Critical", "High"] else 30,
+                                "anomalies": [rule_name]
+                            }
+                        elif user in user_map:
+                            user_map[user]["last_activity"] = event_time_str
+                            if rule_name not in user_map[user]["anomalies"]:
+                                user_map[user]["anomalies"].append(rule_name)
+                conn.close()
+                break
+            except Exception as e:
+                print(f"[CrowdStrike Identity] Error reading live AD stream: {e}")
+    return live_ad_stream
+
+
 def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str, Any]:
     """
     Main aggregator: queries IDP sensor status, Active Directory Domain Controllers,
     recent identity threat detections, user risk profiles, and authentication anomalies.
-    Results are cached for 30 seconds for ultra-responsive UI rendering.
+    Results are cached for responsive UI rendering with continuous live streaming.
     """
     global _DATA_CACHE
     now = time.time()
-    if not force_refresh and _DATA_CACHE["data"] and now - _DATA_CACHE["last_synced"] < 30:
-        return _DATA_CACHE["data"]
+    if not force_refresh and _DATA_CACHE.get("data") and (now - _DATA_CACHE.get("last_synced", 0) < 300):
+        cached = _DATA_CACHE["data"]
+        live_ad = _query_live_ad_stream()
+        cloud_ev = cached.get("_cloud_events", [])
+        combined = live_ad + cloud_ev
+        combined.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+        fast_res = dict(cached)
+        fast_res["last_synced"] = datetime.utcnow().isoformat() + "Z"
+        fast_res["events"] = combined
+        return fast_res
 
     cfg = load_crowdstrike_config()
     cid = cfg.get("client_id", "").strip()
@@ -551,180 +739,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
         })
 
     # 4. Integrate Genuine Active Directory Telemetry (from events_store.db & DC Sensors)
-    import sqlite3
-    live_ad_stream: List[Dict[str, Any]] = []
-
-    db_candidates = [
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data", "events_store.db"),
-        "/opt/opensoc-forge/data/events_store.db"
-    ]
-    for db_p in db_candidates:
-        if os.path.exists(db_p):
-            try:
-                conn = sqlite3.connect(db_p)
-                conn.row_factory = sqlite3.Row
-                cur = conn.cursor()
-                cur.execute("""
-                    SELECT id, timestamp, source_type, host, severity, summary, raw_json
-                    FROM events
-                    WHERE index_name = 'active-directory'
-                    ORDER BY timestamp DESC
-                    LIMIT 60;
-                """)
-                for idx, r in enumerate(cur.fetchall()):
-                    try:
-                        raw_d = json.loads(r["raw_json"])
-                    except Exception:
-                        raw_d = {}
-
-                    ev_data = raw_d.get("Event", {}).get("EventData", {})
-                    user = ev_data.get("TargetUserName") or ev_data.get("SubjectUserName") or "Administrator"
-                    st = r["source_type"]
-
-                    # Strictly protect analyst 'resanul': never inject analyst workstation as compromised
-                    if user == "resanul" or "ISRCD-0222" in str(r["host"]):
-                        continue
-
-                    # Preserve the authentic database/sensor timestamp converted to local time
-                    event_time_str = format_to_local_time(r["timestamp"])
-
-                    # Extract precise Source Client IP & Workstation
-                    src_ip = ev_data.get("IpAddress") or ev_data.get("ClientAddress")
-                    src_workstation = ev_data.get("WorkstationName") or r["host"]
-                    
-                    resolved_ad = topology_manager.resolve_entity(user or r["host"])
-                    if not src_ip or src_ip in ["-", "::1", "127.0.0.1"]:
-                        if "TBL-IT-157" in str(r["host"]):
-                            src_ip = "10.102.11.127"
-                        elif "dashboard-11" in str(r["host"]):
-                            src_ip = "172.31.105.11"
-                        elif "down-proxy" in str(r["host"]):
-                            src_ip = "172.31.105.12"
-                        elif "proxy-131" in str(r["host"]):
-                            src_ip = "172.22.1.231"
-                        elif "proxy-30" in str(r["host"]):
-                            src_ip = "172.22.1.30"
-                        else:
-                            src_ip = resolved_ad["ip"]
-                            
-                    if not src_workstation or src_workstation in ["-", "WORKSTATION-REMOTE"]:
-                        src_workstation = resolved_ad["workstation"]
-                        
-                    # Strict Security Rule: 10.102.11.222 & ISRCD-0222 are solely for analyst 'resanul'
-                    if src_ip == "10.102.11.222" or "ISRCD-0222" in str(src_workstation):
-                        src_ip = resolved_ad["ip"]
-                        src_workstation = resolved_ad["workstation"]
-
-                    if "auth.failed" in st or "4625" in r["summary"]:
-                        rule_name = "Account logon failed (Event 4625)"
-                        desc = raw_d.get("description") or f"Logon failure for user {user} (Bad password or disabled account)"
-                        tactic = "Credential Access"
-                        technique = "Brute Force"
-                        tech_id = "T1110"
-                        sev = "High"
-                        severity_counter["High"] += 1
-                        scenario_counter["Account logon failed (Event 4625)"] += 1
-                    elif "auth.success" in st or "4624" in r["summary"]:
-                        ltype = ev_data.get("LogonType", 2)
-                        rule_name = f"Successful user logon (Type {ltype})"
-                        desc = f"User {user} successfully authenticated via Active Directory on {r['host']}"
-                        tactic = "Initial Access"
-                        technique = "Valid Accounts"
-                        tech_id = "T1078"
-                        sev = "Low"
-                        severity_counter["Low"] += 1
-                        scenario_counter[f"Successful user logon (Type {ltype})"] += 1
-                    elif "process.created" in st or "4688" in r["summary"]:
-                        pname = ev_data.get("NewProcessName", "powershell.exe").split("\\")[-1]
-                        rule_name = f"Process Execution: {pname}"
-                        desc = raw_d.get("description") or f"Process {pname} executed by {user}"
-                        tactic = "Execution"
-                        technique = "Command and Scripting Interpreter"
-                        tech_id = "T1059"
-                        sev = "High" if pname in ["powershell.exe", "certutil.exe", "vssadmin.exe"] else "Medium"
-                        severity_counter[sev] += 1
-                        scenario_counter[f"Process Execution: {pname}"] += 1
-                    elif "user.created" in st or "4720" in r["summary"]:
-                        rule_name = "User account created (Event 4720)"
-                        desc = f"New domain user account '{user}' created in Active Directory"
-                        tactic = "Persistence"
-                        technique = "Account Creation"
-                        tech_id = "T1136"
-                        sev = "Critical"
-                        severity_counter["Critical"] += 1
-                        scenario_counter["User account created (Event 4720)"] += 1
-                    elif "group.modified" in st or "4728" in r["summary"]:
-                        rule_name = "Privilege escalation (Domain Admins modification)"
-                        desc = f"User {user} added to high-privilege security group in Active Directory"
-                        tactic = "Privilege Escalation"
-                        technique = "Account Manipulation"
-                        tech_id = "T1098"
-                        sev = "Critical"
-                        severity_counter["Critical"] += 1
-                        scenario_counter["Privilege escalation (Domain Admins modification)"] += 1
-                    elif "kerberos" in st or "4769" in r["summary"]:
-                        rule_name = "Kerberos Service Ticket (TGS) Request"
-                        desc = f"Service ticket requested for {user} (Potential Kerberoasting)"
-                        tactic = "Credential Access"
-                        technique = "Steal or Forge Kerberos Tickets"
-                        tech_id = "T1558.003"
-                        sev = "Medium"
-                        severity_counter["Medium"] += 1
-                        scenario_counter["Kerberos Service Ticket (TGS) Request"] += 1
-                    else:
-                        rule_name = "Active Directory Activity"
-                        desc = r["summary"]
-                        tactic = "Initial Access"
-                        technique = "Valid Accounts"
-                        tech_id = "T1078"
-                        sev = "Informational"
-                        severity_counter["Informational"] += 1
-
-                    live_ad_stream.append({
-                        "id": f"dc-event-{r['id']}-{idx}",
-                        "timestamp": event_time_str,
-                        "rule_name": rule_name,
-                        "description": desc,
-                        "user_name": user,
-                        "sam_name": user,
-                        "domain": "TBLBD.COM",
-                        "severity": sev,
-                        "status": "DC_SENSOR",
-                        "tactic": tactic,
-                        "technique": technique,
-                        "technique_id": tech_id,
-                        "sid": "S-1-5-21-38291048-TBLBD",
-                        "falcon_link": "",
-                        "source_ip": src_ip,
-                        "source_workstation": src_workstation,
-                        "target_host": "TBL-ADNS-04",
-                        "target_ip": "172.31.152.14"
-                    })
-
-                    # Ensure live stream users are in user_map
-                    if user and user not in user_map:
-                        user_map[user] = {
-                            "username": user,
-                            "sam_name": user,
-                            "domain": "TBLBD.COM",
-                            "sid": f"S-1-5-21-38291048-{abs(hash(user)) % 9000 + 1000}",
-                            "guid": f"ad-guid-{abs(hash(user)) % 900000}",
-                            "ou": "Domain Admins" if user == "Administrator" else "Domain Users",
-                            "email": f"{user.lower()}@tblbd.com",
-                            "alert_count": 1,
-                            "max_severity": sev,
-                            "last_activity": event_time_str,
-                            "risk_score": 75 if sev in ["Critical", "High"] else 30,
-                            "anomalies": [rule_name]
-                        }
-                    elif user in user_map:
-                        user_map[user]["last_activity"] = event_time_str
-                        if rule_name not in user_map[user]["anomalies"]:
-                            user_map[user]["anomalies"].append(rule_name)
-                conn.close()
-                break
-            except Exception as e:
-                print(f"[CrowdStrike Identity] Error reading live AD stream: {e}")
+    live_ad_stream = _query_live_ad_stream(user_map=user_map, severity_counter=severity_counter, scenario_counter=scenario_counter)
 
     # Combine: All genuine events from Falcon Cloud and Domain Controller Sensors
     combined_events = normalized_events + live_ad_stream
@@ -809,6 +824,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
         "users": all_users,
         "events": combined_events
     }
+    result["_cloud_events"] = normalized_events
 
     _DATA_CACHE["data"] = result
     _DATA_CACHE["last_synced"] = now

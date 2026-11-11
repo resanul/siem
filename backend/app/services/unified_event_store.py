@@ -745,17 +745,17 @@ _alerts_file_offset: Optional[int] = None
 
 
 def _prune_event_store_if_needed(max_events: int = 60000, prune_chunk: int = 10000) -> None:
-    """Keeps the event store at optimal capacity by pruning oldest events."""
+    """Keeps the event store at optimal capacity by pruning oldest events from high-volume indexes."""
     try:
         conn = _get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) as c FROM events;")
         cnt = cur.fetchone()["c"]
         if cnt > max_events:
-            print(f"[UnifiedEventStore] Pruning old events ({cnt} > {max_events}). Deleting oldest {prune_chunk} events...")
+            print(f"[UnifiedEventStore] Pruning old wazuh-alerts ({cnt} > {max_events}). Deleting oldest {prune_chunk} events...")
             cur.execute(f"""
-            DELETE FROM events WHERE rowid IN (
-                SELECT rowid FROM events ORDER BY timestamp ASC LIMIT {prune_chunk}
+            DELETE FROM events WHERE index_name = 'wazuh-alerts' AND rowid IN (
+                SELECT rowid FROM events WHERE index_name = 'wazuh-alerts' ORDER BY timestamp ASC LIMIT {prune_chunk}
             );
             """)
             conn.commit()
@@ -859,7 +859,7 @@ def _continuous_telemetry_worker() -> None:
             if cycle_count % 4 == 0:
                 now_local = datetime.now().astimezone()
                 now_iso = now_local.isoformat()
-                now_tick = int(time.time() // 8)
+                now_tick = int(time.time())
 
                 # Live NetWitness Network Flow
                 batch.append({
@@ -878,6 +878,42 @@ def _continuous_telemetry_worker() -> None:
                         "destination_port": 443,
                         "action": "DETECTED",
                         "description": "Network SSL/TLS session handshake completed."
+                    }
+                })
+
+                # Live Active Directory Security & Identity Telemetry (Event 4624, 4625, 4688, 4769)
+                ad_candidates = [
+                    ("sazidul.islam", "10.102.11.127", "TBL-IT-157", 4624, "auth.success", "LOW", "Successful user logon (Type 2)", {"LogonType": 2, "TargetUserName": "sazidul.islam", "WorkstationName": "TBL-IT-157", "IpAddress": "10.102.11.127"}),
+                    ("Administrator", "198.51.100.84", "TBL-ADNS-04", 4625, "auth.failed", "HIGH", "Logon failure for user Administrator (Bad password attempt)", {"EventID": 4625, "FailureReason": "Unknown user name or bad password", "TargetUserName": "Administrator", "WorkstationName": "WORKSTATION-REMOTE", "IpAddress": "198.51.100.84"}),
+                    ("parjana.akter", "172.22.68.10", "ADB-10", 4624, "auth.success", "LOW", "Successful user logon (Type 3)", {"LogonType": 3, "TargetUserName": "parjana.akter", "WorkstationName": "ADB-10", "IpAddress": "172.22.68.10"}),
+                    ("svc_backup", "192.168.10.127", "DC01.TBLBD.COM", 4769, "kerberos", "MEDIUM", "Kerberos Service Ticket (TGS) Request for svc_backup", {"ServiceName": "krbtgt", "TargetUserName": "svc_backup", "ClientAddress": "192.168.10.127"}),
+                    ("shatadru.talukder", "172.22.12.85", "AGR-37", 4688, "process.created", "HIGH", "Process Execution: powershell.exe", {"NewProcessName": "powershell.exe", "SubjectUserName": "shatadru.talukder", "CommandLine": "powershell.exe -ExecutionPolicy Bypass"}),
+                    ("aman.ullah", "172.22.12.92", "AGR-AD-92", 4624, "auth.success", "LOW", "Successful user logon (Type 2)", {"LogonType": 2, "TargetUserName": "aman.ullah", "WorkstationName": "AGR-AD-92", "IpAddress": "172.22.12.92"}),
+                ]
+                sample_ad = ad_candidates[(cycle_count // 4) % len(ad_candidates)]
+                u_name, u_ip, u_host, eid, stype, sev, desc, edata = sample_ad
+                batch.append({
+                    "id": f"ad-live-{now_tick}-{eid}",
+                    "timestamp": now_iso,
+                    "index_name": "active-directory",
+                    "source_type": f"ad.security.{stype}",
+                    "host": u_host,
+                    "severity": sev,
+                    "summary": f"Event {eid}: {desc} [User: {u_name} on {u_host}]",
+                    "raw": {
+                        "Event": {
+                            "System": {
+                                "Provider": {"Name": "Microsoft-Windows-Security-Auditing"},
+                                "EventID": eid,
+                                "TimeCreated": {"SystemTime": now_iso},
+                                "Computer": u_host,
+                                "Channel": "Security"
+                            },
+                            "EventData": edata
+                        },
+                        "EventID": eid,
+                        "description": desc,
+                        "timestamp": now_iso
                     }
                 })
 

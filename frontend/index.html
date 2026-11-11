@@ -3331,14 +3331,16 @@ function App() {
           .catch(() => {});
       };
       fetchThreatMapData();
-      const mapPollInterval = setInterval(fetchThreatMapData, 45000);
+      const mapPollInterval = setInterval(fetchThreatMapData, 12000);
       return () => clearInterval(mapPollInterval);
     }
 
     if (currentScreen === "netwitness_siem") {
-
       fetchNetWitnessData();
-
+      const nwPollInterval = setInterval(() => {
+        fetchNetWitnessData(false);
+      }, 10000);
+      return () => clearInterval(nwPollInterval);
     }
 
     if (currentScreen === "search") {
@@ -3450,6 +3452,15 @@ function App() {
 
     return () => clearInterval(timer);
 
+  }, [currentScreen]);
+
+  // Periodic Auto-Sync for Live Cyber Threat News & Zero-Days
+  useEffect(() => {
+    if (currentScreen !== "threat_news") return;
+    const timer = setInterval(() => {
+      fetchThreatNews(false);
+    }, 25000);
+    return () => clearInterval(timer);
   }, [currentScreen]);
 
 
