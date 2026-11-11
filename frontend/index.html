@@ -17247,6 +17247,12 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
   }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
 
+    onClick: () => handleSortLogs("timestamp"),
+
+    className: "p-3 cursor-pointer hover:text-slate-200 transition whitespace-nowrap"
+
+  }, "TIMESTAMP", sophosLogSortField === "timestamp" ? (sophosLogSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"), /*#__PURE__*/React.createElement("th", {
+
     onClick: () => handleSortLogs("rule_name"),
 
     className: "p-3 cursor-pointer hover:text-slate-200 transition"
@@ -17291,7 +17297,7 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: "divide-y divide-[#1f293d]"
 
-  }, sortedSophosNotables.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 8, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No notable events matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : sortedSophosNotables.slice((sophosNotablePage - 1) * sophosNotableLimit, sophosNotablePage * sophosNotableLimit).map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
+  }, sortedSophosNotables.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", { colSpan: 9, className: "p-8 text-center font-mono text-slate-400" }, /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center justify-center space-y-2" }, /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300" }, "🔍 No notable events matching active filter"), sophosActiveFilter && /*#__PURE__*/React.createElement("button", { onClick: () => setSophosActiveFilter(null), className: "px-3 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold" }, "Clear Filter")))) : sortedSophosNotables.slice((sophosNotablePage - 1) * sophosNotableLimit, sophosNotablePage * sophosNotableLimit).map((ev, idx) => /*#__PURE__*/React.createElement("tr", {
 
     key: idx,
 
@@ -17300,6 +17306,10 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
     onClick: () => { setSophosSelectedEvent(ev); setSophosForensicsTab("overview"); }
 
   }, /*#__PURE__*/React.createElement("td", {
+
+    className: "p-3 font-mono text-[11px] text-slate-300 whitespace-nowrap"
+
+  }, ev.timestamp ? ev.timestamp.replace("T", " ").replace("Z", "").slice(0, 19) : "-"), /*#__PURE__*/React.createElement("td", {
 
     className: "p-3 max-w-md"
 
