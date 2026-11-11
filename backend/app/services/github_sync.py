@@ -29,10 +29,12 @@ _ssl_ctx = ssl._create_unverified_context()
 _SCHEDULER_THREAD: Optional[threading.Thread] = None
 _LAST_SYNC_RESULT: Dict[str, Any] = {
     "status": "idle",
-    "message": "GitHub synchronization initialized and ready.",
+    "message": "GitHub synchronization initialized and scheduled 4x daily.",
     "last_sync_time": None,
     "last_commit_sha": None,
-    "total_indicators": 0
+    "total_indicators": 0,
+    "next_sync_time": None,
+    "schedule": "4x Daily (Every 6 Hours)"
 }
 
 
@@ -174,7 +176,7 @@ def sync_iocs_to_github(force_push: bool = False) -> Dict[str, Any]:
             "sha": remote_sha,
             "repo": repo,
             "branch": branch,
-            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
         }
         _LAST_SYNC_RESULT = res
         return res
@@ -209,7 +211,7 @@ def sync_iocs_to_github(force_push: bool = False) -> Dict[str, Any]:
                 "total_indicators": total_iocs,
                 "repo": repo,
                 "branch": branch,
-                "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
             }
             _LAST_SYNC_RESULT = res
             return res
@@ -288,18 +290,24 @@ def test_github_connection(token: str, repo: str = "resanul/siem") -> Dict[str, 
 
 def _background_scheduler_loop():
     """
-    Background worker that runs every 12 hours (twice a day):
+    Background worker that runs 4 times daily (every 6 hours):
     1. Collects latest feeds from all active providers.
     2. Saves them into offline SQLite DB.
-    3. Verifies remote GitHub state and pushes dataset.
+    3. Verifies remote GitHub state and pushes dataset to resanul/siem:master.
     """
-    # Initial warm-up delay after startup (45 seconds)
-    time.sleep(45)
+    global _LAST_SYNC_RESULT
+    SIX_HOURS_SEC = 6 * 3600  # 4 times daily (every 6 hours)
 
-    TWELVE_HOURS_SEC = 12 * 3600
+    # Initial warm-up delay after startup (10 seconds)
+    time.sleep(10)
 
     while True:
+        cycle_start = time.time()
+        next_push_epoch = cycle_start + SIX_HOURS_SEC
+        next_push_str = datetime.fromtimestamp(next_push_epoch).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
         try:
+            print("[GitHubIOCSyncWorker] Starting scheduled 4x/day Threat Intel sync and GitHub push...")
             from backend.app.services.mitre_intel import get_threat_intel_feed
             # Fetch latest live feeds with force refresh
             feeds = get_threat_intel_feed(force_refresh=True)
@@ -308,29 +316,50 @@ def _background_scheduler_loop():
                 save_iocs_to_db(feeds)
 
             # Sync to GitHub with pull verification
-            sync_iocs_to_github()
+            res = sync_iocs_to_github()
+            res["next_sync_time"] = next_push_str
+            res["schedule"] = "4x Daily (Every 6 Hours)"
+            _LAST_SYNC_RESULT = res
+            print(f"[GitHubIOCSyncWorker] Sync complete. Result: {res.get('status')} - {res.get('message')}")
         except Exception as e:
-            print(f"Error in 12-hour GitHub sync scheduler: {e}")
+            print(f"[GitHubIOCSyncWorker] Error in 4x/day GitHub sync scheduler: {e}")
+            _LAST_SYNC_RESULT["status"] = "error"
+            _LAST_SYNC_RESULT["message"] = str(e)
 
-        # Sleep for 12 hours before next automatic push
-        time.sleep(TWELVE_HOURS_SEC)
+        _LAST_SYNC_RESULT["next_sync_time"] = next_push_str
+        _LAST_SYNC_RESULT["schedule"] = "4x Daily (Every 6 Hours)"
+
+        # Sleep for 6 hours before next automatic push
+        time.sleep(SIX_HOURS_SEC)
 
 
 def start_github_sync_scheduler():
-    """Starts the 12-hour twice daily GitHub sync worker thread."""
+    """Starts the 4-times daily (every 6 hours) automated GitHub sync worker thread."""
     global _SCHEDULER_THREAD
     if _SCHEDULER_THREAD is not None and _SCHEDULER_THREAD.is_alive():
         return
     _SCHEDULER_THREAD = threading.Thread(target=_background_scheduler_loop, daemon=True, name="GitHubIOCSyncWorker")
     _SCHEDULER_THREAD.start()
-    print("GitHub Threat Intel 12-hour automated sync scheduler started.")
+    print("GitHub Threat Intel 4x-daily (6-hour) automated sync scheduler started.")
 
 
 def get_sync_status() -> Dict[str, Any]:
-    """Returns current sync status and DB metadata."""
+    """Returns current sync status, DB metadata, and 4x daily schedule telemetry."""
     stats = get_offline_db_stats()
+    last_log = stats.get("last_github_sync")
+    if last_log:
+        if not _LAST_SYNC_RESULT.get("last_commit_sha"):
+            _LAST_SYNC_RESULT["last_commit_sha"] = last_log.get("commit_sha")
+        if not _LAST_SYNC_RESULT.get("last_sync_time"):
+            _LAST_SYNC_RESULT["last_sync_time"] = last_log.get("sync_time")
+        if last_log.get("status") == "SUCCESS" and _LAST_SYNC_RESULT.get("status") == "idle":
+            _LAST_SYNC_RESULT["status"] = "pushed"
+            _LAST_SYNC_RESULT["message"] = last_log.get("message")
+
     return {
         "sync_result": _LAST_SYNC_RESULT,
         "db_stats": stats,
-        "scheduler_active": _SCHEDULER_THREAD is not None and _SCHEDULER_THREAD.is_alive()
+        "scheduler_active": _SCHEDULER_THREAD is not None and _SCHEDULER_THREAD.is_alive(),
+        "schedule": "4x Daily (Every 6 Hours)",
+        "frequency_hours": 6
     }

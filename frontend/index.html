@@ -22783,11 +22783,20 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     className: `px-1.5 py-0.2 rounded text-[9px] font-bold ${threatConfig.has_github_token ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"}`
 
-  }, threatConfig.has_github_token ? "2x/DAY + SYNC" : "SET TOKEN")), /*#__PURE__*/React.createElement("p", {
+  }, threatConfig.has_github_token ? "4x/DAY + AUTO-PUSH" : "SET TOKEN")), /*#__PURE__*/React.createElement("p", {
 
-    className: "text-[11px] text-slate-400 font-sans"
+    className: "text-[11px] text-slate-400 font-sans flex items-center gap-1.5 flex-wrap"
 
-  }, `${threatConfig.github_repo || "resanul/siem"}:${threatConfig.github_branch || "master"} • Pull-before-Push active`))), /*#__PURE__*/React.createElement("button", {
+  }, [
+    `${threatConfig.github_repo || "resanul/siem"}:${threatConfig.github_branch || "master"} • 4x/day (Every 6h)`,
+    dbStats && dbStats.last_github_sync && dbStats.last_github_sync.commit_sha ? /*#__PURE__*/React.createElement("span", {
+      key: "last_push",
+      className: "text-emerald-400 font-mono font-semibold"
+    }, `• Last push: ${dbStats.last_github_sync.sync_time?.split(' ')[1] || 'Done'} (${dbStats.last_github_sync.commit_sha.slice(0, 7)})`) : /*#__PURE__*/React.createElement("span", {
+      key: "pull_push",
+      className: "text-slate-500"
+    }, "• Pull-before-Push active")
+  ]))), /*#__PURE__*/React.createElement("button", {
 
     onClick: triggerGithubPush,
 
