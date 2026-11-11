@@ -5,10 +5,10 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect("172.31.105.11", username="resanul", password="@#Trust2025##", timeout=10)
 
 sftp = ssh.open_sftp()
-sftp.put("scripts/nw_survey_net.py", "/tmp/nw_survey_net.py")
+sftp.put("scripts/survey_deep_nw.py", "/tmp/survey_deep_nw.py")
 sftp.close()
 
-stdin, stdout, stderr = ssh.exec_command("python3 /tmp/nw_survey_net.py")
+stdin, stdout, stderr = ssh.exec_command("python3 /tmp/survey_deep_nw.py", timeout=35)
 out = stdout.read().decode()
 err = stderr.read().decode()
 print("STDOUT:\n", out)

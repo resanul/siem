@@ -1,1 +1,4415 @@
-[]
+[
+  {
+    "id": "ALT-inc-bf-1b38fbe9",
+    "timestamp": "2026-10-30T07:19:24Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-1b38fbe9",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-dc37351d",
+    "timestamp": "2026-10-30T07:19:24Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-dc37351d",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-b558dcd1",
+    "timestamp": "2026-10-30T07:19:23Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-b558dcd1",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-ff372152",
+    "timestamp": "2026-10-30T07:19:23Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ff372152",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-apt-a8a801f4",
+    "timestamp": "2026-10-30T07:26:58Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.1s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-a8a801f4",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 9,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-priv-esc-8aa48942",
+    "timestamp": "2026-10-30T07:19:53Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-8aa48942",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-web-exfil-3e344541",
+    "timestamp": "2026-10-30T07:20:07Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-3e344541",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-446af475",
+    "timestamp": "2026-10-30T07:19:22Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-446af475",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-b523d419",
+    "timestamp": "2026-10-30T07:19:22Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-b523d419",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-scan-exploit-33211dd2",
+    "timestamp": "2026-10-30T07:19:22Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-33211dd2",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-479a47f4",
+    "timestamp": "2026-10-30T07:19:22Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-479a47f4",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-7dabf3ee",
+    "timestamp": "2026-10-30T07:19:21Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-7dabf3ee",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-0ad24e2c",
+    "timestamp": "2026-10-30T05:48:07Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-0ad24e2c",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-a0ab8f9a",
+    "timestamp": "2026-10-30T05:48:06Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-a0ab8f9a",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-441a54e0",
+    "timestamp": "2026-10-30T05:48:06Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-441a54e0",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-ce57b6a4",
+    "timestamp": "2026-10-30T05:48:05Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ce57b6a4",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-apt-63510757",
+    "timestamp": "2026-10-30T05:55:40Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.5s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-63510757",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 9,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-priv-esc-5fcd3e97",
+    "timestamp": "2026-10-30T05:48:35Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-5fcd3e97",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-web-exfil-35bd92c6",
+    "timestamp": "2026-10-30T05:48:50Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-35bd92c6",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-604b57fc",
+    "timestamp": "2026-10-30T05:48:04Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-604b57fc",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-c019d2bc",
+    "timestamp": "2026-10-30T05:48:04Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-c019d2bc",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-scan-exploit-87f85fe9",
+    "timestamp": "2026-10-30T05:48:04Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-87f85fe9",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-6a67a0f5",
+    "timestamp": "2026-10-30T05:48:04Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-6a67a0f5",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-7eade380",
+    "timestamp": "2026-10-30T05:43:33Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-7eade380",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-c82c8fd8",
+    "timestamp": "2026-10-30T05:43:33Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-c82c8fd8",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-b15263e8",
+    "timestamp": "2026-10-30T05:43:32Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-b15263e8",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-ba533c11",
+    "timestamp": "2026-10-30T05:43:31Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ba533c11",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-apt-2a05fe63",
+    "timestamp": "2026-10-30T05:51:06Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.2s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-2a05fe63",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 9,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-priv-esc-24602250",
+    "timestamp": "2026-10-30T05:44:00Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-24602250",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-web-exfil-ac7a07ac",
+    "timestamp": "2026-10-30T05:44:15Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-ac7a07ac",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-68260ca3",
+    "timestamp": "2026-10-30T05:43:30Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-68260ca3",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-7aeb1880",
+    "timestamp": "2026-10-30T05:43:30Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-7aeb1880",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-scan-exploit-023c6aa7",
+    "timestamp": "2026-10-30T05:43:29Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-023c6aa7",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-db6e3f3e",
+    "timestamp": "2026-10-30T05:43:29Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-db6e3f3e",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-99c16b98",
+    "timestamp": "2026-10-30T05:43:28Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-99c16b98",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-1faf3ab3",
+    "timestamp": "2026-10-29T15:59:00Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-1faf3ab3",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-210e3c2b",
+    "timestamp": "2026-10-29T15:58:58Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-210e3c2b",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-b08a4bef",
+    "timestamp": "2026-10-29T15:58:58Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-b08a4bef",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-7b066138",
+    "timestamp": "2026-10-29T15:58:57Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-7b066138",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-c482a624",
+    "timestamp": "2026-10-29T15:58:57Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-c482a624",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-apt-9f53ccde",
+    "timestamp": "2026-10-29T16:06:32Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.4s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-9f53ccde",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 9,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-priv-esc-34619d71",
+    "timestamp": "2026-10-29T15:59:27Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-34619d71",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-web-exfil-9dcf4bee",
+    "timestamp": "2026-10-29T15:59:42Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-9dcf4bee",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-da93f9a9",
+    "timestamp": "2026-10-29T15:58:56Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-da93f9a9",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-5011640d",
+    "timestamp": "2026-10-29T15:58:56Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-5011640d",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-scan-exploit-97d8cf0d",
+    "timestamp": "2026-10-29T15:58:56Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-97d8cf0d",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-ec29f856",
+    "timestamp": "2026-10-29T15:58:56Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ec29f856",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 33,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-1399f54b",
+    "timestamp": "2026-10-29T15:56:09Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against live_test_user (10 failed attempts across 1 IPs in 16.0s)",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.99",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-1399f54b",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "live_test_user"
+        ],
+        "ips": [
+          "198.51.100.99"
+        ],
+        "hosts": []
+      },
+      "root_cause_events_count": 21,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-apt-fe4d60d0",
+    "timestamp": "2026-10-29T16:03:19Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 501.5s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-fe4d60d0",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84",
+          "198.51.100.99"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 9,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-priv-esc-8dcd421e",
+    "timestamp": "2026-10-29T15:56:14Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-8dcd421e",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-web-exfil-935f16ef",
+    "timestamp": "2026-10-29T15:56:29Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-935f16ef",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 6,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-lat-f901d780",
+    "timestamp": "2026-10-29T15:55:43Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-f901d780",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-5795813e",
+    "timestamp": "2026-10-29T15:55:43Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-5795813e",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-scan-exploit-7b6b91e6",
+    "timestamp": "2026-10-29T15:55:43Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-7b6b91e6",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-4c2c1bb3",
+    "timestamp": "2026-10-29T15:55:40Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (13 failed attempts across 1 IPs in 55.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-4c2c1bb3",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 13,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-1793289290486",
+    "timestamp": "2026-10-29T15:54:50.486901Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793289290486-2e7081)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793289290486-2e7081",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-19be67e3",
+    "timestamp": "2026-10-29T15:55:30Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-19be67e3",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-ed77b292",
+    "timestamp": "2026-10-29T15:55:29Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ed77b292",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-ca2e9474",
+    "timestamp": "2026-10-29T15:55:28Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ca2e9474",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-7f04d0c3",
+    "timestamp": "2026-10-29T15:55:28Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-7f04d0c3",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-c0aed548",
+    "timestamp": "2026-10-29T15:55:28Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-c0aed548",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-apt-e9261428",
+    "timestamp": "2026-10-29T16:03:03Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.0s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-e9261428",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 4,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-priv-esc-c4d862f7",
+    "timestamp": "2026-10-29T15:55:57Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-c4d862f7",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-web-exfil-e4350ea4",
+    "timestamp": "2026-10-29T15:56:12Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-e4350ea4",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-faf32b47",
+    "timestamp": "2026-10-29T15:55:27Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-faf32b47",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-b1397c82",
+    "timestamp": "2026-10-29T15:55:27Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-b1397c82",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-scan-exploit-cfbd98bf",
+    "timestamp": "2026-10-29T15:55:27Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-cfbd98bf",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-1ea4cc5b",
+    "timestamp": "2026-10-29T15:55:27Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-1ea4cc5b",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-apt-1aa83c50",
+    "timestamp": "2026-10-29T16:02:52Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.9s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-1aa83c50",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84",
+          "198.51.100.99"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 4,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-priv-esc-de59e27c",
+    "timestamp": "2026-10-29T15:55:47Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-de59e27c",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-web-exfil-d6f6a316",
+    "timestamp": "2026-10-29T15:56:02Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-d6f6a316",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-3b44356f",
+    "timestamp": "2026-10-29T15:55:17Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-3b44356f",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-56449af3",
+    "timestamp": "2026-10-29T15:55:17Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-56449af3",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-scan-exploit-c3a8cc43",
+    "timestamp": "2026-10-29T15:55:17Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-c3a8cc43",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-fd18e022",
+    "timestamp": "2026-10-29T15:55:16Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-fd18e022",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-1793289253918",
+    "timestamp": "2026-10-29T15:54:13.918319Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793289253918-2514a9)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793289253918-2514a9",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-f2bb446a",
+    "timestamp": "2026-10-29T15:54:48Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-f2bb446a",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-21e34162",
+    "timestamp": "2026-10-29T15:54:40Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-21e34162",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-6e78b943",
+    "timestamp": "2026-10-29T15:54:40Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-6e78b943",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-1f34c9e0",
+    "timestamp": "2026-10-29T15:54:39Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-1f34c9e0",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-86fc4f19",
+    "timestamp": "2026-10-29T15:54:39Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-86fc4f19",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-apt-9fd15830",
+    "timestamp": "2026-10-29T16:02:14Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.2s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-9fd15830",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 4,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-priv-esc-59f9992d",
+    "timestamp": "2026-10-29T15:55:09Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-59f9992d",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-web-exfil-8881ece1",
+    "timestamp": "2026-10-29T15:55:23Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-8881ece1",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-c6841f1e",
+    "timestamp": "2026-10-29T15:54:38Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-c6841f1e",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-942ad11e",
+    "timestamp": "2026-10-29T15:54:38Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-942ad11e",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-scan-exploit-69fc1390",
+    "timestamp": "2026-10-29T15:54:38Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-69fc1390",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-ee697533",
+    "timestamp": "2026-10-29T15:54:38Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-ee697533",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-1793288809587",
+    "timestamp": "2026-10-29T15:46:49.587144Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793288809587-f36cac)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793288809587-f36cac",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-inc-bf-4cb21c47",
+    "timestamp": "2026-10-29T15:47:32Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-4cb21c47",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-29f95279",
+    "timestamp": "2026-10-29T15:47:27Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-29f95279",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-81c41fc6",
+    "timestamp": "2026-10-29T15:47:27Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-81c41fc6",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-26d05e89",
+    "timestamp": "2026-10-29T15:47:27Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-26d05e89",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-31d73e3a",
+    "timestamp": "2026-10-29T15:47:26Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-31d73e3a",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-apt-0366bf19",
+    "timestamp": "2026-10-29T15:55:01Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-006] Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+    "description": "Multi-Stage APT Campaign verified across 4 telemetry sources (4 killchain stages detected over 500.5s)",
+    "host": "finance-app-srv",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.84",
+    "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041",
+    "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-apt-0366bf19",
+      "rule_id": "RULE-CORR-006",
+      "rule_name": "Multi-Stage APT Killchain (Recon -> Exploit -> C2 -> Lateral -> Exfil)",
+      "risk_score": 98.0,
+      "stage_count": 4,
+      "contributing_sources": [
+        "active_directory",
+        "checkpoint",
+        "squid",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.84"
+        ],
+        "users": [
+          "admin_service"
+        ],
+        "hosts": [
+          "finance-app-srv",
+          "fw-cluster-01"
+        ]
+      },
+      "root_cause_events_count": 4,
+      "mitre_tactic": "TA0043,TA0001,TA0011,TA0008,TA0010",
+      "mitre_attack_id": "T1046,T1190,T1071,T1021,T1041"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-priv-esc-61ca00cc",
+    "timestamp": "2026-10-29T15:47:56Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-005] Privileged Group Modification with Host Escalation Anomaly",
+    "description": "Privilege Escalation & Persistence: user 'backdoor_user' added to privileged group followed by host anomaly on bastion-gw-01 (/etc/sudoers modified)",
+    "host": "bastion-gw-01",
+    "src_ip": null,
+    "dest_ip": null,
+    "mitre_attack_id": "T1098,T1068",
+    "mitre_tactic": "TA0004,TA0003",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-priv-esc-61ca00cc",
+      "rule_id": "RULE-CORR-005",
+      "rule_name": "Privileged Group Modification with Host Escalation Anomaly",
+      "risk_score": 85.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "backdoor_user"
+        ],
+        "hosts": [
+          "bastion-gw-01"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0004,TA0003",
+      "mitre_attack_id": "T1098,T1068"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-web-exfil-cbd19505",
+    "timestamp": "2026-10-29T15:48:11Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-004] Web Application Exploitation to High-Volume Exfiltration",
+    "description": "Web Exploit to Exfiltration: 172.31.105.11 compromised via 'ET EXPLOIT Apache Struts2 REST Plugin XStream RCE (CVE-2017-9805)' followed by 12.0 MB egress via Squid proxy",
+    "host": "siem-correlated-engine",
+    "src_ip": "172.31.105.11",
+    "dest_ip": "198.51.100.99",
+    "mitre_attack_id": "T1190,T1048",
+    "mitre_tactic": "TA0001,TA0010",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-web-exfil-cbd19505",
+      "rule_id": "RULE-CORR-004",
+      "rule_name": "Web Application Exploitation to High-Volume Exfiltration",
+      "risk_score": 92.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "suricata",
+        "squid"
+      ],
+      "entities": {
+        "ips": [
+          "172.31.105.11",
+          "198.51.100.99"
+        ],
+        "hosts": [],
+        "urls": [
+          "http://198.51.100.99/upload/drop.php"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0001,TA0010",
+      "mitre_attack_id": "T1190,T1048"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-025e8a1f",
+    "timestamp": "2026-10-29T15:47:26Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-025e8a1f",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-lat-d25f1493",
+    "timestamp": "2026-10-29T15:47:26Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-003] Lateral Movement via Network Logon and Host Remote Execution",
+    "description": "Lateral Movement detected on db-cluster-node-02 by user 'svc_admin': Network Logon (Type 3) followed by process 'powershell.exe'",
+    "host": "db-cluster-node-02",
+    "src_ip": "10.0.0.88",
+    "dest_ip": null,
+    "mitre_attack_id": "T1021.002",
+    "mitre_tactic": "TA0008,TA0002",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-lat-d25f1493",
+      "rule_id": "RULE-CORR-003",
+      "rule_name": "Lateral Movement via Network Logon and Host Remote Execution",
+      "risk_score": 88.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "hosts": [
+          "db-cluster-node-02"
+        ],
+        "users": [
+          "svc_admin"
+        ],
+        "ips": [
+          "10.0.0.88"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0008,TA0002",
+      "mitre_attack_id": "T1021.002"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-scan-exploit-da594cc7",
+    "timestamp": "2026-10-29T15:47:26Z",
+    "severity": "CRITICAL",
+    "source": "correlation",
+    "title": "[RULE-CORR-002] Sequential Port Sweep to Network Exploit Attempt",
+    "description": "Port Sweep to Exploit Chain: 198.51.100.84 swept 18 ports on 172.31.105.11 followed by NIDS exploit 'ET EXPLOIT Apache Log4j JNDI RCE Attempt (CVE-2021-44228)'",
+    "host": "siem-correlated-engine",
+    "src_ip": "198.51.100.84",
+    "dest_ip": "172.31.105.11",
+    "mitre_attack_id": "T1046,T1190",
+    "mitre_tactic": "TA0043,TA0001",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-scan-exploit-da594cc7",
+      "rule_id": "RULE-CORR-002",
+      "rule_name": "Sequential Port Sweep to Network Exploit Attempt",
+      "risk_score": 90.0,
+      "stage_count": 2,
+      "contributing_sources": [
+        "checkpoint",
+        "suricata"
+      ],
+      "entities": {
+        "ips": [
+          "198.51.100.84",
+          "172.31.105.11"
+        ],
+        "hosts": [],
+        "ports": [
+          "21",
+          "22",
+          "23",
+          "25",
+          "53",
+          "80",
+          "110",
+          "135",
+          "139",
+          "143",
+          "443",
+          "445",
+          "1433",
+          "1521",
+          "3306",
+          "3389",
+          "5432",
+          "8080"
+        ]
+      },
+      "root_cause_events_count": 2,
+      "mitre_tactic": "TA0043,TA0001",
+      "mitre_attack_id": "T1046,T1190"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-inc-bf-e5ae821b",
+    "timestamp": "2026-10-29T15:47:25Z",
+    "severity": "HIGH",
+    "source": "correlation",
+    "title": "[RULE-CORR-001] Multi-Source Brute Force & Distributed Credential Stuffing",
+    "description": "Multi-Source Brute Force attack detected against administrator (10 failed attempts across 1 IPs in 45.0s)",
+    "host": "DC01.TBLBD.COM",
+    "src_ip": "198.51.100.84",
+    "dest_ip": null,
+    "mitre_attack_id": "T1110",
+    "mitre_tactic": "TA0006",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "incident_id": "inc-bf-e5ae821b",
+      "rule_id": "RULE-CORR-001",
+      "rule_name": "Multi-Source Brute Force & Distributed Credential Stuffing",
+      "risk_score": 75.0,
+      "stage_count": 1,
+      "contributing_sources": [
+        "active_directory",
+        "wazuh"
+      ],
+      "entities": {
+        "users": [
+          "administrator"
+        ],
+        "ips": [
+          "198.51.100.84"
+        ],
+        "hosts": [
+          "DC01.TBLBD.COM",
+          "rhel-client-01"
+        ]
+      },
+      "root_cause_events_count": 10,
+      "mitre_tactic": "TA0006",
+      "mitre_attack_id": "T1110"
+    },
+    "is_demo": true
+  },
+  {
+    "id": "ALT-1793288798675",
+    "timestamp": "2026-10-29T15:46:38.675839Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793288798675-ddaf64)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793288798675-ddaf64",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1793288768472",
+    "timestamp": "2026-10-29T15:46:08.472351Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793288768472-e44638)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793288768472-e44638",
+      "event_type": "unit_test_synthetic"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1793288751947",
+    "timestamp": "2026-10-29T15:45:51.947780Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793288751947-90e720)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793288751947-90e720",
+      "event_type": "suricata_test_alert"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1793288745645",
+    "timestamp": "2026-10-29T15:45:45.645670Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793288745645-aee2f3)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793288745645-aee2f3",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  },
+  {
+    "id": "ALT-1793288745640",
+    "timestamp": "2026-10-29T15:45:45.640978Z",
+    "severity": "HIGH",
+    "source": "suricata",
+    "title": "SYNTHETIC VERIFICATION: E2E Telemetry Ingestion Alert (synth-suri-1793288745640-aa1353)",
+    "description": "Automated synthetic event injected for component 'suricata' via opensoc-ctl test to verify pipeline delivery.",
+    "host": "opensoc-sensor-01",
+    "src_ip": "198.51.100.99",
+    "dest_ip": "10.0.1.15",
+    "mitre_attack_id": "T1059",
+    "mitre_tactic": "Execution",
+    "status": "NEW",
+    "assigned_to": null,
+    "raw_payload": {
+      "stages": {
+        "synthetic_packet_generation": true,
+        "signature_matching": true,
+        "eve_json_writing": true,
+        "field_normalization": true
+      },
+      "synthetic_id": "synth-suri-1793288745640-aa1353",
+      "event_type": "test_alert"
+    },
+    "is_demo": false
+  }
+]

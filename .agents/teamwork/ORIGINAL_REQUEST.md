@@ -122,3 +122,47 @@ Add unit and integration tests (e.g., in `tests/test_event_search.py`) verifying
 - [ ] Entering a query and clicking "Execute Query" (or pressing Enter) triggers real search and updates the result list and hit counter.
 - [ ] Clicking any result item reveals detailed event JSON payload.
 - [ ] Quick index filters or time range selectors update the query results accordingly.
+
+
+## 2026-10-29T14:26:40Z
+
+Research, design, develop, and integrate a production-grade, enterprise-scale SIEM Correlation Engine (`correlation_engine`) into the OpenSOC Forge platform (`d:\AI\siem`), supporting multi-source stateful event correlation, automated detection rules mapped to MITRE ATT&CK, incident generation, and full-stack integration with the existing FastAPI backend and React frontend.
+
+Working directory: d:\AI\siem
+Integrity mode: development
+
+## Requirements
+
+### R1. Research and Detection Capability Matrix
+Research leading industry SIEM platforms (including Microsoft Sentinel, Splunk ES, IBM QRadar, Elastic Security, and Wazuh) and establish a comprehensive detection capability matrix covering multi-stage attack scenarios, MITRE ATT&CK tactics/techniques, and supported telemetry (Wazuh HIDS, Suricata NIDS, Squid Web Gateway, Check Point Firewall, NetWitness, and Active Directory).
+
+### R2. Correlation Engine Architecture and Execution Core
+Design and implement an extensible, stateful correlation engine in the FastAPI backend that supports event normalization (unified schema), sliding time-window aggregation, threshold counting, sequence/chain detection, entity tracking (users, IPs, hosts), late-arriving event handling, alert deduplication, risk scoring, and continuous background execution.
+
+### R3. Executable Detection Rule Library
+Implement an executable, prioritized rule library covering brute force and credential abuse, lateral movement, port scan to exploit, privilege escalation, command and control, and multi-source multi-stage attacks. Each rule must specify trigger criteria, correlation window, required log sources, severity/risk score, MITRE ATT&CK mapping, and explainable incident generation linking root-cause events.
+
+### R4. Full-Stack UI and API Integration
+Integrate the correlation engine with the existing OpenSOC Forge FastAPI backend and React single-page frontend. Provide REST APIs and user interface views for managing correlation rules (enable/disable, thresholds), monitoring engine status, inspecting triggered correlation alerts/incidents with full event evidence, and maintaining compatibility with existing SIEM capabilities without regressions.
+
+### R5. Synthetic Datasets and Automated Verification Suite
+Develop representative synthetic log datasets for all supported sources (Wazuh, Suricata, Squid, Check Point, NetWitness, Active Directory) and an automated test suite verifying positive detection, negative non-detection, edge cases (out-of-order logs, clock skew, boundary windows), deduplication, and performance.
+
+## Acceptance Criteria
+
+### Detection & Correlation Logic
+- [ ] Correlation engine successfully normalizes and evaluates events across at least Wazuh, Suricata, Squid, Check Point, NetWitness, and Active Directory log formats.
+- [ ] State-tracking sliding windows accurately detect threshold-based patterns and sequential multi-event attack chains across multiple sources.
+- [ ] Correlation rules are mapped to MITRE ATT&CK tactics and techniques with transparent, explainable alert payloads detailing triggering event IDs and entity context.
+- [ ] Event deduplication and suppression prevent duplicate incident creation within configured cooldown and aggregation windows.
+
+### Integration & UI
+- [ ] FastAPI backend exposes RESTful endpoints for engine control, rule management (listing, enabling/disabling), and incident retrieval.
+- [ ] React frontend provides accessible UI views to view correlated incidents, drill down into contributing raw events, and view/configure correlation rules.
+- [ ] Existing OpenSOC Forge features, APIs, and tests remain functional without regressions.
+
+### Verification & Testing
+- [ ] Synthetic log datasets are provided for all six telemetry sources covering normal traffic and multi-stage attack scenarios.
+- [ ] Automated test suite executes positive test cases (triggering each correlation rule) and negative test cases (ensuring non-detections on benign or incomplete patterns).
+- [ ] Edge-case and boundary tests pass for out-of-order events, time window expiration, and deduplication logic.
+- [ ] All automated unit and integration tests run cleanly from command line and produce documented verification reports.
