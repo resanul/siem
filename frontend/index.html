@@ -15825,6 +15825,22 @@ curl -X POST http://172.31.105.11:7070/api/v1/network/ingest \\
 
     /*#__PURE__*/React.createElement("span", { key: "ts" }, ev.timestamp?.slice(0, 19)?.replace("T", " ") || "--"),
 
+    ev.status === "FALCON_CLOUD" && /*#__PURE__*/React.createElement("span", {
+
+      key: "falcon",
+
+      className: "px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[9px] font-mono font-bold border border-purple-500/40 inline-flex items-center gap-1"
+
+    }, "FALCON"),
+
+    ev.status === "DC_SENSOR" && /*#__PURE__*/React.createElement("span", {
+
+      key: "dcsensor",
+
+      className: "px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-mono font-bold border border-sky-500/40 inline-flex items-center gap-1"
+
+    }, "DC SENSOR"),
+
     ev.status === "LIVE_STREAM" && /*#__PURE__*/React.createElement("span", {
 
       key: "live",

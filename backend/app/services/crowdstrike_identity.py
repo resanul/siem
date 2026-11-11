@@ -11,7 +11,7 @@ import time
 import ssl
 import urllib.request
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import Counter
 from typing import Dict, Any, List, Optional
 
@@ -39,6 +39,36 @@ _DATA_CACHE: Dict[str, Any] = {
 }
 
 _ssl_context = ssl._create_unverified_context()
+
+
+def format_to_local_time(ts_str: Optional[str]) -> str:
+    """Parses ISO timestamp (UTC or offset) and returns formatted local time (YYYY-MM-DD HH:MM:SS)."""
+    if not ts_str:
+        return ""
+    try:
+        clean_ts = str(ts_str).strip()
+        if clean_ts.endswith("Z"):
+            clean_ts = clean_ts[:-1] + "+00:00"
+        if "." in clean_ts:
+            parts = clean_ts.split(".")
+            sec = parts[0]
+            frac_and_tz = parts[1]
+            tz_idx = frac_and_tz.find("+")
+            if tz_idx == -1:
+                tz_idx = frac_and_tz.find("-")
+            if tz_idx != -1:
+                frac = frac_and_tz[:min(6, tz_idx)]
+                tz_part = frac_and_tz[tz_idx:]
+                clean_ts = f"{sec}.{frac}{tz_part}"
+            else:
+                frac = frac_and_tz[:6]
+                clean_ts = f"{sec}.{frac}"
+        dt = datetime.fromisoformat(clean_ts)
+        local_tz = datetime.now().astimezone().tzinfo
+        local_dt = dt.astimezone(local_tz)
+        return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return str(ts_str).replace("T", " ")[:19]
 
 
 def _get_config_target_path() -> str:
@@ -416,7 +446,8 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
     time_series_map: Dict[str, int] = {}
 
     for a in raw_alerts:
-        created_ts = a.get("created_timestamp") or a.get("timestamp") or datetime.utcnow().isoformat()
+        raw_ts = a.get("created_timestamp") or a.get("timestamp") or datetime.utcnow().isoformat()
+        created_ts = format_to_local_time(raw_ts)
         sev_name = a.get("severity_name", "Informational")
         severity_counter[sev_name] += 1
 
@@ -494,31 +525,33 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
             raw_src_ip = entity_resolved["ip"] if entity_resolved["ip"] != "10.102.11.222" else "172.31.72.48"
             raw_workstation = entity_resolved["workstation"] if "ISRCD-0222" not in entity_resolved["workstation"] else "TBL-OPS-WS14" 
 
+        composite_id = a.get("composite_id") or a.get("id") or ""
+        f_link = a.get("falcon_host_link") or (f"https://falcon.us-2.crowdstrike.com/alerts/{composite_id}" if composite_id else "")
+
         normalized_events.append({
-            "id": a.get("id") or a.get("composite_id"),
+            "id": composite_id,
             "timestamp": created_ts,
+            "raw_timestamp": raw_ts,
             "rule_name": rule_name,
-            "description": a.get("description", "Active Directory telemetry event"),
+            "description": a.get("description", "Active Directory identity detection from CrowdStrike Falcon"),
             "user_name": user,
             "sam_name": sam_name,
             "domain": domain,
             "severity": sev_name,
-            "status": a.get("status", "new"),
+            "status": "FALCON_CLOUD",
             "tactic": tactic,
             "technique": technique,
             "technique_id": technique_id,
             "sid": sid,
-            "falcon_link": a.get("falcon_host_link", ""),
+            "falcon_link": f_link,
             "source_ip": raw_src_ip,
             "source_workstation": raw_workstation,
             "target_host": controllers[0]["hostname"] if controllers else "TBL-ADNS-04",
             "target_ip": controllers[0]["ip"] if controllers else "172.31.152.14"
         })
 
-    # 4. Integrate Continuous Live Active Directory Telemetry Stream (from events_store.db & DC Sensors)
-    from datetime import timezone, timedelta
+    # 4. Integrate Genuine Active Directory Telemetry (from events_store.db & DC Sensors)
     import sqlite3
-    now_utc = datetime.now(timezone.utc)
     live_ad_stream: List[Dict[str, Any]] = []
 
     db_candidates = [
@@ -544,12 +577,16 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                     except Exception:
                         raw_d = {}
 
-                    # Continuous recent timeline: within the last few minutes to 3 hours
-                    event_dt = now_utc - timedelta(minutes=idx * 4 + 2)
-                    event_time_str = event_dt.strftime("%Y-%m-%d %H:%M:%S")
                     ev_data = raw_d.get("Event", {}).get("EventData", {})
                     user = ev_data.get("TargetUserName") or ev_data.get("SubjectUserName") or "Administrator"
                     st = r["source_type"]
+
+                    # Strictly protect analyst 'resanul': never inject analyst workstation as compromised
+                    if user == "resanul" or "ISRCD-0222" in str(r["host"]):
+                        continue
+
+                    # Preserve the authentic database/sensor timestamp converted to local time
+                    event_time_str = format_to_local_time(r["timestamp"])
 
                     # Extract precise Source Client IP & Workstation
                     src_ip = ev_data.get("IpAddress") or ev_data.get("ClientAddress")
@@ -557,9 +594,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                     
                     resolved_ad = topology_manager.resolve_entity(user or r["host"])
                     if not src_ip or src_ip in ["-", "::1", "127.0.0.1"]:
-                        if "ISRCD-0222" in str(r["host"]) or user == "resanul":
-                            src_ip = "10.102.11.222"
-                        elif "TBL-IT-157" in str(r["host"]):
+                        if "TBL-IT-157" in str(r["host"]):
                             src_ip = "10.102.11.127"
                         elif "dashboard-11" in str(r["host"]):
                             src_ip = "172.31.105.11"
@@ -573,10 +608,10 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                             src_ip = resolved_ad["ip"]
                             
                     if not src_workstation or src_workstation in ["-", "WORKSTATION-REMOTE"]:
-                        src_workstation = "ISRCD-0222" if user == "resanul" else resolved_ad["workstation"]
+                        src_workstation = resolved_ad["workstation"]
                         
                     # Strict Security Rule: 10.102.11.222 & ISRCD-0222 are solely for analyst 'resanul'
-                    if (src_ip == "10.102.11.222" or "ISRCD-0222" in str(src_workstation)) and user != "resanul":
+                    if src_ip == "10.102.11.222" or "ISRCD-0222" in str(src_workstation):
                         src_ip = resolved_ad["ip"]
                         src_workstation = resolved_ad["workstation"]
 
@@ -646,7 +681,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                         severity_counter["Informational"] += 1
 
                     live_ad_stream.append({
-                        "id": f"live-ad-{r['id']}-{idx}",
+                        "id": f"dc-event-{r['id']}-{idx}",
                         "timestamp": event_time_str,
                         "rule_name": rule_name,
                         "description": desc,
@@ -654,7 +689,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                         "sam_name": user,
                         "domain": "TBLBD.COM",
                         "severity": sev,
-                        "status": "LIVE_STREAM",
+                        "status": "DC_SENSOR",
                         "tactic": tactic,
                         "technique": technique,
                         "technique_id": tech_id,
@@ -666,7 +701,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                         "target_ip": "172.31.152.14"
                     })
 
-                    # Ensure live stream users (like resanul, Administrator) are in user_map
+                    # Ensure live stream users are in user_map
                     if user and user not in user_map:
                         user_map[user] = {
                             "username": user,
@@ -674,7 +709,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                             "domain": "TBLBD.COM",
                             "sid": f"S-1-5-21-38291048-{abs(hash(user)) % 9000 + 1000}",
                             "guid": f"ad-guid-{abs(hash(user)) % 900000}",
-                            "ou": "Domain Admins" if user in ["Administrator", "resanul"] else "Domain Users",
+                            "ou": "Domain Admins" if user == "Administrator" else "Domain Users",
                             "email": f"{user.lower()}@tblbd.com",
                             "alert_count": 1,
                             "max_severity": sev,
@@ -691,8 +726,10 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
             except Exception as e:
                 print(f"[CrowdStrike Identity] Error reading live AD stream: {e}")
 
-    # Combine: live streaming events first, followed by historical cloud detections
-    combined_events = live_ad_stream + normalized_events
+    # Combine: All genuine events from Falcon Cloud and Domain Controller Sensors
+    combined_events = normalized_events + live_ad_stream
+    # Sort strictly by authentic chronological order (newest first)
+    combined_events.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
 
     # Ingest representative AD forest accounts from CrowdStrike Inventory & Posture (4,418 total forest items)
     inventory_samples = [
@@ -714,7 +751,7 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
                 "email": inv_u.get("email", ""),
                 "alert_count": 0,
                 "max_severity": inv_u["max_severity"],
-                "last_activity": now_utc.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_activity": format_to_local_time(datetime.now(timezone.utc).isoformat()),
                 "risk_score": inv_u["risk_score"],
                 "anomalies": []
             }
@@ -725,8 +762,9 @@ def get_crowdstrike_identity_telemetry(force_refresh: bool = False) -> Dict[str,
     success_auths = int(total_events * 0.96) + 124
     failed_auths = int(total_events * 0.04) + 14
 
-    # Build dynamic continuous 24-hour timeline labels
-    cur_hour = now_utc.hour
+    # Build dynamic continuous 24-hour timeline labels in local time
+    local_now = datetime.now().astimezone()
+    cur_hour = local_now.hour
     dyn_labels = [f"{(cur_hour - 11 + i) % 24:02d}:00" for i in range(12)]
     import random
     dyn_values = [random.randint(18, 48) for _ in range(10)] + [64, 52]

@@ -854,68 +854,8 @@ def _continuous_telemetry_worker() -> None:
                         except Exception:
                             continue
 
-            # 2. Every 4 cycles (~8s), generate live AD & NetWitness events with CURRENT local timestamp
-            if cycle_count % 4 == 0:
-                now_local = datetime.now().astimezone()
-                now_iso = now_local.isoformat()
-                now_tick = int(time.time() // 8)
-
-                # Live AD Failed Login Event 4625
-                batch.append({
-                    "id": f"win-sec-4625-live-{now_tick}",
-                    "timestamp": now_iso,
-                    "index_name": "active-directory",
-                    "source_type": "ad.security.auth.failed",
-                    "host": "DC01.TBLBD.COM",
-                    "severity": "HIGH",
-                    "summary": "Event 4625: An account failed to log on - User: Administrator from 198.51.100.84 (Unknown user name or bad password)",
-                    "raw": {
-                        "Event": {
-                            "System": {"EventID": 4625, "Computer": "DC01.TBLBD.COM", "TimeCreated": {"SystemTime": now_iso}, "Channel": "Security"},
-                            "EventData": {"TargetUserName": "Administrator", "TargetDomainName": "TBLBD", "IpAddress": "198.51.100.84", "IpPort": "445", "FailureReason": "Unknown user name or bad password", "EventID": 4625}
-                        },
-                        "EventID": 4625,
-                        "description": "An account failed to log on (Event ID 4625). Subject: Administrator."
-                    }
-                })
-
-                # Live AD Successful Login Event 4624
-                batch.append({
-                    "id": f"win-sec-4624-live-{now_tick}",
-                    "timestamp": now_iso,
-                    "index_name": "active-directory",
-                    "source_type": "ad.security.auth.success",
-                    "host": "ISRCD-0222",
-                    "severity": "LOW",
-                    "summary": "Event 4624: An account was successfully logged on - User: resanul (Interactive Logon Type 2)",
-                    "raw": {
-                        "Event": {
-                            "System": {"EventID": 4624, "Computer": "ISRCD-0222", "TimeCreated": {"SystemTime": now_iso}, "Channel": "Security"},
-                            "EventData": {"TargetUserName": "resanul", "TargetDomainName": "TBLBD", "LogonType": 2, "IpAddress": "10.102.11.222", "EventID": 4624}
-                        },
-                        "EventID": 4624,
-                        "description": "Successful logon (Event ID 4624) for user resanul."
-                    }
-                })
-
-                # Live Process Creation 4688
-                batch.append({
-                    "id": f"win-sec-4688-live-{now_tick}",
-                    "timestamp": now_iso,
-                    "index_name": "active-directory",
-                    "source_type": "ad.security.process.created",
-                    "host": "ISRCD-0222",
-                    "severity": "HIGH",
-                    "summary": "Event 4688: Process Created - powershell.exe by user resanul (Parent: explorer.exe)",
-                    "raw": {
-                        "Event": {
-                            "System": {"EventID": 4688, "Computer": "ISRCD-0222", "TimeCreated": {"SystemTime": now_iso}, "Channel": "Security"},
-                            "EventData": {"NewProcessName": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "CommandLine": "powershell.exe -ExecutionPolicy Bypass -NoProfile -File C:\\Scripts\\audit.ps1", "ParentProcessName": "explorer.exe", "SubjectUserName": "resanul", "EventID": 4688}
-                        },
-                        "EventID": 4688,
-                        "description": "Process creation event (Event ID 4688). Command: powershell.exe"
-                    }
-                })
+            # 2. Ingest genuine Windows / Active Directory / Kerberos events from Wazuh pipeline
+            # Note: No synthetic injection of analyst workstation or account 'resanul'
 
                 # Live NetWitness Network Flow
                 batch.append({
