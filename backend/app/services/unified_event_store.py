@@ -856,6 +856,10 @@ def _continuous_telemetry_worker() -> None:
 
             # 2. Ingest genuine Windows / Active Directory / Kerberos events from Wazuh pipeline
             # Note: No synthetic injection of analyst workstation or account 'resanul'
+            if cycle_count % 4 == 0:
+                now_local = datetime.now().astimezone()
+                now_iso = now_local.isoformat()
+                now_tick = int(time.time() // 8)
 
                 # Live NetWitness Network Flow
                 batch.append({
